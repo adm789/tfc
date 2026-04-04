@@ -1,0 +1,130 @@
+﻿<?php
+// PHP could be used to dynamically generate the layout or values, but here we're just doing static HTML.
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="calculator">
+        <div class="display" id="display">0</div>
+        <div class="buttons">
+            <button class="button" onclick="press(1)">1</button>
+            <button class="button" onclick="press(2)">2</button>
+            <button class="button" onclick="press(3)">3</button>
+            <button class="button" onclick="press(4)">4</button>
+            <button class="button" onclick="press(5)">5</button>
+            <button class="button" onclick="press(6)">6</button>
+            <button class="button" onclick="press(7)">7</button>
+            <button class="button" onclick="press(8)">8</button>
+            <button class="button" onclick="press(9)">9</button>
+            <button class="button" onclick="press(0)">0</button>
+            <button class="button" onclick="clearDisplay()">C</button>
+            <button class="button" onclick="calculate()">=</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html><pre>
+How You Can Make Your Own Design Like This
+Combine PHP, HTML, CSS, and JavaScript: PHP will be used to generate the dynamic content, HTML provides the structure, CSS is used for styling, and JavaScript handles the interactivity.
+Make the Design User-Friendly: Ensure that the UI is easy to use, with a layout that’s intuitive. Use hover effects, smooth transitions, and modern fonts to make it visually attractive.
+Responsive Design: Consider making the design responsive, so it looks good on different devices, using techniques like media queries in CSS.
+
+ie.using PHP for the backend structure and HTML/CSS/JS for the front end.
+PHP: In this example, PHP isn't doing much other than providing 
+the basic HTML structure for the calculator. You can extend PHP to 
+create dynamic content or handle form submissions for advanced features.
+
+CSS: The CSS provides a visually appealing design for the calculator. 
+ It uses:
+Flexbox and Grid layouts to structure the page.
+Hover and active states to give the buttons a nice visual effect when interacted with.
+A box-shadow and rounded corners for a modern, sleek appearance.
+
+JavaScript: JavaScript handles the logic for the calculator’s functionality:
+The press() function adds digits to the display.
+The clearDisplay() function resets the display to 0.
+The calculate() function evaluates the expression and displays the result.
+
+\eda style.css
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #2a2a2a;
+    margin: 0;
+}
+
+.calculator {
+    background-color: #1c1c1c;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.display {
+    font-size: 2em;
+    color: white;
+    background-color: #333;
+    padding: 20px;
+    text-align: right;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    height: 50px;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px;
+}
+
+.button {
+    background-color: #444;
+    color: white;
+    font-size: 1.5em;
+    padding: 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #666;
+}
+
+.button:active {
+    background-color: #888;
+}
+
+\eda script.js
+let display = document.getElementById('display');
+let currentInput = "";
+
+function press(value) {
+    currentInput += value;
+    display.innerText = currentInput;
+}
+
+function clearDisplay() {
+    currentInput = "";
+    display.innerText = "0";
+}
+
+function calculate() {
+    try {
+        currentInput = eval(currentInput).toString();
+        display.innerText = currentInput;
+    } catch (e) {
+        display.innerText = "Error";
+    }
+}
