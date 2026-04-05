@@ -1,0 +1,776 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8">
+    <title>終極播放器 Pro｜每頁3媒體全屏放大｜同時自動播放｜循環縮放</title>
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const listFile = urlParams.get('listFile') || 'list.js';
+            const script = document.createElement('script');
+            script.src = listFile;
+            script.onerror = function() {
+                console.warn('無法載入 ' + listFile);
+                window.mediaList = window.mediaList || [];
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        body { 
+            background: #0a0a0a; 
+            margin: 0; 
+            overflow: hidden; 
+            height: 100vh; 
+            width: 100vw; 
+            font-family: system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif; 
+            touch-action: pan-x pan-y; 
+            cursor: default; 
+            position: relative;
+        }
+        
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .media-grid-wrapper {
+            flex: 1;
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+        .media-grid {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            height: 100%;
+        }
+        .media-page {
+            flex: 0 0 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;                    /* 減小間距，讓媒體更大 */
+            padding: 8px;                /* 減少邊距 */
+            scroll-snap-align: start;
+            height: 100%;
+            overflow-y: hidden;
+            align-content: stretch;      /* 強制拉伸填滿高度 */
+        }
+        
+        /* 美化滾動條 */
+        .media-grid-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+        .media-grid-wrapper::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+        .media-grid-wrapper::-webkit-scrollbar-thumb {
+            background: #0ff;
+            border-radius: 4px;
+        }
+        
+        /* 媒體卡片 - 強制全屏放大 */
+        .media-card {
+            background: #111;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #2a5f8a;
+            transition: all 0.2s ease;
+            position: relative;
+            height: 100%;                    /* 關鍵：填滿頁面高度 */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .media-preview {
+            position: relative;
+            width: 100%;
+            flex: 1;                         /* 填滿卡片剩餘空間 */
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .media-preview video,
+        .media-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* contain; */       /* 保持比例但盡量填滿 */
+            background: #000;
+            transition: transform 0.15s linear;
+        }
+        .media-preview video::-webkit-media-controls {
+            opacity: 0.85;
+        }
+        .media-label {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #0ff;
+            font-family: monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: #0a0a0a;
+            border-top: 1px solid #2a5f8a;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .badge-index {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.75);
+            color: #0ff;
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .pagination-indicator {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            display: flex;
+            gap: 10px;
+            z-index: 900;
+            pointer-events: auto;
+        }
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .page-dot.active-page {
+            background: #0ff;
+            width: 24px;
+            border-radius: 4px;
+        }
+        
+        #controls { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            z-index: 1000; 
+            background: rgba(0,0,0,0.88); 
+            backdrop-filter: blur(14px);
+            padding: 8px; 
+            border-radius: 20px; 
+            border: 1px solid rgba(0,255,255,0.65); 
+            display: grid; 
+            grid-template-columns: repeat(3, 44px);
+            gap: 6px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+            cursor: grab;
+        }
+        #controls:active { cursor: grabbing; }
+        #controls::before {
+            content: "⋮⋮";
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,255,0.3);
+            color: #0ff;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .btn { 
+            width: 44px; height: 44px; background: #1a1a2e; color: #0ff; 
+            border: 1px solid #2a7faa; border-radius: 16px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 18px; transition: all 0.1s ease;
+            font-family: monospace;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+        .btn:active { background: #0ff; color: #000; transform: scale(0.93);}
+        
+        .step-control, .delay-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0a0f1a;
+            border-radius: 18px;
+            padding: 3px 0;
+            gap: 3px;
+            border: 1px solid #2a7faa;
+        }
+        .step-value, .delay-value {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            font-family: monospace;
+            width: 100%;
+        }
+        .step-value { color: #ffaa44; }
+        .delay-value { color: #ffaa55; }
+        .step-buttons, .delay-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        .step-btn, .delay-btn {
+            background: #222c3c;
+            border: none;
+            color: #0ff;
+            font-size: 15px;
+            width: 26px;
+            height: 24px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .step-btn:active, .delay-btn:active { background: #0ff; color: #000; }
+        
+        .active-mode {
+            background: #0a6; color: white;
+            border-color: #fff;
+            box-shadow: 0 0 8px #0f0;
+        }
+        
+        .info { 
+            position: fixed; top: 12px; left: 12px; 
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            padding: 6px 14px; 
+            border-radius: 24px; 
+            z-index: 1000; 
+            border: 1px solid rgba(0,255,255,0.5); 
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+            opacity: 1;
+            visibility: visible;
+            font-size: 12px;
+            font-family: monospace;
+            pointer-events: auto;
+            color: #0ff;
+            cursor: pointer;
+        }
+        .path-text { 
+            color: #f6f; 
+            font-size: 10px; 
+            cursor: pointer; 
+            border-bottom: 1px dashed #f6f; 
+            word-break: break-all;
+            max-width: 35vw;
+            display: inline-block;
+        }
+        
+        .copy-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,255,0.9);
+            color: #000;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 2000;
+            white-space: nowrap;
+            animation: fadeOut 1s ease forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); visibility: hidden; }
+        }
+        
+        .ui-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        .mouse-cursor-hidden {
+            cursor: none !important;
+        }
+        
+        @media (max-width: 700px) {
+            .media-page { gap: 6px; padding: 6px; }
+            #controls { bottom: 16px; right: 16px; padding: 6px; gap: 5px; grid-template-columns: repeat(3, 40px); }
+            .btn { width: 40px; height: 40px; font-size: 16px; }
+            .pagination-indicator { bottom: 80px; }
+            .media-label { font-size: 10px; padding: 6px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="media-grid-wrapper" id="mediaGridWrapper">
+        <div class="media-grid" id="mediaGrid"></div>
+    </div>
+</div>
+
+<div class="pagination-indicator" id="paginationIndicator"></div>
+
+<div id="controls">
+    <div class="btn" onclick="jumpStepMedia(-1)">◀<span style="font-size:12px">1</span></div>
+    <div class="btn" id="playPauseBtn" onclick="toggleGlobalPlayPause()">⏸</div>
+    <div class="btn" onclick="jumpStepMedia(1)"><span style="font-size:12px">1</span>▶</div>
+    
+    <div class="step-control">
+        <div class="step-value" id="stepValueDisplay">1</div>
+        <div class="step-buttons">
+            <button class="step-btn" onclick="changeStep(-1)">−</button>
+            <button class="step-btn" onclick="changeStep(1)">+</button>
+        </div>
+    </div>
+    <div class="btn" id="autoModeBtn" onclick="toggleAutoMode()">🔄</div>
+    <div class="delay-control">
+        <div class="delay-value" id="delayValueDisplay">3.0s</div>
+        <div class="delay-buttons">
+            <button class="delay-btn" onclick="changeDelay(-0.5)">−</button>
+            <button class="delay-btn" onclick="changeDelay(0.5)">+</button>
+        </div>
+    </div>
+    
+    <div class="btn" onclick="toggleFullscreen()">⛶</div>
+    <div class="btn" id="zoomBtn" onclick="cycleZoom()">🔍</div>
+    <div class="btn" id="muteBtn" onclick="toggleMute()">🔊</div>
+</div>
+
+<div class="info" id="statusBox">
+    <div class="status-row" id="state">📺 載入中...</div>
+    <div id="path" class="path-text" title="點擊複製完整路徑">---</div>
+</div>
+
+<script>
+    let currentMediaList = [];      
+    let allMediaElements = [];       
+    let allVideos = [];              
+    let autoPlayEnabled = true;      
+    let isGloballyPaused = false;    
+    let isMuted = false;
+    let uiHideTimer = null;
+    let stepN = 1;
+    
+    let zoomLevels = [1, 1.5, 2.5, 0.5];
+    let zoomIdxMap = new Map();      
+    
+    let totalPages = 0;
+    let currentPage = 0;
+    
+    const mediaGrid = document.getElementById('mediaGrid');
+    const mediaGridWrapper = document.getElementById('mediaGridWrapper');
+    const paginationIndicator = document.getElementById('paginationIndicator');
+    const stateDiv = document.getElementById('state');
+    const pathSpan = document.getElementById('path');
+    const statusBoxDiv = document.getElementById('statusBox');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const autoModeBtn = document.getElementById('autoModeBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const controlsDiv = document.getElementById('controls');
+    const stepValueDisplay = document.getElementById('stepValueDisplay');
+    const delayValueDisplay = document.getElementById('delayValueDisplay');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetDir = urlParams.get('dir');
+    let slideDelay = 3.0;
+    const urlDelay = parseFloat(urlParams.get('delay'));
+    if (!isNaN(urlDelay) && urlDelay >= 0.5) slideDelay = urlDelay;
+    
+    function showCopyToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 1000);
+    }
+    
+    function updateStepUI() { stepValueDisplay.innerText = stepN; }
+    function updateDelayUI() { delayValueDisplay.innerText = slideDelay.toFixed(1) + 's'; }
+    
+    function changeStep(delta) {
+        stepN = Math.max(1, Math.min(99, stepN + delta));
+        updateStepUI();
+        showUI();
+    }
+    
+    function saveMuteState() { try { localStorage.setItem('playerMuteState', isMuted); } catch(e) {} }
+    function loadMuteState() {
+        try { const saved = localStorage.getItem('playerMuteState'); if (saved !== null) isMuted = saved === 'true'; } catch(e) {}
+        updateMuteUI();
+    }
+    function updateMuteUI() {
+        muteBtn.innerText = isMuted ? '🔇' : '🔊';
+        allVideos.forEach(v => { if (v) v.muted = isMuted; });
+    }
+    function toggleMute() {
+        isMuted = !isMuted;
+        updateMuteUI();
+        saveMuteState();
+        showUI();
+    }
+    
+    function cycleZoom() {
+        const startIdx = currentPage * 3;
+        const endIdx = Math.min(startIdx + 3, allMediaElements.length);
+        for (let i = startIdx; i < endIdx; i++) {
+            const media = allMediaElements[i];
+            if (!media) continue;
+            let currentZoomIdx = zoomIdxMap.get(i) || 0;
+            currentZoomIdx = (currentZoomIdx + 1) % zoomLevels.length;
+            zoomIdxMap.set(i, currentZoomIdx);
+            const newScale = zoomLevels[currentZoomIdx];
+            media.style.transform = `scale(${newScale})`;
+        }
+        showUI();
+    }
+    
+    function showUI() {
+        controlsDiv.classList.remove('ui-hidden');
+        statusBoxDiv.classList.remove('ui-hidden');
+        document.body.classList.remove('mouse-cursor-hidden');
+        clearTimeout(uiHideTimer);
+        uiHideTimer = setTimeout(() => {
+            controlsDiv.classList.add('ui-hidden');
+            statusBoxDiv.classList.add('ui-hidden');
+            document.body.classList.add('mouse-cursor-hidden');
+        }, 4000);
+    }
+    
+    window.addEventListener('mousemove', showUI);
+    window.addEventListener('touchstart', showUI);
+    window.addEventListener('click', showUI);
+    window.addEventListener('keydown', showUI);
+    
+    function toggleGlobalPlayPause() {
+        isGloballyPaused = !isGloballyPaused;
+        playPauseBtn.innerText = isGloballyPaused ? "▶" : "⏸";
+        allVideos.forEach(video => {
+            if (video) {
+                if (isGloballyPaused) video.pause();
+                else video.play().catch(() => {});
+            }
+        });
+        updateStatusBar();
+        showUI();
+    }
+    
+    function playAllMedia() {
+        if (!autoPlayEnabled) return;
+        allVideos.forEach(video => {
+            if (video && !isGloballyPaused) {
+                video.play().catch(() => {});
+            }
+        });
+    }
+    
+    function pauseAllMedia() {
+        allVideos.forEach(video => { if (video) video.pause(); });
+    }
+    
+    function updateStatusBar() {
+        const total = currentMediaList.length;
+        const autoIcon = autoPlayEnabled ? (isGloballyPaused ? '⏸' : '▶') : '⏹';
+        stateDiv.innerHTML = `${autoIcon} 頁 ${currentPage+1}/${totalPages} | ${total} 個媒體`;
+        if (currentMediaList.length > 0) {
+            pathSpan.innerText = `${currentMediaList[currentPage * 3]?.s?.split('/').pop() || ''} 等`;
+            pathSpan.setAttribute('data-fullpath', `共 ${total} 個媒體`);
+        }
+    }
+    
+    function jumpStepMedia(delta) {
+        const newPage = currentPage + delta;
+        if (newPage >= 0 && newPage < totalPages) {
+            currentPage = newPage;
+            const wrapper = mediaGridWrapper;
+            const scrollWidth = wrapper.clientWidth;
+            wrapper.scrollTo({ left: currentPage * scrollWidth, behavior: 'smooth' });
+            updatePaginationDots();
+            updateStatusBar();
+        }
+        showUI();
+    }
+    
+    function toggleAutoMode() {
+        autoPlayEnabled = !autoPlayEnabled;
+        if (autoPlayEnabled) {
+            autoModeBtn.classList.add('active-mode');
+            if (!isGloballyPaused) playAllMedia();
+        } else {
+            autoModeBtn.classList.remove('active-mode');
+            pauseAllMedia();
+        }
+        updateStatusBar();
+        showUI();
+    }
+    
+    function changeDelay(delta) {
+        slideDelay = Math.max(0.5, Math.min(30, parseFloat((slideDelay + delta).toFixed(1))));
+        updateDelayUI();
+        showUI();
+    }
+    
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+        showUI();
+    }
+    
+    function setupCopyPathHandler() {
+        const pathElement = document.getElementById('path');
+        const fullContainer = document.getElementById('statusBox');
+        const copyPath = (e) => {
+            e.stopPropagation();
+            const fullPath = pathElement.getAttribute('data-fullpath') || pathElement.innerText;
+            if (fullPath && fullPath !== '---') {
+                navigator.clipboard.writeText(fullPath).then(() => showCopyToast('✓ 已複製'));
+            }
+        };
+        pathElement.addEventListener('click', copyPath);
+        fullContainer.addEventListener('click', (e) => {
+            if (e.target === fullContainer || e.target.classList.contains('status-row')) copyPath(e);
+        });
+    }
+    
+    function buildPagedGrid() {
+        mediaGrid.innerHTML = '';
+        allMediaElements = [];
+        allVideos = [];
+        zoomIdxMap.clear();
+        
+        const pageSize = 3;
+        const total = currentMediaList.length;
+        totalPages = Math.ceil(total / pageSize);
+        
+        for (let page = 0; page < totalPages; page++) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'media-page';
+            const start = page * pageSize;
+            const end = Math.min(start + pageSize, total);
+            
+            for (let i = start; i < end; i++) {
+                const media = currentMediaList[i];
+                const isVideo = (media.t === 'vid');
+                
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                
+                const mediaEl = isVideo ? document.createElement('video') : document.createElement('img');
+                mediaEl.src = media.s;
+                mediaEl.style.transition = 'transform 0.15s linear';
+                
+                if (isVideo) {
+                    mediaEl.setAttribute('playsinline', '');
+                    mediaEl.setAttribute('controls', '');
+                    mediaEl.setAttribute('preload', 'auto');
+                    mediaEl.muted = isMuted;
+                    if (autoPlayEnabled && !isGloballyPaused) mediaEl.autoplay = true;
+                    allVideos.push(mediaEl);
+                }
+                
+                zoomIdxMap.set(i, 0);
+                
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'media-preview';
+                previewDiv.appendChild(mediaEl);
+                
+                const badge = document.createElement('div');
+                badge.className = 'badge-index';
+                badge.innerText = `#${i+1}`;
+                previewDiv.appendChild(badge);
+                
+                const label = document.createElement('div');
+                label.className = 'media-label';
+                label.textContent = media.s.split('/').pop() || media.s;
+                
+                card.appendChild(previewDiv);
+                card.appendChild(label);
+                
+                allMediaElements.push(mediaEl);
+                pageDiv.appendChild(card);
+            }
+            mediaGrid.appendChild(pageDiv);
+        }
+        
+        // 分頁指示器
+        paginationIndicator.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'page-dot';
+            if (i === currentPage) dot.classList.add('active-page');
+            dot.onclick = () => {
+                mediaGridWrapper.scrollTo({ left: i * mediaGridWrapper.clientWidth, behavior: 'smooth' });
+            };
+            paginationIndicator.appendChild(dot);
+        }
+        
+        mediaGridWrapper.addEventListener('scroll', () => {
+            const scrollLeft = mediaGridWrapper.scrollLeft;
+            const pageWidth = mediaGridWrapper.clientWidth;
+            const newPage = Math.round(scrollLeft / pageWidth);
+            if (newPage !== currentPage && !isNaN(newPage)) {
+                currentPage = newPage;
+                updatePaginationDots();
+                updateStatusBar();
+            }
+        });
+        
+        setTimeout(() => {
+            if (autoPlayEnabled && !isGloballyPaused) {
+                allVideos.forEach(v => v.play().catch(() => {}));
+            }
+            updateStatusBar();
+        }, 300);
+    }
+    
+    function updatePaginationDots() {
+        const dots = paginationIndicator.querySelectorAll('.page-dot');
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active-page', i === currentPage);
+        });
+    }
+    
+    function initPlayer() {
+        if (typeof mediaList === 'undefined' || !mediaList.length) {
+            stateDiv.innerHTML = "❌ 錯誤: 無法載入媒體清單";
+            return;
+        }
+        
+        let rawList = mediaList || [];
+        if (targetDir) {
+            currentMediaList = rawList.filter(m => m.s && m.s.includes(targetDir));
+        } else {
+            currentMediaList = [...rawList];
+        }
+        
+        if (currentMediaList.length === 0) {
+            stateDiv.innerHTML = "⚠️ 無媒體檔案";
+            return;
+        }
+        
+        currentPage = 0;
+        loadMuteState();
+        updateDelayUI();
+        updateStepUI();
+        
+        autoPlayEnabled = true;
+        isGloballyPaused = false;
+        playPauseBtn.innerText = "⏸";
+        autoModeBtn.classList.add('active-mode');
+        
+        buildPagedGrid();
+        updateStatusBar();
+        showUI();
+    }
+    
+    function initDraggablePanel() {
+        const panel = document.getElementById('controls');
+        let isDraggingPanel = false;
+        let panelStartX = 0, panelStartY = 0;
+        let panelLeft = 0, panelTop = 0;
+        
+        const startDrag = (clientX, clientY) => {
+            if (event.target.closest('.btn') || event.target.closest('.step-btn') || event.target.closest('.delay-btn')) return;
+            isDraggingPanel = true;
+            const rect = panel.getBoundingClientRect();
+            panelLeft = rect.left;
+            panelTop = rect.top;
+            panelStartX = clientX - panelLeft;
+            panelStartY = clientY - panelTop;
+            panel.style.cursor = 'grabbing';
+            event.preventDefault();
+        };
+        const onDrag = (clientX, clientY) => {
+            if (!isDraggingPanel) return;
+            let newLeft = clientX - panelStartX;
+            let newTop = clientY - panelStartY;
+            newLeft = Math.min(window.innerWidth - panel.offsetWidth - 8, Math.max(8, newLeft));
+            newTop = Math.min(window.innerHeight - panel.offsetHeight - 8, Math.max(8, newTop));
+            panel.style.left = newLeft + 'px';
+            panel.style.top = newTop + 'px';
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            showUI();
+        };
+        const stopDrag = () => {
+            isDraggingPanel = false;
+            panel.style.cursor = 'grab';
+        };
+        
+        panel.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => { if (isDraggingPanel) onDrag(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', stopDrag);
+        panel.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (isDraggingPanel && e.touches.length === 1) onDrag(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        window.addEventListener('touchend', stopDrag);
+    }
+    
+    window.addEventListener('keydown', (e) => {
+        showUI();
+        if (e.key === 'ArrowLeft') { e.preventDefault(); jumpStepMedia(-1); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); jumpStepMedia(1); }
+        if (e.key === ' ' || e.key === 'Space') { e.preventDefault(); toggleGlobalPlayPause(); }
+        if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
+        if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleMute(); }
+        if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); cycleZoom(); }
+    });
+    
+    window.jumpStepMedia = jumpStepMedia;
+    window.toggleGlobalPlayPause = toggleGlobalPlayPause;
+    window.toggleAutoMode = toggleAutoMode;
+    window.changeDelay = changeDelay;
+    window.toggleMute = toggleMute;
+    window.toggleFullscreen = toggleFullscreen;
+    window.cycleZoom = cycleZoom;
+    window.changeStep = changeStep;
+    
+    window.onload = () => {
+        initDraggablePanel();
+        setupCopyPathHandler();
+        let retries = 0;
+        const checkInterval = setInterval(() => {
+            if (typeof mediaList !== 'undefined') {
+                clearInterval(checkInterval);
+                initPlayer();
+            } else if (retries > 50) {
+                stateDiv.innerHTML = "❌ 無法載入媒體清單";
+            }
+            retries++;
+        }, 100);
+        
+        const meta = document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover";
+        document.head.appendChild(meta);
+    };
+</script>
+</body>
+</html>

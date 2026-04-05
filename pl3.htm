@@ -1,0 +1,809 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8">
+    <title>終極播放器 Pro｜每頁3媒體｜同時自動播放｜循環縮放｜完整控制欄</title>
+    <!-- 動態載入 list.js，支援 listFile 參數 -->
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const listFile = urlParams.get('listFile') || 'list.js';
+            const script = document.createElement('script');
+            script.src = listFile;
+            script.onerror = function() {
+                console.warn('無法載入 ' + listFile);
+                window.mediaList = window.mediaList || [];
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        body { 
+            background: #0a0a0a; margin: 0; overflow: hidden; 
+            height: 100vh; width: 100vw; 
+            font-family: system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif; 
+            touch-action: pan-x pan-y; cursor: default; 
+            position: relative;
+        }
+        
+        /* 主要區域：媒體網格 */
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* 媒體網格容器 - 橫向分頁滾動 */
+        .media-grid-wrapper {
+            flex: 1;
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+        .media-grid {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            height: 100%;
+        }
+        .media-page {
+            flex: 0 0 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 8px;
+            scroll-snap-align: start;
+            height: 100%;
+            overflow-y: auto;
+            align-content: stretch; /*center;*/
+        }
+        /* 美化滾動條 */
+        .media-grid-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+        .media-grid-wrapper::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+        .media-grid-wrapper::-webkit-scrollbar-thumb {
+            background: #0ff;
+            border-radius: 4px;
+        }
+        
+        /* 媒體卡片 - 每個媒體獨立播放，全螢幕填滿區域 */
+        .media-card {
+            background: #111;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid #2a5f8a;
+            transition: all 0.2s ease;
+            position: relative;
+           height: 100%; 
+           /* aspect-ratio: 16 / 9; */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .media-preview {
+            position: relative;
+            height: 100%; 
+            width: 100%;
+            flex: 1;
+            background: #000;
+            overflow: hidden;
+        }
+        .media-preview video,
+        .media-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+        /* 影片顯示完整控制欄 */
+        .media-preview video {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .media-label {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #0ff;
+            font-family: monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: #0a0a0a;
+            border-top: 1px solid #2a5f8a;
+            text-align: center;
+        }
+        .badge-index {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            color: #0ff;
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        /* 分頁指示器 */
+        .pagination-indicator {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            display: flex;
+            gap: 10px;
+            z-index: 900;
+            pointer-events: auto;
+        }
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .page-dot.active-page {
+            background: #0ff;
+            width: 24px;
+            border-radius: 4px;
+        }
+        
+        /* 可拖拽 3x3 控制面板 */
+        #controls { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            z-index: 1000; 
+            background: rgba(0,0,0,0.88); 
+            backdrop-filter: blur(14px);
+            padding: 8px; 
+            border-radius: 20px; 
+            border: 1px solid rgba(0,255,255,0.65); 
+            display: grid; 
+            grid-template-columns: repeat(3, 44px);
+            gap: 6px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+            cursor: grab;
+        }
+        #controls:active { cursor: grabbing; }
+        #controls::before {
+            content: "⋮⋮";
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,255,0.3);
+            color: #0ff;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .btn { 
+            width: 44px; height: 44px; background: #1a1a2e; color: #0ff; 
+            border: 1px solid #2a7faa; border-radius: 16px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 18px; transition: all 0.1s ease;
+            font-family: monospace;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+        .btn:active { background: #0ff; color: #000; transform: scale(0.93);}
+        
+        .step-control, .delay-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0a0f1a;
+            border-radius: 18px;
+            padding: 3px 0;
+            gap: 3px;
+            border: 1px solid #2a7faa;
+        }
+        .step-value, .delay-value {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            font-family: monospace;
+            width: 100%;
+        }
+        .step-value { color: #ffaa44; }
+        .delay-value { color: #ffaa55; }
+        .step-buttons, .delay-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        .step-btn, .delay-btn {
+            background: #222c3c;
+            border: none;
+            color: #0ff;
+            font-size: 15px;
+            width: 26px;
+            height: 24px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .step-btn:active, .delay-btn:active { background: #0ff; color: #000; }
+        
+        .active-mode {
+            background: #0a6; color: white;
+            border-color: #fff;
+            box-shadow: 0 0 8px #0f0;
+        }
+        
+        /* 狀態列 (左上) - 簡化顯示 */
+        .info { 
+            position: fixed; top: 12px; left: 12px; 
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            padding: 6px 14px; 
+            border-radius: 24px; 
+            z-index: 1000; 
+            border: 1px solid rgba(0,255,255,0.5); 
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+            opacity: 1;
+            visibility: visible;
+            font-size: 12px;
+            font-family: monospace;
+            pointer-events: auto;
+            color: #0ff;
+            cursor: pointer;
+        }
+        .path-text { 
+            color: #f6f; 
+            font-size: 10px; 
+            cursor: pointer; 
+            border-bottom: 1px dashed #f6f; 
+            word-break: break-all;
+            max-width: 35vw;
+            display: inline-block;
+        }
+        
+        .copy-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,255,0.9);
+            color: #000;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 2000;
+            white-space: nowrap;
+            animation: fadeOut 1s ease forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); visibility: hidden; }
+        }
+        
+        .ui-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        .mouse-cursor-hidden {
+            cursor: none !important;
+        }
+        
+        @media (max-width: 700px) {
+            .media-page { gap: 12px; padding: 16px; }
+            #controls { bottom: 16px; right: 16px; padding: 6px; gap: 5px; grid-template-columns: repeat(3, 40px); }
+            .btn { width: 40px; height: 40px; font-size: 16px; }
+            .pagination-indicator { bottom: 80px; }
+            .media-label { font-size: 10px; padding: 6px 8px; }
+        }
+        @media (max-width: 500px) {
+            .media-page { gap: 8px; padding: 12px; }
+            .badge-index { font-size: 9px; top: 4px; left: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="media-grid-wrapper" id="mediaGridWrapper">
+        <div class="media-grid" id="mediaGrid"></div>
+    </div>
+</div>
+
+<!-- 分頁指示器 -->
+<div class="pagination-indicator" id="paginationIndicator"></div>
+
+<!-- 可拖拽 3x3 控制面板 (移除自動模式相關，簡化為步進、縮放、靜音) -->
+<div id="controls">
+    <div class="btn" onclick="prevPage()">◀◀</div>
+    <div class="btn" id="playPauseBtn" onclick="toggleGlobalMute()">🔊</div>
+    <div class="btn" onclick="nextPage()">▶▶</div>
+    
+    <div class="step-control">
+        <div class="step-value" id="stepValueDisplay">1</div>
+        <div class="step-buttons">
+            <button class="step-btn" onclick="changeStep(-1)">−</button>
+            <button class="step-btn" onclick="changeStep(1)">+</button>
+        </div>
+    </div>
+    <div class="btn" onclick="resetAllMediaZoom()">⟲</div>
+    <div class="delay-control">
+        <div class="delay-value" id="delayValueDisplay">3.0s</div>
+        <div class="delay-buttons">
+            <button class="delay-btn" onclick="changeDelay(-0.5)">−</button>
+            <button class="delay-btn" onclick="changeDelay(0.5)">+</button>
+        </div>
+    </div>
+    
+    <div class="btn" onclick="toggleFullscreen()">⛶</div>
+    <div class="btn" id="zoomBtn" onclick="cycleGlobalZoom()">🔍</div>
+    <div class="btn" id="muteBtn" onclick="toggleAllMediaMute()">🔇</div>
+</div>
+
+<div class="info" id="statusBox">
+    <div class="status-row" id="state">📺 載入中...</div>
+    <div id="path" class="path-text" title="點擊複製完整路徑">---</div>
+</div>
+
+<script>
+    // ---------- 全域變數 ----------
+    let currentMediaList = [];      
+    let isGlobalMuted = false;       // 全局靜音
+    let uiHideTimer = null;
+    let stepN = 1;                   // 步進值保留但用於分頁跳轉
+    let slideDelay = 3.0;           // 保留但不用於自動切換
+    
+    // 儲存所有媒體元素引用
+    let allVideoElements = [];       // 僅影片元素
+    let allMediaCards = [];          // 卡片 DOM 元素
+    let currentZoomLevel = 1;        // 全局縮放級別 (1, 1.5, 2.5, 0.5 循環)
+    const zoomLevels = [1, 1.5, 2.5, 0.5];
+    let zoomIndex = 0;
+    
+    // 拖拽面板相關
+    let isDraggingPanel = false;
+    let panelStartX = 0, panelStartY = 0;
+    let panelLeft = 0, panelTop = 0;
+    
+    // 分頁相關
+    let totalPages = 0;
+    let currentPage = 0;
+    let itemsPerPage = 3;
+    
+    // DOM 元素
+    const mediaGrid = document.getElementById('mediaGrid');
+    const mediaGridWrapper = document.getElementById('mediaGridWrapper');
+    const paginationIndicator = document.getElementById('paginationIndicator');
+    const stateDiv = document.getElementById('state');
+    const pathSpan = document.getElementById('path');
+    const statusBoxDiv = document.getElementById('statusBox');
+    const controlsDiv = document.getElementById('controls');
+    const stepValueDisplay = document.getElementById('stepValueDisplay');
+    const delayValueDisplay = document.getElementById('delayValueDisplay');
+    const zoomBtn = document.getElementById('zoomBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    
+    // URL 參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetDir = urlParams.get('dir');
+    const urlDelay = parseFloat(urlParams.get('delay'));
+    if (!isNaN(urlDelay) && urlDelay >= 0.5) slideDelay = urlDelay;
+    
+    // 輔助函數
+    function showCopyToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 1000);
+    }
+    
+    function updateStepUI() { stepValueDisplay.innerText = stepN; }
+    function updateDelayUI() { delayValueDisplay.innerText = slideDelay.toFixed(1) + 's'; }
+    
+    function changeStep(delta) {
+        stepN = Math.max(1, Math.min(99, stepN + delta));
+        updateStepUI();
+        showUI();
+    }
+    
+    function changeDelay(delta) {
+        let newDelay = slideDelay + delta;
+        if (newDelay < 0.5) newDelay = 0.5;
+        if (newDelay > 30) newDelay = 30;
+        slideDelay = parseFloat(newDelay.toFixed(1));
+        updateDelayUI();
+        showUI();
+    }
+    
+    // 全局靜音控制 (影響所有影片)
+    function toggleAllMediaMute() {
+        isGlobalMuted = !isGlobalMuted;
+        allVideoElements.forEach(video => {
+            if (video) video.muted = isGlobalMuted;
+        });
+        muteBtn.innerText = isGlobalMuted ? '🔇' : '🔊';
+        saveMuteState();
+        showUI();
+    }
+    
+    // 全局播放/暫停 (影響所有影片) - 改為控制播放/暫停圖示，實際功能：全部播放或全部暫停
+    let allMediaPlaying = true;
+    function toggleGlobalMute() {
+        // 此按鈕改為控制所有媒體的播放/暫停
+        allMediaPlaying = !allMediaPlaying;
+        allVideoElements.forEach(video => {
+            if (video) {
+                if (allMediaPlaying) {
+                    video.play().catch(e => console.log('play error', e));
+                } else {
+                    video.pause();
+                }
+            }
+        });
+        playPauseBtn.innerText = allMediaPlaying ? "⏸" : "▶";
+        showUI();
+    }
+    
+    function saveMuteState() { 
+        try { localStorage.setItem('playerMuteState', isGlobalMuted); } catch(e) {}
+    }
+    function loadMuteState() {
+        try { 
+            const saved = localStorage.getItem('playerMuteState'); 
+            if (saved !== null) isGlobalMuted = saved === 'true';
+        } catch(e) {}
+        muteBtn.innerText = isGlobalMuted ? '🔇' : '🔊';
+        allVideoElements.forEach(video => {
+            if (video) video.muted = isGlobalMuted;
+        });
+    }
+    
+    // 全局縮放循環 (1x → 1.5x → 2.5x → 0.5x → 1x)
+    function cycleGlobalZoom() {
+        zoomIndex = (zoomIndex + 1) % zoomLevels.length;
+        currentZoomLevel = zoomLevels[zoomIndex];
+        // 應用縮放到所有媒體的預覽區域
+        allMediaCards.forEach(card => {
+            const previewDiv = card.querySelector('.media-preview');
+            if (previewDiv) {
+                previewDiv.style.transform = `scale(${currentZoomLevel})`;
+                previewDiv.style.transition = 'transform 0.2s ease';
+            }
+        });
+        // 更新按鈕提示
+        zoomBtn.innerText = currentZoomLevel === 1 ? '🔍' : (currentZoomLevel === 0.5 ? '🔎' : `🔍${currentZoomLevel}x`);
+        showUI();
+    }
+    
+    // 重置所有媒體縮放
+    function resetAllMediaZoom() {
+        zoomIndex = 0;
+        currentZoomLevel = 1;
+        allMediaCards.forEach(card => {
+            const previewDiv = card.querySelector('.media-preview');
+            if (previewDiv) {
+                previewDiv.style.transform = 'scale(1)';
+            }
+        });
+        zoomBtn.innerText = '🔍';
+        showUI();
+    }
+    
+    function showUI() {
+        controlsDiv.classList.remove('ui-hidden');
+        statusBoxDiv.classList.remove('ui-hidden');
+        document.body.classList.remove('mouse-cursor-hidden');
+        clearTimeout(uiHideTimer);
+        uiHideTimer = setTimeout(() => {
+            controlsDiv.classList.add('ui-hidden');
+            statusBoxDiv.classList.add('ui-hidden');
+            document.body.classList.add('mouse-cursor-hidden');
+        }, 4000);
+    }
+    
+    window.addEventListener('mousemove', showUI);
+    window.addEventListener('touchstart', showUI);
+    window.addEventListener('click', showUI);
+    window.addEventListener('keydown', showUI);
+    
+    // 分頁導航
+    function goToPage(page) {
+        if (page < 0) page = 0;
+        if (page >= totalPages) page = totalPages - 1;
+        currentPage = page;
+        const wrapper = mediaGridWrapper;
+        const scrollWidth = wrapper.clientWidth;
+        wrapper.scrollTo({ left: currentPage * scrollWidth, behavior: 'smooth' });
+        updatePaginationDots();
+        updateStatusBar();
+        showUI();
+    }
+    
+    function nextPage() {
+        if (currentPage + 1 < totalPages) {
+            goToPage(currentPage + 1);
+        }
+    }
+    
+    function prevPage() {
+        if (currentPage - 1 >= 0) {
+            goToPage(currentPage - 1);
+        }
+    }
+    
+    function updateStatusBar() {
+        const startIdx = currentPage * itemsPerPage + 1;
+        const endIdx = Math.min((currentPage + 1) * itemsPerPage, currentMediaList.length);
+        stateDiv.innerHTML = `📺 ${startIdx}-${endIdx} / ${currentMediaList.length}`;
+        if (currentMediaList.length > 0 && currentMediaList[currentPage * itemsPerPage]) {
+            pathSpan.innerText = currentMediaList[currentPage * itemsPerPage].s.split('/').pop() || '媒體';
+            pathSpan.setAttribute('data-fullpath', currentMediaList[currentPage * itemsPerPage].s);
+        }
+    }
+    
+    function setupCopyPathHandler() {
+        const pathElement = document.getElementById('path');
+        const fullContainer = document.getElementById('statusBox');
+        const copyPath = (e) => {
+            e.stopPropagation();
+            const fullPath = pathElement.getAttribute('data-fullpath') || pathElement.innerText;
+            if (fullPath && fullPath !== '---' && fullPath !== '媒體') {
+                navigator.clipboard.writeText(fullPath).then(() => showCopyToast('✓ 已複製路徑'));
+            }
+        };
+        pathElement.addEventListener('click', copyPath);
+        fullContainer.addEventListener('click', (e) => {
+            if (e.target === fullContainer || e.target.classList.contains('status-row')) copyPath(e);
+        });
+    }
+    
+    // 構建分頁網格 - 所有媒體同時自動播放
+    function buildPagedGrid() {
+        mediaGrid.innerHTML = '';
+        allVideoElements = [];
+        allMediaCards = [];
+        const pageSize = itemsPerPage;
+        const total = currentMediaList.length;
+        totalPages = Math.ceil(total / pageSize);
+        
+        for (let page = 0; page < totalPages; page++) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'media-page';
+            const start = page * pageSize;
+            const end = Math.min(start + pageSize, total);
+            for (let i = start; i < end; i++) {
+                const media = currentMediaList[i];
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                
+                const isVideo = (media.t === 'vid');
+                const mediaEl = isVideo ? document.createElement('video') : document.createElement('img');
+                mediaEl.src = media.s;
+                if (isVideo) {
+                    mediaEl.setAttribute('playsinline', '');
+                    mediaEl.setAttribute('controls', '');
+                    mediaEl.setAttribute('preload', 'auto');
+                    mediaEl.muted = isGlobalMuted;
+                    mediaEl.loop = false;
+                    // 自動播放
+                    mediaEl.autoplay = true;
+                    mediaEl.play().catch(e => console.log('autoplay blocked', e));
+                    allVideoElements.push(mediaEl);
+                } else {
+                    // 圖片不需要特殊處理
+                }
+                
+                card.innerHTML = `
+                    <div class="media-preview"></div>
+                    <div class="media-label">${media.s.split('/').pop() || media.s}</div>
+                `;
+                const previewDiv = card.querySelector('.media-preview');
+                previewDiv.appendChild(mediaEl);
+                
+                // 添加編號標籤
+                const badge = document.createElement('div');
+                badge.className = 'badge-index';
+                badge.innerText = `#${i+1}`;
+                previewDiv.appendChild(badge);
+                
+                // 存儲卡片引用
+                allMediaCards.push(card);
+                
+                // 點擊卡片不做切換，保持獨立播放
+                pageDiv.appendChild(card);
+            }
+            mediaGrid.appendChild(pageDiv);
+        }
+        
+        // 建立分頁指示器
+        paginationIndicator.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'page-dot';
+            if (i === currentPage) dot.classList.add('active-page');
+            dot.onclick = () => { goToPage(i); };
+            paginationIndicator.appendChild(dot);
+        }
+        
+        // 監聽滾動事件更新分頁
+        mediaGridWrapper.addEventListener('scroll', () => {
+            const scrollLeft = mediaGridWrapper.scrollLeft;
+            const pageWidth = mediaGridWrapper.clientWidth;
+            const newPage = Math.round(scrollLeft / pageWidth);
+            if (newPage !== currentPage && !isNaN(newPage) && newPage >= 0 && newPage < totalPages) {
+                currentPage = newPage;
+                updatePaginationDots();
+                updateStatusBar();
+            }
+        });
+        
+        updateStatusBar();
+    }
+    
+    function updatePaginationDots() {
+        const dots = paginationIndicator.querySelectorAll('.page-dot');
+        dots.forEach((dot, i) => {
+            if (i === currentPage) dot.classList.add('active-page');
+            else dot.classList.remove('active-page');
+        });
+    }
+    
+    // 初始化媒體清單
+    function initPlayer() {
+        if (typeof mediaList === 'undefined') {
+            stateDiv.innerHTML = "❌ 錯誤: 無法載入媒體清單";
+            return;
+        }
+        let rawList = mediaList || [];
+        if (targetDir) currentMediaList = rawList.filter(m => m.s && m.s.includes(targetDir));
+        else currentMediaList = [...rawList];
+        
+        if (currentMediaList.length === 0) {
+            stateDiv.innerHTML = "⚠️ 無媒體檔案";
+            return;
+        }
+        
+        currentPage = 0;
+        updateDelayUI();
+        updateStepUI();
+        
+        buildPagedGrid();
+        loadMuteState();
+        
+        // 設置默認全局播放狀態圖標
+        allMediaPlaying = true;
+        playPauseBtn.innerText = "⏸";
+        zoomBtn.innerText = '🔍';
+        
+        showUI();
+    }
+    
+    // 可拖拽面板
+    function initDraggablePanel() {
+        const panel = document.getElementById('controls');
+        const startDrag = (clientX, clientY) => {
+            if (event.target.closest('.btn') || event.target.closest('.step-btn') || event.target.closest('.delay-btn')) return;
+            isDraggingPanel = true;
+            const rect = panel.getBoundingClientRect();
+            panelLeft = rect.left;
+            panelTop = rect.top;
+            panelStartX = clientX - panelLeft;
+            panelStartY = clientY - panelTop;
+            panel.style.cursor = 'grabbing';
+            event.preventDefault();
+        };
+        const onDrag = (clientX, clientY) => {
+            if (!isDraggingPanel) return;
+            let newLeft = clientX - panelStartX;
+            let newTop = clientY - panelStartY;
+            newLeft = Math.min(window.innerWidth - panel.offsetWidth - 8, Math.max(8, newLeft));
+            newTop = Math.min(window.innerHeight - panel.offsetHeight - 8, Math.max(8, newTop));
+            panel.style.left = newLeft + 'px';
+            panel.style.top = newTop + 'px';
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            showUI();
+        };
+        const stopDrag = () => {
+            isDraggingPanel = false;
+            panel.style.cursor = 'grab';
+        };
+        panel.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => { if (isDraggingPanel) onDrag(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', stopDrag);
+        panel.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (isDraggingPanel && e.touches.length === 1) {
+                onDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('touchend', stopDrag);
+    }
+    
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+        showUI();
+    }
+    
+    // 鍵盤快捷鍵
+    window.addEventListener('keydown', (e) => {
+        showUI();
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prevPage(); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); nextPage(); }
+        if (e.key === ' ' || e.key === 'Space') { e.preventDefault(); toggleGlobalMute(); }
+        if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
+        if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleAllMediaMute(); }
+        if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); cycleGlobalZoom(); }
+        if (e.key === 'r' || e.key === 'R') { e.preventDefault(); resetAllMediaZoom(); }
+    });
+    
+    // 掛載全域函數
+    window.prevPage = prevPage;
+    window.nextPage = nextPage;
+    window.toggleGlobalMute = toggleGlobalMute;
+    window.toggleAllMediaMute = toggleAllMediaMute;
+    window.cycleGlobalZoom = cycleGlobalZoom;
+    window.resetAllMediaZoom = resetAllMediaZoom;
+    window.changeDelay = changeDelay;
+    window.changeStep = changeStep;
+    window.toggleFullscreen = toggleFullscreen;
+    
+    window.onload = () => {
+        initDraggablePanel();
+        setupCopyPathHandler();
+        let retries = 0;
+        const checkInterval = setInterval(() => {
+            if (typeof mediaList !== 'undefined') {
+                clearInterval(checkInterval);
+                initPlayer();
+            } else if (retries > 50) {
+                clearInterval(checkInterval);
+                stateDiv.innerHTML = "❌ 無法載入媒體清單";
+            }
+            retries++;
+        }, 100);
+        
+        const meta = document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover";
+        document.head.appendChild(meta);
+    };
+</script>
+</body>
+</html>
