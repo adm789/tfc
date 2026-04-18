@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8">
+    <title>Lite Player Pro - 3x3 拖拽循環版</title>
+    <style>
+        /* 基礎設定：禁止選取文字與系統預設觸摸動作 */
+        * { 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+            box-sizing: border-box; 
+        }
+        body { 
+            background: #000; 
+            margin: 0; 
+            overflow: hidden; 
+            height: 100vh; 
+            font-family: system-ui, -apple-system, sans-serif; 
+        }
+
+        /* 主顯示視窗：支援捲動捕捉與平滑捲動 */
+        .Window { 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            overflow-x: auto; 
+            overflow-y: hidden; 
+            scroll-snap-type: x mandatory; 
+            scroll-behavior: smooth; 
+        }
+        /* 每一頁顯示 3 個垂直卡片 (九宮格的一列) */
+        .Page { 
+            flex: 0 0 100%; 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            scroll-snap-align: start; 
+            height: 100%; 
+        }
+        .Card { 
+            background: #000; 
+            position: relative; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            border: 0.5px solid #222; 
+            overflow: hidden; 
+        }
+        /* 視覺容器：縮放動畫發生的位置 */
+        .Visual { 
+            position: relative; 
+            flex: 1; 
+            overflow: hidden; 
+            transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); 
+            transform-origin: center center; 
+            min-height: 0;
+            background: #000;
+        }
+        video, img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block;
+        }
+        /* 標籤樣式：在 UI 隱藏時會縮回 */
+        .Label { 
+            padding: 6px; 
+            font-size: 11px; 
+            color: #0cf; 
+            background: rgba(0,0,0,0.8); 
+            text-align: center; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+            transition: 0.3s;
+            border-top: 1px solid #2a7faa33;
+        }
+        body.hideUI .Label { 
+            opacity: 0; height: 0; padding: 0; border: none;
+        }
+
+        /* --- 核心升級：3x3 可拖拽控制面板 --- */
+        #Controls { 
+            position: fixed; 
+            bottom: 30px; 
+            right: 30px; 
+            z-index: 999; 
+            background: rgba(15, 15, 25, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 10px; 
+            border-radius: 20px; 
+            border: 1px solid #0ff; 
+            display: grid; 
+            /* 定義 3x3 網格 */
+            grid-template-columns: repeat(3, 46px); 
+            grid-template-rows: repeat(3, 46px);
+            gap: 8px; 
+            cursor: move; /* 提示可移動 */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            transition: opacity 0.4s;
+            touch-action: none; /* 防止拖動時頁面捲動 */
+        }
+        body.hideUI #Controls, body.hideUI #InfoDisplay { 
+            opacity: 0; visibility: hidden; 
+        }
+
+        .btn { 
+            width: 46px; height: 46px; 
+            background: #1a1a2e; 
+            color: #0ff; 
+            border: 1px solid #2a7faa; 
+            border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 18px; cursor: pointer; transition: 0.2s;
+        }
+        .btn:active { background: #0cf; color: #000; transform: scale(0.9); }
+
+        /* 數值調整塊樣式 */
+        .option { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background: #0a0f1a; border-radius: 12px; border: 1px solid #2a7faa; 
+            font-family: monospace; font-size: 10px;
+        }
+        .val { font-weight: bold; color: #fa4; margin-bottom: 2px; }
+        .step-btn { cursor: pointer; color: #0ff; font-weight: bold; padding: 0 4px; font-size: 14px; }
+
+        /* 頂部資訊顯示 */
+        #InfoDisplay { 
+            position: fixed; top: 15px; left: 15px; 
+            background: rgba(0,0,0,0.7); padding: 8px 16px; 
+            border-radius: 50px; color: #0ff; border-left: 4px solid #0ff; 
+            font-size: 12px; z-index: 1000; pointer-events: none;
+        }
+
+        /* 載入中動畫 */
+        .loading { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            color: #0ff; background: rgba(0,0,0,0.9); padding: 25px; 
+            border-radius: 20px; z-index: 2000; text-align: center; border: 1px solid #0ff;
+        }
+
+        /* 修飾捲軸 */
+        .Window::-webkit-scrollbar { height: 4px; }
+        .Window::-webkit-scrollbar-thumb { background: #0ff; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="Window" id="MainViewer"></div>
+<div id="InfoDisplay">📀 系統就緒</div>
+<div id="loadingMsg" class="loading">⏳ 正在解析媒體清單...</div>
+
+<div id="Controls">
+    <div class="btn" onclick="changePage(-1)" title="上一頁">◀</div>
+    <div class="btn" id="playPauseBtn" onclick="togglePlayState()">⏸</div>
+    <div class="btn" onclick="changePage(1)" title="下一頁">▶</div>
+    
+    <div class="option">
+        <div class="val" id="stepVal">1</div>
+        <div><span class="step-btn" onclick="updateStep(-1)">-</span><span class="step-btn" onclick="updateStep(1)">+</span></div>
+    </div>
+    <div class="btn" onclick="resetZoom()">⟲</div>
+    <div class="option">
+        <div class="val" id="delayVal">3.0s</div>
+        <div><span class="step-btn" onclick="updateDelay(-0.5)">-</span><span class="step-btn" onclick="updateDelay(0.5)">+</span></div>
+    </div>
+
+    <div class="btn" onclick="toggleFullscreen()">⛶</div>
+    <div class="btn" id="zoomBtn" onclick="cycleZoom()">🔍</div>
+    <div class="btn" id="muteBtn" onclick="toggleMute()">🔇</div>
+</div>
+
+<script>
+    // --- 參數設定 ---
+    let filteredMediaList = [];
+    let isMuted = true;
+    let isPlaying = true;
+    let pageStep = 1;
+    let autoDelay = 3.0;
+    let zoomIndex = 0;
+    const zoomLevels = [1, 1.5, 2, 3, 0.5];
+    let currentPageIndex = 0;
+    let totalPagesCount = 0;
+    let listBaseDir = "";
+    let lazyObserver = null;
+    let uiTimer = null;
+
+    const viewer = document.getElementById('MainViewer');
+    const info = document.getElementById('InfoDisplay');
+    const playBtn = document.getElementById('playPauseBtn');
+    const loadingDiv = document.getElementById('loadingMsg');
+    const ctrlPanel = document.getElementById('Controls');
+
+    // --- 1. 面板拖拽邏輯 ---
+    let isDragging = false;
+    let offset = [0, 0];
+
+    ctrlPanel.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('btn') || e.target.classList.contains('step-btn')) return;
+        isDragging = true;
+        offset = [ctrlPanel.offsetLeft - e.clientX, ctrlPanel.offsetTop - e.clientY];
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        ctrlPanel.style.left = (e.clientX + offset[0]) + 'px';
+        ctrlPanel.style.top = (e.clientY + offset[1]) + 'px';
+        ctrlPanel.style.right = 'auto'; // 取消預設的右邊距
+        ctrlPanel.style.bottom = 'auto'; // 取消預設的下邊距
+    });
+
+    document.addEventListener('mouseup', () => isDragging = false);
+
+    // 支援觸控拖拽
+    ctrlPanel.addEventListener('touchstart', (e) => {
+        if (e.target.classList.contains('btn') || e.target.classList.contains('step-btn')) return;
+        isDragging = true;
+        let touch = e.touches[0];
+        offset = [ctrlPanel.offsetLeft - touch.clientX, ctrlPanel.offsetTop - touch.clientY];
+    }, {passive: true});
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        let touch = e.touches[0];
+        ctrlPanel.style.left = (touch.clientX + offset[0]) + 'px';
+        ctrlPanel.style.top = (touch.clientY + offset[1]) + 'px';
+        ctrlPanel.style.right = 'auto';
+        ctrlPanel.style.bottom = 'auto';
+    }, {passive: false});
+
+    document.addEventListener('touchend', () => isDragging = false);
+
+    // --- 2. 路徑解析與載入 ---
+    function normalizePath(p) { return p ? p.replace(/\\/g, '/') : ""; }
+    function getDirPath(p) { let n = normalizePath(p); return n.substring(0, n.lastIndexOf('/') + 1); }
+
+    function resolvePath(rel, base) {
+        if (!rel) return "";
+        if (/^(http|https|file|data):/.test(rel) || /^[a-zA-Z]:/.test(rel)) {
+            return (/^[a-zA-Z]:/.test(rel) && !rel.startsWith('file:///')) ? 'file:///' + rel : rel;
+        }
+        return base + rel;
+    }
+
+    // 利用動態 Script 注入繞過 file:// 的 CORS 限制
+    async function loadList(url) {
+        return new Promise((resolve, reject) => {
+            let finalUrl = normalizePath(url);
+            if (/^[a-zA-Z]:/.test(finalUrl) && !finalUrl.startsWith('file:///')) finalUrl = 'file:///' + finalUrl;
+            
+            listBaseDir = getDirPath(finalUrl);
+            const script = document.createElement('script');
+            script.src = finalUrl;
+            script.onload = () => {
+                const data = window.mediaList || (typeof mediaList !== 'undefined' ? mediaList : null);
+                data ? resolve(data) : reject("清單格式錯誤 (需為 mediaList 陣列)");
+            };
+            script.onerror = () => reject("無法載入路徑: " + url);
+            document.head.appendChild(script);
+        });
+    }
+
+    // --- 3. 翻頁與無限循環邏輯 ---
+    function changePage(dir) {
+        if (totalPagesCount <= 1) return;
+        
+        // --- 核心修改：無限循環翻頁 ---
+        let nextIndex = currentPageIndex + (dir * pageStep);
+        
+        if (nextIndex >= totalPagesCount) {
+            nextIndex = 0; // 最後一頁之後跳回第一頁
+        } else if (nextIndex < 0) {
+            nextIndex = totalPagesCount - 1; // 第一頁之前跳到最後一頁
+        }
+
+        currentPageIndex = nextIndex;
+        viewer.scrollTo({ left: currentPageIndex * viewer.clientWidth, behavior: 'smooth' });
+        
+        // 翻頁後延遲觸發檢查
+        setTimeout(triggerVisibleStates, 300);
+    }
+
+    // --- 4. 懶加載與影片管理 ---
+    function initLazyLoad() {
+        if (lazyObserver) lazyObserver.disconnect();
+        lazyObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const media = card._mediaData;
+                    if (media && !media.loaded) {
+                        const el = card.querySelector('video, img');
+                        el.src = resolvePath(media.s, listBaseDir);
+                        if (media.t === 'vid' && isPlaying) el.play().catch(()=>{});
+                        media.loaded = true;
+                    }
+                }
+            });
+        }, { rootMargin: '500px' });
+        document.querySelectorAll('.Card').forEach(c => lazyObserver.observe(c));
+    }
+
+    function triggerVisibleStates() {
+        document.querySelectorAll('video').forEach(v => {
+            const rect = v.getBoundingClientRect();
+            const visible = rect.left < window.innerWidth && rect.right > 0;
+            if (visible && isPlaying && v.src) v.play().catch(()=>{});
+            else v.pause();
+            v.muted = isMuted;
+        });
+        updateStatus();
+    }
+
+    function updateStatus() {
+        info.innerText = `📺 ${currentPageIndex + 1} / ${totalPagesCount} | 共 ${filteredMediaList.length} | 步長: ${pageStep}`;
+    }
+
+    // --- 5. UI 按鈕功能 ---
+    function togglePlayState() {
+        isPlaying = !isPlaying;
+        playBtn.innerText = isPlaying ? '⏸' : '▶';
+        triggerVisibleStates();
+    }
+
+    function toggleMute() {
+        isMuted = !isMuted;
+        document.getElementById('muteBtn').innerText = isMuted ? '🔇' : '🔊';
+        triggerVisibleStates();
+    }
+
+    function cycleZoom() {
+        zoomIndex = (zoomIndex + 1) % zoomLevels.length;
+        const s = zoomLevels[zoomIndex];
+        document.querySelectorAll('.Visual').forEach(v => v.style.transform = `scale(${s})`);
+        document.getElementById('zoomBtn').innerText = s === 1 ? '🔍' : `🔍${s}x`;
+    }
+
+    function resetZoom() {
+        zoomIndex = 0;
+        document.querySelectorAll('.Visual').forEach(v => v.style.transform = 'scale(1)');
+        document.getElementById('zoomBtn').innerText = '🔍';
+    }
+
+    function updateStep(n) {
+        pageStep = Math.max(1, pageStep + n);
+        document.getElementById('stepVal').innerText = pageStep;
+    }
+
+    function updateDelay(n) {
+        autoDelay = Math.max(0.5, autoDelay + n);
+        document.getElementById('delayVal').innerText = autoDelay.toFixed(1) + 's';
+    }
+
+    function toggleFullscreen() {
+        document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+
+    // 捲動監聽
+    viewer.addEventListener('scroll', () => {
+        let idx = Math.round(viewer.scrollLeft / viewer.clientWidth);
+        if (idx !== currentPageIndex) {
+            currentPageIndex = idx;
+            triggerVisibleStates();
+        }
+    });
+
+    // UI 自動隱藏
+    function showUI() {
+        document.body.classList.remove('hideUI');
+        clearTimeout(uiTimer);
+        uiTimer = setTimeout(() => { if(!isDragging) document.body.classList.add('hideUI')}, 4000);
+    }
+    ['mousemove', 'touchstart', 'click'].forEach(e => window.addEventListener(e, showUI));
+
+    // --- 6. 啟動 ---
+    async function init() {
+        const params = new URLSearchParams(window.location.search);
+        let listUrl = params.get('list') || 'list.js';
+        
+        try {
+            const rawData = await loadList(listUrl);
+            filteredMediaList = rawData.map(item => ({...item, loaded: false}));
+            totalPagesCount = Math.ceil(filteredMediaList.length / 3);
+            
+            renderGallery();
+            loadingDiv.style.display = 'none';
+        } catch (e) {
+            loadingDiv.innerHTML = `❌ 錯誤: ${e}<br>請檢查 ?list= 路徑是否正確`;
+            loadingDiv.style.color = '#f55';
+        }
+    }
+
+    function renderGallery() {
+        viewer.innerHTML = '';
+        for (let p = 0; p < totalPagesCount; p++) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'Page';
+            for (let i = p * 3; i < Math.min((p + 1) * 3, filteredMediaList.length); i++) {
+                const media = filteredMediaList[i];
+                const card = document.createElement('div');
+                card.className = 'Card';
+                card._mediaData = media;
+                
+                const visual = document.createElement('div');
+                visual.className = 'Visual';
+                const el = document.createElement(media.t === 'vid' ? 'video' : 'img');
+                if (media.t === 'vid') { el.loop = true; el.playsInline = true; el.muted = true; }
+                
+                const label = document.createElement('div');
+                label.className = 'Label';
+                label.innerText = `#${i+1} ${media.n || media.s.split('/').pop()}`;
+                
+                visual.appendChild(el);
+                card.appendChild(visual);
+                card.appendChild(label);
+                pageDiv.appendChild(card);
+            }
+            viewer.appendChild(pageDiv);
+        }
+        initLazyLoad();
+        updateStatus();
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
