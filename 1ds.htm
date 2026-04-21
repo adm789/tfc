@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>杏夜堕花 · 九节点情欲迷宫</title>
+    <style>
+        body { background: #1a0e0b; color: #f0e6d0; font-family: 'Georgia', 'Microsoft JhengHei', serif; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #2e1e18; padding: 25px; border-radius: 28px; box-shadow: 0 0 25px #aa6f5e; }
+        h1 { text-align: center; color: #ff8a5c; border-bottom: 2px solid #c2472c; padding-bottom: 12px; }
+        .node-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 25px 0; justify-content: center; }
+        .node-btn { background: #5e2e2a; color: #ffdab9; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .node-btn.active { background: #c2472c; box-shadow: 0 0 10px #ff8a5c; }
+        .text-panel { background: #0f0705; padding: 25px; border-radius: 28px; min-height: 220px; font-size: 1.15rem; line-height: 1.6; border-left: 8px solid #c2472c; margin: 20px 0; font-style: italic; }
+        .go-btn { background: #c2472c; color: white; font-size: 1.3rem; border: none; padding: 14px 28px; border-radius: 60px; cursor: pointer; width: 100%; font-weight: bold; letter-spacing: 3px; transition: 0.2s; }
+        .go-btn:hover { background: #e06b4a; transform: scale(1.01); }
+        .footer { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #aa8877; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🌸 杏夜堕花 · 九节点迷宫 🌸</h1>
+    <div class="node-grid" id="nodeButtons"></div>
+    <div class="text-panel" id="displayText">🌙 选择一个节点，点击下方「杏夜·堕花」随机演绎一句 🌙</div>
+    <button class="go-btn" id="goBtn">🌸 杏夜·堕花 (随机一句) 🌸</button>
+    <div class="footer">基于《悠风怂力容花开》第22-23章 · 9节点 × 5+随机文本</div>
+</div>
+
+<script>
+    const nodes = {
+        N0: { name: "🌿 日间撩拨", texts: [
+            "悠八凑近她耳畔，低声道：“小娘子身段丰腴，定是久未承欢，哥哥擅伏凤十八式，包你满意。”",
+            "黄绒心中冷笑：“这等登徒子，也配撩拨本帮主？”可身子却莫名燥热起来。",
+            "他言语粗俗露骨，她却听得耳根发烫，竟没有立刻斥退他。",
+            "“借力春风杏花雨”——这句双关语在她脑中盘旋，越想越觉得心慌。",
+            "她故意假意应承，欲擒故纵，不料自己倒先动了情。"
+        ]},
+        N1: { name: "🌿 树梢解衣", texts: [
+            "衣襟扯开，那对白生生的硕大奶子猛然弹跳而出，乳尖挂着晶莹水珠。",
+            "她双手揉搓，奶水汩汩流出，滴滴答答坠落树下，空气中弥漫着甜腥。",
+            "悠八在树下仰头张嘴接着乳汁，喉咙里发出“咕滋咕滋”的吞咽声。",
+            "“姑奶奶便馋死你！”她心中想着，手上越发用力，乳白弧线划破月色。",
+            "奶水泄出的轻松感让她心猿意马，甚至故意将乳汁朝他脸上喷去。"
+        ]},
+        N2: { name: "🌿 坠地入怀", texts: [
+            "脚下一滑，她整个人从树上跌落，还未站稳便被一双粗臂死死抵在树干上。",
+            "悠八一口叼住她的奶头，狂吮不已，乳汁源源不断被吸走，她脑中一片空白。",
+            "“哧——”褻裤被大手撕碎，夜风灌入赤裸的下体，她羞耻地发现早已湿透。",
+            "粗糙的手掌揉捏着她肥满的屁股，手指探入股沟，触到一片毛茸茸的湿滑。",
+            "一根滚烫硬物抵住她的腿根，龟头已经撑开阴唇边缘——只差一寸。"
+        ]},
+        N3: { name: "🌿 反制点穴", texts: [
+            "千钧一发之际，她指尖吐出一缕真气，精准点中悠八“膻中穴”。",
+            "“嗯……”悠八闷哼一声，仰面翻倒，直挺挺昏睡过去。",
+            "黄绒靠着树干滑坐在地，赤裸的下身狼藉一片，双乳还在急促起伏。",
+            "她大口喘着气，心中后怕：“好险……再迟片刻，清白就毁了。”",
+            "月下林间重归死寂，唯有她自己的心跳声和远处虫鸣交织。"
+        ]},
+        N4: { name: "🌿 窥探阳物", texts: [
+            "她低头看见悠八敞开的裤裆中那团软塌塌的肉，竟鬼使神差地伸出手指轻触。",
+            "入手毛茸茸、沉甸甸，与丈夫郭静的干净规整截然不同。",
+            "“男子的这东西……竟能缩得这般小？”她好奇地撩拨那软垂的肉条。",
+            "指尖沾上黏腻的液体，她竟不觉得恶心，反而心头那股空虚感更加强烈。",
+            "她缩回手，又忍不住再探，一颗心快跳了出来。"
+        ]},
+        N5: { name: "🌿 解穴观变", texts: [
+            "她解开他被封的经脉，只留睡穴。悠八呼吸渐重，那团软肉开始突突跳动。",
+            "“小娘子……好白……让哥哥吃一口……”梦中粗语钻入耳中，她耳根烫如火烧。",
+            "那物在她掌心迅速膨大、变硬、上翘，青筋暴起，比她夫君的还要惊人。",
+            "龟头鸡蛋般大小，前端微微上弯，散发着浓烈的雄性腥气。",
+            "她握住那滚烫的肉杵，感觉它在手中跳动，不由口干舌燥。"
+        ]},
+        N6: { name: "🌿 品簫抚琴", texts: [
+            "黄绒一手握住悠八坚硬的阳具轻轻套弄，一手探入自己湿透的腿间。",
+            "指尖拨开层层叠叠的花瓣，触及那颗敏感的蕊珠，一阵酥麻传遍全身。",
+            "月下林间，一代侠女衣衫半解，一手品簫、一手抚琴，画面淫靡而荒诞。",
+            "“嗯……不够……这样不够……”越是抚弄，体内那口深井越是干渴。",
+            "她一边撸动那根粗大的肉棍，一边揉搓自己的阴唇，淫水顺着大腿流下。"
+        ]},
+        N7: { name: "🌿 跨坐磨蹭", texts: [
+            "她翻身跨上悠八粗壮的腰腹，赤裸的肥臀贴上他粗糙的肚皮。",
+            "那根怒龙嵌在她的臀沟中，龟头沿着湿滑的裂缝来回滑动，每次都擦过洞口却不进入。",
+            "阴唇紧贴滚烫的棍身摩擦，快感如电流般涌遍全身，淫水簌簌而落。",
+            "“就磨一磨……不算真的……”她喃喃自语，腰肢却越扭越急。",
+            "龟头已撑开阴唇边缘，只差最后一沉——她脑中闪过郭静的脸，身体却已不是自己的了。"
+        ]},
+        N8: { name: "🌿 破防插入", texts: [
+            "“便只一次……权当春梦……”肥臀一沉，那根粗物连根没入，她仰头泣叫。",
+            "“噗滋——”淫水四溅，久违的撕裂与充实同时炸开，泪水与淫水一齐涌出。",
+            "她在他身上疯狂起伏，双乳甩出乳白弧线，奶水喷了他满脸。",
+            "“啊……要泄了……噢……”阴精如潮喷出，同时乳汁激射，上下双泄。",
+            "“别……不能射在里面……”她惊叫着要起身，却被一股滚烫的阳精狠狠灌入花心。"
+        ]},
+        N9: { name: "🌿 事后余韵", texts: [
+            "良久，风止花落。她侧卧在狼藉的爱液与白浊中，大口喘着气。",
+            "月光照着她赤裸的胴体，奶渍、汗水和阳精混在一起，在雪白肌肤上反光。",
+            "她低头看见自己腿间那一片泥泞，心中羞耻难当，却又隐隐觉得畅快。",
+            "“碎了一地……却又像重生了一般……”她闭上眼睛，不愿再想。",
+            "身旁的悠八依然昏睡，嘴角挂着满足的笑意，仿佛做了一场极美的春梦。"
+        ]}
+    };
+
+    let currentNode = "N0";
+
+    // 渲染节点按钮
+    const btnContainer = document.getElementById("nodeButtons");
+    for (let [key, val] of Object.entries(nodes)) {
+        const btn = document.createElement("button");
+        btn.innerText = val.name;
+        btn.classList.add("node-btn");
+        if (key === currentNode) btn.classList.add("active");
+        btn.onclick = () => {
+            currentNode = key;
+            document.querySelectorAll(".node-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            document.getElementById("displayText").innerHTML = `✨ 已切换至「${val.name}」 ✨<br>点击下方按钮随机演绎。`;
+        };
+        btnContainer.appendChild(btn);
+    }
+
+    const goBtn = document.getElementById("goBtn");
+    const displayDiv = document.getElementById("displayText");
+
+    function getRandomText(nodeId) {
+        const arr = nodes[nodeId].texts;
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    goBtn.addEventListener("click", () => {
+        const line = getRandomText(currentNode);
+        displayDiv.innerHTML = `🌙 【${nodes[currentNode].name}】 🌙<br><br>“${line}”`;
+    });
+</script>
+</body>
+</html>
