@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>悠風慫力：動態敘事生成器</title>
+    <style>
+        :root { --main-red: #b0120a; --bg-dark: #121212; --panel-bg: #1e1e1e; }
+        body { background-color: var(--bg-dark); color: #d1d1d1; font-family: "Microsoft JhengHei", serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 900px; width: 100%; background: var(--panel-bg); border: 1px solid #333; padding: 30px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        h1 { color: var(--main-red); text-align: center; font-size: 1.8rem; letter-spacing: 4px; margin-bottom: 30px; border-bottom: 1px double var(--main-red); padding-bottom: 10px; }
+        
+        /* 節點預覽區 */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .node-card { background: #252525; border: 1px solid #444; padding: 12px; border-radius: 4px; font-size: 0.9rem; transition: 0.3s; }
+        .node-card:hover { border-color: var(--main-red); background: #2a2a2a; }
+        .node-label { color: var(--main-red); font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.8rem; text-transform: uppercase; }
+
+        /* 按鈕區 */
+        .controls { text-align: center; padding: 20px; border-top: 1px solid #333; }
+        #goBtn { background: var(--main-red); color: white; border: none; padding: 15px 60px; font-size: 1.3rem; cursor: pointer; border-radius: 4px; font-weight: bold; transition: all 0.2s; box-shadow: 0 4px 15px rgba(176, 18, 10, 0.4); }
+        #goBtn:hover { background: #d32f2f; transform: translateY(-2px); }
+        #goBtn:active { transform: translateY(0); }
+
+        /* 完整文本輸出區 */
+        #storyOutput { margin-top: 40px; padding: 25px; background: #fff; color: #222; border-radius: 4px; line-height: 2; white-space: pre-wrap; display: none; font-size: 1.1rem; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); }
+        .story-node-block { margin-bottom: 1.5rem; display: block; border-bottom: 1px dashed #eee; padding-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>【+ 悠 風 慫 力 · 隨 機 敘 事 編 織 +】</h1>
+
+    <div class="grid-container" id="previewGrid">
+        </div>
+
+    <div class="controls">
+        <button id="goBtn" onclick="generateFullStory()">生成完整章節 (GO!)</button>
+        <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">基於 232.htm 情節點動態生成</p>
+    </div>
+
+    <div id="storyOutput"></div>
+</div>
+
+<script>
+// --- 50 條隨機文本庫 (基於您的 Node 邏輯) ---
+const library = {
+    N0: [
+        "悠八湊近她耳畔，低聲道：「小娘子身段豐腴，定是久未承歡，哥哥擅伏鳳十八式，包你滿意。」",
+        "黃絨心中冷笑：「這等登徒子，也配撩撥本幫主？」可身子卻莫名燥熱起來。",
+        "他言語粗俗露骨，她卻聽得耳根發燙，竟沒有立刻斥退他。",
+        "「借力春風杏花雨」——這句雙關語在她腦中盤旋，越想越覺得心慌。",
+        "她故意假意應承，欲擒故縱，不料自己倒先動了情。"
+    ],
+    N1: [
+        "衣襟扯開，那對白生生的碩大奶子猛然彈跳而出，乳尖掛著晶瑩水珠。",
+        "她雙手揉搓，奶水汩汩流出，滴滴答答墜落樹下，空氣中彌漫著甜腥。",
+        "悠八在樹下仰頭張嘴接著乳汁，喉嚨裡發出「咕滋咕滋」的吞咽聲。",
+        "「姑奶奶便饞死你！」她心中想著，手上越發用力，乳白弧線劃破月色。",
+        "奶水洩出的輕鬆感讓她心猿意馬，甚至故意將乳汁朝他臉上噴去。"
+    ],
+    N2: [
+        "腳下一滑，她整個人從樹上跌落，還未站穩便被一雙粗臂死死抵在樹幹上。",
+        "悠八一口叼住她的奶頭，狂吮不已，乳汁源源不斷被吸走，她腦中一片空白。",
+        "「哧——」褻褲被大手撕碎，夜風灌入赤裸的下體，她羞恥地發現早已濕透。",
+        "粗糙的手掌揉捏著她肥滿的屁股，手指探入股溝，觸到一片毛茸茸的濕滑。",
+        "一根滾燙硬物抵住她的腿根，龜頭已經撐開陰唇邊緣——只差一寸。"
+    ],
+    N3: [
+        "千鈞一髮之際，她指尖吐出一縷真氣，精準點中悠八「膻中穴」。",
+        "「嗯…」悠八悶哼一聲，仰面翻倒，直挺挺昏睡過去。",
+        "黃絨靠著樹干滑坐在地，赤裸的下身狼藉一片，雙乳還在急促起伏。",
+        "她大口喘著氣，心中後怕：「好險…再遲片刻，清白就毀了。」",
+        "月下林間重歸死寂，唯有她自己的心跳聲和遠處蟲鳴交織。"
+    ],
+    N4: [
+        "她低頭看見悠八敞開的褲襠中那團軟塌塌的肉，竟鬼使神差地伸出手指輕觸。",
+        "入手毛茸茸、沉甸甸，與丈夫郭靜的乾淨規整截然不同。",
+        "「男子的這東西…竟能縮得這般小？」她好奇地撩撥那軟垂的肉條。",
+        "指尖沾上黏膩的液體，她竟不覺得惡心，反而心頭那股空虛感更加強烈。",
+        "她縮回手，又忍不住再探，一顆心快跳了出來。"
+    ],
+    N5: [
+        "她解開他被封的經脈，只留睡穴。悠八呼吸漸重，那團軟肉開始突突跳動。",
+        "「小娘子…好白…讓哥哥吃一口…」夢中粗語鑽入耳中，她耳根燙如火燒。",
+        "那物在她掌心迅速膨大、變硬、上翹，青筋暴起，比她夫君的還要驚人。",
+        "龜頭雞蛋般大小，前端微微上彎，散發著濃烈的雄性腥氣。",
+        "她握住那滾燙的肉杵，感覺它在手中跳動，不由口乾舌燥。"
+    ],
+    N6: [
+        "黃絨一手握住悠八堅硬的陽具輕輕套弄，一手探入自己濕透的腿間。",
+        "指尖撥開層層疊疊的花瓣，觸及那顆敏感的蕊珠，一陣酥麻傳遍全身。",
+        "月下林間，一代俠女衣衫半解，一手品簫、一手撫琴，畫面淫靡而荒誕。",
+        "「嗯…不夠…這樣不夠…」越是撫弄，體內那口深井越是乾渴。",
+        "她一邊嚕動那根粗大的肉棍，一邊揉搓自己的陰唇，淫水順著大腿流下。"
+    ],
+    N7: [
+        "她翻身跨上悠八粗壯的腰腹，赤裸的肥臀貼上他粗糙的肚皮。",
+        "那根怒龍嵌在她的臀溝中，龜頭沿著濕滑的裂縫來回滑動，每次都擦過洞口卻不進入。",
+        "陰唇緊貼滾燙的棍身摩擦，快感如電流般湧遍全身，淫水簌簌而落。",
+        "「就磨一磨…不算真的…」她喃喃自語，腰肢卻越扭越急。",
+        "龜頭已撐開陰唇邊緣，只差最後一沉——她腦中閃過郭靜的臉，身體卻已不是自己的了。"
+    ],
+    N8: [
+        "「便只一次…權當春夢…」肥臀一沉，那根粗物連根沒入，她仰頭泣叫。",
+        "「噗滋——」淫水四濺，久違的撕裂與充實同時炸開，淚水與淫水一齊湧出。",
+        "她在他身上瘋狂起伏，雙乳甩出乳白弧線，奶水噴了他滿臉。",
+        "「啊…要洩了…噢…」陰精如潮噴出，同時乳汁激射，上下雙洩。",
+        "「別…不能射在裡面…」她驚叫著要起身，卻被一股滾燙的陽精狠狠灌入花心。"
+    ],
+    N9: [
+        "良久，風止花落。她側臥在狼藉的愛液與白濁中，大口喘著氣。",
+        "月光照著她赤裸的胴體，奶漬、汗水和陽精混在一起，在雪白肌膚上反光。",
+        "她低頭看見自己腿間那一片泥濘，心中羞恥難當，卻又隱隱覺得暢快。",
+        "「碎了一地…卻又像重生了一般…」她閉上眼睛，不願再想。",
+        "身旁的悠八依然昏睡，嘴角掛著滿足的笑意，彷彿做了一場極美的春夢。"
+    ]
+};
+
+// --- 初始化功能 ---
+function init() {
+    const grid = document.getElementById('previewGrid');
+    grid.innerHTML = '';
+    // 生成 N0-N9 的隨機預覽卡片
+    for (let i = 0; i <= 9; i++) {
+        const nodeId = 'N' + i;
+        const randomText = library[nodeId][Math.floor(Math.random() * 5)];
+        const card = document.createElement('div');
+        card.className = 'node-card';
+        card.innerHTML = `<span class="node-label">NODE ${nodeId}</span>${randomText}`;
+        grid.appendChild(card);
+    }
+}
+
+// --- 核心生成邏輯 (The "GO" function) ---
+function generateFullStory() {
+    const output = document.getElementById('storyOutput');
+    let fullStoryHtml = "";
+
+    // 依序編織 N0 到 N9
+    for (let i = 0; i <= 9; i++) {
+        const nodeId = 'N' + i;
+        const selectedText = library[nodeId][Math.floor(Math.random() * 5)];
+        
+        // 模擬 1a.htm 的隨機染色效果 (每段賦予一個古典色)
+        const colors = ["#5d0000", "#1a237e", "#1b5e20", "#4a148c", "#880e4f", "#33691e", "#01579b"];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        fullStoryHtml += `<span class="story-node-block" style="color: ${randomColor}">${selectedText}</span>`;
+    }
+
+    output.innerHTML = fullStoryHtml;
+    output.style.display = 'block';
+    
+    // 滾動到內容區
+    output.scrollIntoView({ behavior: 'smooth' });
+}
+
+window.onload = init;
+</script></body>
+</html>
+
+</body>
+</html>
