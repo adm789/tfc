@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>杏夜堕花 · 情欲节点游戏</title>
+<style>
+  body { background: #1a0e0b; color: #f0e6d0; font-family: 'Georgia', serif; padding: 2rem; }
+  .container { max-width: 700px; margin: auto; background: #2e1e18; padding: 2rem; border-radius: 20px; box-shadow: 0 0 20px #aa6f5e; }
+  .node-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2rem; }
+  .node-btn { background: #5e2e2a; color: #ffdab9; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; }
+  .node-btn.active { background: #c2472c; box-shadow: 0 0 8px #ff8a5c; }
+  .text-box { background: #0f0705; padding: 1.5rem; border-radius: 24px; min-height: 200px; font-size: 1.2rem; line-height: 1.5; border-left: 8px solid #c2472c; margin: 1rem 0; }
+  .go-btn { background: #c2472c; color: white; font-size: 1.3rem; border: none; padding: 12px 24px; border-radius: 60px; cursor: pointer; width: 100%; font-weight: bold; letter-spacing: 2px; }
+  .go-btn:hover { background: #e06b4a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2 style="text-align:center;">🌸 杏夜堕花 · 随机演绎 🌸</h2>
+  <div class="node-buttons" id="nodeButtons"></div>
+  <div class="text-box" id="displayText">选择一个节点，然后点击「杏夜·堕花」</div>
+  <button class="go-btn" id="goBtn">🌸 杏夜·堕花 (随机一句) 🌸</button>
+</div>
+
+<script>
+  // 节点数据
+  const nodes = {
+    N1: {
+      name: "树梢自解",
+      texts: [
+        "杏花香气混着汗意，黄绒解开衣襟，胸乳如脱兔般弹跳而出，乳汁顺着月光滑落。",
+        "“好胀……怎会这般难耐……”她咬着唇，指尖颤抖着揉按那对涨得发疼的雪峰。",
+        "奶水细细喷出，沾湿了树梢的嫩叶，她竟生出一丝报复的快意——反正无人看见。",
+        "树下的悠八仰头盯着那道白线，喉咙发干，裤裆已顶起狰狞的弧度。",
+        "黄绒半眯着眼，恍惚间觉得自己的身体不属于自己，只属于这春夜与燥风。"
+      ]
+    },
+    N2: {
+      name: "坠入虎口",
+      texts: [
+        "脚下一滑，她如断翅的鹤直直坠落，还未站稳便被一双粗臂死死抵在树干上。",
+        "褻裤在暴力下撕成碎片，夜风灌入腿间，她羞耻地发现自己早已湿透。",
+        "“小娘子，这可是你自己送上门的！”悠八的嘴粗鲁地含住她乳尖，猛力吸吮。",
+        "乳汁被大口吞咽的声音在夜中格外清晰，黄绒想推开，手却软得如春泥。",
+        "一根滚烫硬物抵住她湿滑的腿根，只差一寸便要闯入——她浑身紧绷，几乎尖叫。"
+      ]
+    },
+    N3: {
+      name: "反制与凝视",
+      texts: [
+        "指尖一点，“膻中穴”被封，悠八闷哼倒地。黄绒靠着树滑坐，喘息未定。",
+        "她低头看见他敞开的裤裆中那团软塌塌的肉，竟鬼使神差地伸出手指轻触。",
+        "“男子的这东西……竟能缩得这般小？”她心跳如鼓，像偷糖的孩童。",
+        "那毛茸茸的囊袋入手温热，与丈夫的干净规整截然不同，透着一股野性。",
+        "她缩回手，又忍不住再探，指尖沾上些许黏腻，竟不觉厌恶，只觉更深空虚。"
+      ]
+    },
+    N4: {
+      name: "解穴观变",
+      texts: [
+        "她解开他部分经脉，只留昏睡穴。悠八呼吸渐重，那团软肉开始突突跳动。",
+        "“小娘子……好白……让哥哥吃一口……”梦中粗语钻入耳中，她耳根烫如火烧。",
+        "那物在她掌心迅速膨大、变硬、上翘，青筋毕露，比她夫君的还要惊人。",
+        "黄绒一手握住那滚烫的肉杵，一手探入自己腿间，月下自渎，品簫抚琴。",
+        "“不行……这样不够……”她越揉越痒，体内像有一口干涸的井，渴望被狠狠填满。"
+      ]
+    },
+    N5: {
+      name: "跨坐磨蹭",
+      texts: [
+        "她跨上他粗壮的腰腹，臀下毛茬扎着嫩肉，带来微痛又畅快的刺激。",
+        "那根怒龙嵌在她臀沟中，龟头沿着湿滑的裂缝来回滑动，每次都擦过洞口却绝不进入。",
+        "爱液顺着他的肚皮流下，黄绒低头看着自己雪白的身体骑在这粗汉身上，羞耻化作更烈的火。",
+        "“就磨一磨……不算真的……”她喃喃自语，腰肢却越扭越急，喘息破碎。",
+        "龟头已撑开阴唇边缘，只差最后一沉——她脑中闪过郭静的脸，身体却已不是自己的了。"
+      ]
+    },
+    N6: {
+      name: "深渊一刻",
+      texts: [
+        "“便只一次……权当春梦……”臀瓣一沉，那根粗物连根没入，她仰头泣叫。",
+        "体内被蛮横撑开，久违的撕裂与充实同时炸开，泪水与淫水一齐涌出。",
+        "她在他身上疯狂起伏，双乳甩出乳白弧线，奶水喷了他满脸，上下双泄。",
+        "“别……不能射在里面……”她惊叫着要起身，却被一股滚烫的阳精狠狠灌入花心。",
+        "良久，风止花落。她侧卧在狼藉的爱液与白浊中，觉得自己碎了一地，却又隐秘地重生。"
+      ]
+    }
+  };
+
+  let currentNode = "N1";
+
+  // 渲染节点按钮
+  const container = document.getElementById("nodeButtons");
+  for (let [key, val] of Object.entries(nodes)) {
+    const btn = document.createElement("button");
+    btn.innerText = val.name;
+    btn.classList.add("node-btn");
+    if (key === currentNode) btn.classList.add("active");
+    btn.onclick = () => {
+      currentNode = key;
+      document.querySelectorAll(".node-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("displayText").innerText = "✨ 已切换至：「" + val.name + "」✨\n点击下方按钮随机演绎。";
+    };
+    container.appendChild(btn);
+  }
+
+  // go按钮逻辑
+  const goBtn = document.getElementById("goBtn");
+  const displayDiv = document.getElementById("displayText");
+
+  function getRandomTextFromNode(nodeId) {
+    const texts = nodes[nodeId].texts;
+    const randomIndex = Math.floor(Math.random() * texts.length);
+    return texts[randomIndex];
+  }
+
+  goBtn.addEventListener("click", () => {
+    const randomLine = getRandomTextFromNode(currentNode);
+    displayDiv.innerHTML = `🌙 【${nodes[currentNode].name}】 🌙<br><br>“${randomLine}”`;
+  });
+</script>
+</body>
+</html>

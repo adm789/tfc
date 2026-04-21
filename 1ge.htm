@@ -1,0 +1,104 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>悠風慫力：隨機文字迷宮</title>
+    <style>
+        body { background-color: #1a1a1a; color: #e0e0e0; font-family: "Microsoft JhengHei", sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; background: #2d2d2d; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #ff1744; border-bottom: 2px solid #ff1744; padding-bottom: 10px; }
+        .node-box { margin-bottom: 20px; padding: 15px; border-left: 5px solid #ad1457; background: #3d3d3d; font-style: italic; }
+        .btn-container { text-align: center; margin-top: 30px; }
+        #goButton { background: #b0120a; color: white; border: none; padding: 15px 40px; font-size: 1.2rem; cursor: pointer; border-radius: 50px; transition: 0.3s; font-weight: bold; }
+        #goButton:hover { background: #ff1744; transform: scale(1.05); }
+        #contentDisplay { margin-top: 30px; padding: 20px; background: #fdfdfd; color: #333; border-radius: 5px; display: none; white-space: pre-wrap; }
+        .highlight { color: #8b0000; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>【+悠風慫力容花開】</h1>
+    
+    <div id="previewArea">
+        <div class="node-box" id="displayA"></div>
+        <div class="node-box" id="displayB"></div>
+        <div class="node-box" id="displayC"></div>
+    </div>
+
+    <div class="btn-container">
+        <button id="goButton" onclick="generateStory()">隨機開啟完整篇章 (GO!)</button>
+    </div>
+
+    <div id="contentDisplay"></div>
+</div>
+
+<script>
+// 1. 定義節點與隨機引子文本
+const displayTexts = {
+    nodeA: [
+        "春夜的風本是涼的，卻因林間那瀰漫的杏花香，多出了幾分燥熱。",
+        "那是近乎折磨的豐盈，每一次呼吸，絲綢便與肌膚研磨出羞恥的酥麻。",
+        "她本是冰雪聰明的俠女，此刻卻被這具過於豐腴的身軀困住了理智。",
+        "月光透過枝葉篩落，照亮了那道在高處難耐扭動腰肢的倩影。",
+        "裂帛聲在風中幾不可聞，束縛一去，被壓抑許久的雪膩猛然彈跳而出。"
+    ],
+    nodeB: [
+        "一種難以言喻的好奇，像藤蔓般纏上了她的心頭，腳步竟似生了根。",
+        "那物事透著一股未經開化的野性與張力，與她過往所見截然不同。",
+        "鬼使神差地伸出纖纖玉指，探向那處散發著驚人熱度的禁地。",
+        "明明知道不該，卻因為那份禁忌的刺激，覺得滋味勝過世間珍饈。",
+        "月下林間，一代俠女一手品簫、一手撫琴，畫面淫靡而荒誕。"
+    ],
+    nodeC: [
+        "便只這一次……權當是一場春夢。芳心終於墜入了無底的深淵。",
+        "那種久違的、近乎撕裂的充實感，瞬間填滿了體內所有的空虛。",
+        "巨大的快感如海嘯般襲來，黃絨渾身戰慄，理智徹底崩盤。",
+        "上下齊泄，魂飛天外。瀕死的極樂讓她大腦只餘下無意識的呻吟。",
+        "那位冰清玉潔的黃幫主，碎了一地，卻又在隱秘的角落獲得了重生。"
+    ]
+};
+
+// 2. 完整小說內容資料庫
+const fullFictions = {
+    nodeA: {
+        title: "第一部分：杏花疏影，玉山傾頹",
+        text: "黃絨立於高處枝椏，周身真氣有些渙散...（此處填入1geu8.htm第一部分完整內容）"
+    },
+    nodeB: {
+        title: "第二部分：暗香浮動，夢囈撩人",
+        text: "指尖觸及的一瞬，她羞得滿臉通紅，像是觸碰了燙手的炭火般縮了回來...（此處填入1geu8.htm第二部分完整內容）"
+    },
+    nodeC: {
+        title: "第三部分：春風一度，露濃花瘦",
+        text: "那一根剛剛退出的巨物，借著跌落之勢，再次連根沒入...（此處填入1geu8.htm第三部分完整內容）"
+    }
+};
+
+// 初始化隨機預覽
+function refreshPreviews() {
+    document.getElementById('displayA').innerText = "【前導】" + displayTexts.nodeA[Math.floor(Math.random() * 5)];
+    document.getElementById('displayB').innerText = "【前導】" + displayTexts.nodeB[Math.floor(Math.random() * 5)];
+    document.getElementById('displayC').innerText = "【前導】" + displayTexts.nodeC[Math.floor(Math.random() * 5)];
+}
+
+// 點擊按鈕隨機展開內容
+function generateStory() {
+    const keys = Object.keys(fullFictions);
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    const story = fullFictions[randomKey];
+    
+    const displayDiv = document.getElementById('contentDisplay');
+    displayDiv.style.display = 'block';
+    displayDiv.innerHTML = `<h3>${story.title}</h3><p>${story.text}</p>`;
+    
+    // 滾動到內容區
+    displayDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 頁面加載時執行
+window.onload = refreshPreviews;
+</script>
+
+</body>
+</html>

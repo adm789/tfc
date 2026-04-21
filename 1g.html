@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>杏花林·春夢一夜</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", "華文細黑", serif;
+            background: linear-gradient(135deg, #1a0f08, #3a1f1f);
+            color: #f5e8c7;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.85;
+            background-image: url('https://images.unsplash.com/photo-1587502537745-84b86da1204f?ixlib=rb-4.0.3&auto=format&fit=crop&q=80');
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: rgba(20, 10, 5, 0.93);
+            border: 3px solid #8b5a2b;
+            border-radius: 18px;
+            padding: 35px;
+            box-shadow: 0 0 40px rgba(139, 90, 43, 0.7);
+        }
+        h1 {
+            text-align: center;
+            color: #ffddbb;
+            text-shadow: 0 0 15px #c62828;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #e57373;
+            margin-bottom: 30px;
+            font-size: 1.15em;
+        }
+        .node-title {
+            color: #ff1744;
+            font-size: 1.45em;
+            margin: 25px 0 18px 0;
+            text-align: center;
+            border-bottom: 2px solid #c62828;
+            padding-bottom: 10px;
+        }
+        .story-text {
+            font-size: 1.18em;
+            min-height: 280px;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid #b36b4e;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            max-width: 320px;
+            margin: 30px auto;
+            padding: 18px 40px;
+            font-size: 1.35em;
+            background: linear-gradient(#c62828, #8b0000);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(198, 40, 40, 0.6);
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: scale(1.06);
+            background: linear-gradient(#f44336, #c62828);
+            box-shadow: 0 12px 25px rgba(244, 67, 54, 0.7);
+        }
+        .info {
+            text-align: center;
+            color: #ffccaa;
+            font-size: 0.98em;
+            margin-top: 15px;
+        }
+        .restart {
+            background: #5d0000;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>杏花林 · 春夢一夜</h1>
+        <p class="subtitle">黃絨的禁忌春夜 • 每一次點擊都是全新體驗</p>
+        
+        <div id="nodeTitle" class="node-title">樹梢解衣</div>
+        <div id="storyText" class="story-text">
+            載入中...
+        </div>
+        
+        <button id="goBtn" class="btn">春風再起 →</button>
+        <button id="restartBtn" class="btn restart" style="display:none;">重新開始這一夜春夢</button>
+        
+        <div class="info">
+            當前章節：<span id="currentNode">1</span> / 6
+        </div>
+    </div>
+
+    <script>
+        // ==================== 每個節點全新設計的 6 段文本 ====================
+        const nodes = {
+            1: {  // 1. 樹梢解衣
+                title: "樹梢解衣",
+                texts: [
+                    "杏花林中春風帶著淡淡花香，黃絨立於高枝之上，胸前那對豐盈玉乳卻如春水般漲滿，勒得她呼吸漸亂，黛眉輕蹙。",
+                    "夜風拂過衣襟，帶來陣陣酥麻。她輕輕喘息，指尖忍不住探入繡蘭褻衣，試圖安撫那兩團沈甸甸的雪膩，卻只換來更深的空虛。",
+                    "「嗯……好脹……」黃絨咬著下唇，終於扯開衣帶。那對飽滿雪峰猛然彈出，在月光下顫巍巍晃動，乳尖已掛著晶瑩欲滴的瓊漿。",
+                    "樹下悠八仰頭望去，只見玉人衣衫半解，兩道細細白線劃破夜空，帶著甜香的乳汁正好灑落在他臉頰，他喉結劇烈滾動。",
+                    "她忘情地捧著自己豐盈的玉乳用力揉擠，奶水如雨般灑落。忽然真氣一岔，身子一軟，整個人從樹梢向下方墜去。",
+                    "高枝上的倩影如蛇般扭動，悠八看得目眥欲裂，下身早已將褲子頂起猙獰的帳篷，沙啞道：「小娘子，莫要自己受罪……」"
+                ]
+            },
+            2: {  // 2. 樹下壓制
+                title: "樹下壓制",
+                texts: [
+                    "黃絨尚未站穩，便被悠八粗壯的身軀猛然壓住，背脊撞上粗糙樹幹的刺痛，與胸前被大力擠壓的熱浪同時襲來。",
+                    "那張帶著濃烈男人氣息的大嘴毫不客氣地含住她左邊紅梅，粗糙舌頭用力吸吮，牙齒輕刮乳暈，讓她全身如遭電擊。",
+                    "「不……你這登徒子……」黃絨想要推開，卻發現雙臂軟綿無力，那動作更像是撫摸，讓悠八更加放肆。",
+                    "悠八一邊大口吞咽甘甜乳汁，一邊大手隔著裙褲粗魯地揉捏她豐滿圓潤的臀瓣，指尖已探向那處濕熱的幽谷。",
+                    "「這屁股又大又軟……小娘子下面流水比上面還多啊。」這句粗話讓黃絨羞憤交加，體內卻有一團野火熊熊燃起。",
+                    "只聽「嘶啦」一聲，褻褲被暴力撕碎，夜風灌入腿間，那滾燙堅硬如鐵的巨物已死死抵在她濕滑的花唇之上。"
+                ]
+            },
+            3: {  // 3. 點穴化險
+                title: "點穴化險",
+                texts: [
+                    "就在那巨物即將破門而入之際，黃絨眸中清明一閃，指尖真氣疾吐，精準點在悠八胸前要穴，讓他悶哼一聲昏睡過去。",
+                    "林間驟然安靜，她背靠樹幹滑坐在地，胸前狼藉一片，體內那股燥熱卻像野火般越燒越旺。",
+                    "目光落在昏睡男子敞開的衣衫下，那原本猙獰的陽物此刻軟軟垂著。她鬼使神差地伸出纖手，輕輕觸碰那粗糲的熱度。",
+                    "好奇心戰勝了羞恥，她輕輕套弄幾下，那物事竟在她掌心迅速充血變硬，變成一根青筋暴起、碩大無朋的怒龍。",
+                    "黃絨呼吸急促，一手握著那滾燙巨柱緩緩撫弄，一手忍不住探入自己早已泥濘不堪的腿間，輕輕撥弄那顆敏感花珠。",
+                    "「就一次……誰也不會知道……」她心頭狂跳，身子發軟，跨坐在悠八腰間，讓那粗大龜頭嵌在自己濕滑的臀溝中緩緩磨蹭。"
+                ]
+            },
+            4: {  // 4. 邊緣試探
+                title: "邊緣試探",
+                texts: [
+                    "她半跪在悠八身上，豐滿雪臀輕輕擺動，讓那滾燙龜頭在自己肥美臀縫間來回滑動，一次次擦過腫脹的花唇邊緣。",
+                    "透明的愛液如泉水般流出，順著大腿根部滴落在男人肚皮上。這種只差一線的折磨，讓她快感不斷堆積卻無法釋放。",
+                    "「嗯……好熱……還不夠……」黃絨低聲呢喃，羞恥與慾望交織，讓她腰肢扭得更加放浪。",
+                    "低頭看著自己雪白豐腴的玉體正騎在粗鄙漢子身上，那強烈的身份反差讓她心跳如擂鼓，體內空虛越來越難耐。",
+                    "臀肉緩緩下壓，那猙獰龜頭已撐開兩片嬌嫩花瓣，抵在最敏感的入口，只差最後一寸便要徹底沉淪。",
+                    "「對不起靜哥……只這一次……」她口中喃喃自語，身下卻越發大膽，巨物已頂開入口，淺淺沒入一小截。"
+                ]
+            },
+            5: {  // 5. 徹底交融
+                title: "徹底交融",
+                texts: [
+                    "終於忍不住，她豐滿雪臀猛然下沉，那粗長肉柱悍然撐開緊緻甬道，巨大的充實感讓她瞬間淚水盈眶。",
+                    "「啊……太深了……要壞了……」黃絨嬌吟連連，本想只淺嘗一口，卻被身體本能驅使著重重坐下，讓巨物連根沒入。",
+                    "她開始忘情地上下吞吐，豪乳劇烈晃動，甩出一道道乳白弧線。悠八雖在昏睡，腰胯卻本能地向上頂撞。",
+                    "快感如潮水般湧來，她高昂頸項發出一聲淒美長吟，陰精與乳汁同時噴薄而出，上下齊泄，魂飛天外。",
+                    "就在她痙攣之際，悠八低吼一聲，腰身猛挺，一股滾燙濃稠的陽精如岩漿般狠狠灌入她最深處的花心。",
+                    "雙重高潮讓黃絨徹底癱軟，理智崩塌，只剩無意識的嬌喘與滿身狼藉的奶香與愛液。"
+                ]
+            },
+            6: {  // 6. 春夢餘韻
+                title: "春夢餘韻",
+                texts: [
+                    "林間恢復寂靜，黃絨側臥在草地上，看著自己腿間那混合著白濁陽精、透明陰液與乳汁的狼藉景象，眼神複雜。",
+                    "春風拂過杏花，帶走一地零落。她輕撫自己仍微微抽搐的小腹，不知心中是悔恨、是羞恥，還是難以言喻的滿足。",
+                    "身旁悠八嘴角掛著滿足的笑意，下身依然與她糾纏在一起。高貴的俠女與粗鄙的漢子，在這一刻竟有種奇異的和諧。",
+                    "月光灑在她赤裸的玉體上，她閉上眼，輕聲呢喃：「這只是一場春夢……」卻知道這一夜的滋味已刻進骨髓。",
+                    "杏花林的這一夜，讓冰清玉潔的黃幫主碎了一地尊嚴，卻也在最隱秘的角落，悄然獲得了前所未有的釋放與重生。",
+                    "夜風漸涼，她嘴角竟浮起一抹若有若無的笑意。或許，明夜這春夢，還會再次將她拉入其中。"
+                ]
+            }
+        };
+
+        let currentNode = 1;
+
+        function getNextNode(current) {
+            let next;
+            do {
+                next = Math.floor(Math.random() * 6) + 1;
+            } while (next === current);
+            return next;
+        }
+
+        function displayRandomText(nodeId) {
+            const node = nodes[nodeId];
+            const randomIndex = Math.floor(Math.random() * node.texts.length);
+            document.getElementById('storyText').textContent = node.texts[randomIndex];
+            document.getElementById('nodeTitle').textContent = node.title;
+            document.getElementById('currentNode').textContent = nodeId;
+        }
+
+        document.getElementById('goBtn').addEventListener('click', () => {
+            if (currentNode === 6) {
+                if (confirm("春夢已至餘韻……要繼續沉淪這一夜，還是重新開始？")) {
+                    currentNode = getNextNode(6);
+                } else {
+                    document.getElementById('restartBtn').style.display = 'block';
+                    return;
+                }
+            } else {
+                currentNode = getNextNode(currentNode);
+            }
+            displayRandomText(currentNode);
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            currentNode = 1;
+            document.getElementById('restartBtn').style.display = 'none';
+            displayRandomText(currentNode);
+        });
+
+        // 初始載入
+        window.onload = () => {
+            displayRandomText(1);
+        };
+    </script>
+</body>
+</html>
