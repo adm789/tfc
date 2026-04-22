@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background:#0a0a0a; color:#ccc; font:14px/1.1 "Microsoft JhengHei",serif; padding:10px; }
+    .container { max-width:950px; margin:0 auto; background:#181818; padding:15px; border:1px solid #333; }
+    
+    /* 5x2 頂部佈局 */
+    .grid { 
+        display: grid; 
+        grid-template-columns: repeat(5, 1fr); /* 強制 5 行 */
+        gap: 5px; 
+        margin-bottom: 10px; 
+    }
+    .node { background:#222; padding:6px; border:1px solid #444; font-size:12px; height: 50px; overflow:hidden; }
+    .label { color:#ff1744; font-weight:bold; display:block; font-size:10px; }
+
+    /* 輸出區：字體加大、緊湊無間隔 */
+    #out { 
+        background:#fff; color:#111; 
+        padding:15px; border-radius:2px; 
+        display:none; line-height:1.4; 
+        font-size: 1.25rem; /* 更大的字體 */
+        font-weight: 500;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+    }
+    .line { display:block; border-bottom:1px solid #f0f0f0; padding:4px 0; margin:0; }
+
+    /* 按鈕移至最下方 */
+    .ctrl { text-align:center; margin-top:15px; padding-top:10px; border-top:1px solid #333; }
+    #goBtn { 
+        background:#b0120a; color:#fff; border:none; 
+        padding:10px 50px; cursor:pointer; font-size:16px; 
+        font-weight:bold; border-radius:3px;
+    }
+    #goBtn:hover { background:#ff1744; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="grid" id="gr"></div>
+    
+    <div id="out"></div>
+
+    <div class="ctrl">
+        <button id="goBtn" onclick="gen()">生成完整故事 (GO!)</button>
+    </div>
+</div>
+
+<script>
+const lib = {
+    N0: ["悠八湊近她耳畔，低聲道：「小娘子身段豐腴，哥哥擅伏鳳十八式。」","黃絨心中冷笑：「這等登徒子，也配撩撥本幫主？」身子卻莫名燥熱。","他言語粗俗露骨，她卻聽得耳根發燙，竟沒有立刻斥退他。","「借力春風杏花雨」——這句雙關語在她腦中盤旋，心慌意亂。","她故意假意應承，欲擒故縱，不料自己倒先動了情。"],
+    N1: ["衣襟扯開，那對白生生的碩大奶子猛然彈跳而出，乳尖掛著水珠。","她雙手揉搓，奶水汩汩流出，滴滴答答墜落樹下，瀰漫甜腥。","悠八在樹下仰頭張嘴接著乳汁，喉嚨裡發出「咕滋咕滋」的吞咽聲。","「姑奶奶便饞死你！」她心中發狠，乳白弧線劃破月色。","奶水洩出的輕鬆感讓她心猿意馬，甚至故意將乳汁噴去。"],
+    N2: ["腳下一滑，她跌落樹下，被一雙粗臂死死抵在樹幹上。","悠八一口叼住她的奶頭狂吮，乳汁源源不斷被吸走，腦中空白。","「哧——」褻褲被撕碎，夜風灌入赤裸下體，她發現早已濕透。","粗糙的手掌揉捏著她肥滿的屁股，手指探入股溝，觸到一片濕滑。","一根滾燙硬物抵住腿根，龜頭撐開陰唇邊緣——只差一寸。"],
+    N3: ["千鈞一髮之際，她指尖吐出真氣，精準點中悠八「膻中穴」。","「嗯…」悠八悶哼一聲，仰面翻倒，直挺挺昏睡過去。","黃絨靠著樹干滑坐在地，下身狼藉一片，雙乳急促起伏。","她大口喘氣，心中後怕：「好險…再遲片刻，清白就毀了。」","月下林間重歸死寂，唯有心跳聲和遠處蟲鳴交織。"],
+    N4: ["她看見悠八褲襠中那團軟塌塌的肉，竟鬼使神差地伸出指尖輕觸。","入手毛茸茸、沉甸甸，與丈夫郭靜的乾淨規整截然不同。","「男子的這東西…竟能縮得這般小？」她好奇撩撥那肉條。","指尖沾上黏膩液體，她不覺惡心，空虛感反而更加強烈。","她縮回手，又忍不住再探，一顆心快跳了出來。"],
+    N5: ["她解開他經脈，只留睡穴。悠八呼吸漸重，軟肉開始突突跳動。","「小娘子…讓哥哥吃一口…」夢中粗語鑽入耳中，耳根燙如火燒。","那物在掌心迅速膨大、變硬、上翹，青筋暴起，驚人之極。","龜頭雞蛋般大小，前端上彎，散發著濃烈的雄性腥氣。","她握住那滾燙的肉杵，感覺它在手中跳動，口乾舌燥。"],
+    N6: ["黃絨一手握住陽具輕輕套弄，一手探入自己濕透的腿間。","指尖撥開層層疊疊的花瓣，觸及蕊珠，一陣酥麻傳遍全身。","一代俠女衣衫半解，一手品簫、一手撫琴，畫面淫靡荒誕。","「嗯…不夠…」越是撫弄，體內那口深井越是乾渴。","她一邊嚕動肉棍，一邊揉搓陰唇，淫水順著大腿流下。"],
+    N7: ["她翻身跨上悠八粗壯的腰腹，肥臀貼上他粗糙的肚皮。","怒龍嵌在臀溝中，龜頭沿著濕滑裂縫來回滑動，每次都擦過洞口。","陰唇緊貼棍身摩擦，快感如電流湧遍，淫水簌簌而落。","「就磨一磨…不算真的…」她喃喃自語，腰肢越扭越急。","龜頭撐開陰唇邊緣，只差最後一沉——身體已不聽使喚。"],
+    N8: ["「便只一次…權當春夢…」肥臀一沉，粗物連根沒入，她仰頭泣叫。","「噗滋——」淫水四濺，撕裂與充實同時炸開，淚水與淫水湧出。","她在他身上瘋狂起伏，雙乳甩出乳白弧線，奶水噴了他滿臉。","「啊…要洩了…噢…」陰精如潮噴出，乳汁激射，上下雙洩。","「別…不要射在裡面…」卻被滾燙陽精狠狠灌入花心。"],
+    N9: ["良久風止花落。她側臥在狼藉的白濁中，大口喘著氣。","月光照著赤裸胴體，奶漬與陽精混合，在雪白肌膚上反光。","看見腿間那一片泥濘，心中羞恥難當，卻又隱隱暢快。","「碎了一地…卻又像重生一般…」她閉上眼睛不願再想。","悠八依然昏睡，嘴角掛著滿足笑意，彷彿做了一場極美的春夢。"]
+};
+
+// 真·隨機：Fisher-Yates 洗牌演算法
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[array[j]]] = [array[j], array[i]];
+    }
+}
+
+function init() {
+    const gr = document.getElementById('gr');
+    gr.innerHTML = '';
+    for(let i=0; i<10; i++) {
+        let n = 'N'+i;
+        let txt = lib[n][Math.floor(Math.random()*5)];
+        gr.innerHTML += `<div class="node"><span class="label">NODE ${n}</span>${txt}</div>`;
+    }
+}
+
+function gen() {
+    const o = document.getElementById('out');
+    let h = "";
+    const colors = ["#b71c1c", "#4a148c", "#0d47a1", "#1b5e20"];
+    
+    // 每次生成都重新洗牌顏色和選擇
+    for(let i=0; i<10; i++) {
+        let n = 'N'+i;
+        let c = colors[Math.floor(Math.random() * colors.length)];
+        let txt = lib[n][Math.floor(Math.random()*5)];
+        h += `<span class="line" style="color:${c}">${txt}</span>`;
+    }
+    
+    o.innerHTML = h;
+    o.style.display = 'block';
+    o.scrollIntoView({ behavior: 'smooth' });
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
