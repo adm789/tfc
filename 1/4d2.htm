@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>雙玉篇 · 杏夜雙視角｜隨機敘事</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #0c0708;
+            color: #cbbaa5;
+            font-family: 'Georgia', 'Times New Roman', '宋体', serif;
+            font-size: 18px;
+            line-height: 1.65;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #110b0a;
+            border-radius: 32px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            border: 1px solid #3a2a22;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #3a2520;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            color: #bc7a5e;
+        }
+        .title span { color: #9e6b5e; font-size: 0.8rem; }
+        .btn {
+            background: #5e2a22;
+            border: none;
+            color: #f0ddcf;
+            font-size: 0.85rem;
+            padding: 6px 22px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .btn:hover { background: #8e4a3a; color: white; box-shadow: 0 0 8px #bc7a5e; }
+        #storyArea {
+            display: none;
+            margin-top: 20px;
+        }
+        .verse {
+            display: block;
+            margin-bottom: 18px;
+            padding: 10px 16px;
+            border-left: 4px solid;
+            background: #0e0807;
+            border-radius: 0 16px 16px 0;
+            font-weight: bold;
+        }
+        .tag {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            display: inline-block;
+            margin-right: 12px;
+            opacity: 0.8;
+        }
+        footer {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 30px;
+            color: #5e4a3e;
+            border-top: 1px solid #2a1e1a;
+            padding-top: 16px;
+        }
+        @media (max-width: 650px) {
+            body { font-size: 15px; }
+            .verse { padding: 6px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="title">🌙 雙玉篇 · 杏夜雙視角 <span>｜ 他與她，同一夜</span></div>
+        <button class="btn" id="randomBtn">✧ 另擇一夜 ✧</button>
+    </div>
+    <div id="storyArea"></div>
+    <footer>※ 每夜不同 · 雙視角交織 · 不墜不墮，只溫潤如初</footer>
+</div>
+
+<script>
+    // 雙視角節點庫 (40節點，男女交替)
+    // 結構：N0(女) N1(男) N2(女) N3(男) ...
+    const lib = {};
+
+    // 女性視角 (偶數索引)
+    lib.N0 = "杏花影裡，黃絨獨坐枝椏，胸前脹意隱隱，她輕嘆一聲，將衣襟攏得更緊些。";
+    lib.N2 = "月光篩落，她看見樹下那人的身影，心頭一跳，卻沒有立刻離去。";
+    lib.N4 = "「若他再靠近一步……」她咬唇暗想，手指無意識地撫過自己發燙的頸側。";
+    lib.N6 = "跌入那個懷抱的瞬間，她竟先聞到一股乾草與汗意交織的、活生生的氣息。";
+    lib.N8 = "她的指尖按在他胸口，真氣凝而未發，只因那心跳太急、太真。";
+    lib.N10 = "夜風撩起散亂的髮絲，她看著他昏睡的面容，忽然覺得這張臉也沒那麼可憎。";
+    lib.N12 = "她伸出手，遲疑片刻，最終只是替他拉好了敞開的衣襟。";
+    lib.N14 = "「只此一夜。」她對自己說，卻把這句話說得溫軟如歎。";
+    lib.N16 = "身體交纏的那一刻，她閉上眼，不是因為羞恥，而是不想看見自己的淚。";
+    lib.N18 = "她伏在他胸口，聽著那粗重卻平穩的心跳，忽然覺得這幾年從未如此安穩。";
+    lib.N20 = "事後她披衣坐起，月光照著他酣睡的臉，她伸手輕輕撥開他額前的亂髮。";
+    lib.N22 = "離開時她在柴房門邊放了一朵杏花，算是……謝他陪這一夜荒唐。";
+    lib.N24 = "白日裡她對鏡梳妝，忽然笑了一聲——原來自己還會臉紅。";
+    lib.N26 = "再次走進那條巷子時，她沒有猶豫，甚至帶著一絲自己也意外的期待。";
+    lib.N28 = "「你會不會覺得我很壞？」她問。他愣一下，搖頭：「壞的是我。」她卻笑了。";
+    lib.N30 = "她開始習慣在他懷裡入睡，哪怕只有一個時辰，也比客棧那張大床踏實。";
+    lib.N32 = "某日他笨拙地煮了一碗紅糖水，說「聽說這個對女人好」。她喝了一口，很甜。";
+    lib.N34 = "她沒有對他說愛，他也從不問。兩人之間只有夜、杏花、和沉默的溫存。";
+    lib.N36 = "後來她學會在他睡著時，輕輕把頭靠在他肩上，像一隻終於找到屋簷的貓。";
+    lib.N38 = "最後一個杏花夜，她靠著他，輕聲說：「若我從此不來呢？」他沉默很久：「那便祝你平安。」";
+
+    // 男性視角 (奇數索引)
+    lib.N1 = "悠八靠在樹下，仰頭看著那道纖影，心跳竟比偷任何東西時都急。";
+    lib.N3 = "「我只是……怕她摔下來。」他這樣告訴自己，腳卻不聽使喚地往前挪了一步。";
+    lib.N5 = "她跌進懷裡的那一刻，他僵硬得像根木頭，連呼吸都忘了。";
+    lib.N7 = "她點他穴道時，他其實隱約有知覺——但他沒有躲，因為她那時在哭。";
+    lib.N9 = "醒來時衣襟被攏好，他低頭看了很久，心裡有一塊地方軟了下去。";
+    lib.N11 = "「她碰過這裡。」這個念頭讓他整夜沒再闔眼，卻不是因為慾望。";
+    lib.N13 = "第二次見面，他本想說幾句渾話，卻在她眼神下全嚥了回去。";
+    lib.N15 = "他笨拙地吻她額角，輕得像怕弄碎什麼。她沒躲，他心跳如擂。";
+    lib.N17 = "他從不知道女人可以這麼軟、這麼燙、這麼像一場溫柔的災難。";
+    lib.N19 = "事後他不敢動，怕驚醒她。直到她呼吸均勻，他才悄悄吻了吻她的髮頂。";
+    lib.N21 = "他學會在她來之前燒一壺熱水、鋪好乾草，甚至偷偷用粗布縫了一個枕頭。";
+    lib.N23 = "她問他「你會不會覺得我很壞」時，他差點說「是我配不上你」。";
+    lib.N25 = "他開始記住她喜歡什麼姿勢、討厭什麼話，比記任何事都認真。";
+    lib.N27 = "那碗紅糖水他煮了四遍，第三遍糊了，第四遍才勉強能喝。";
+    lib.N29 = "他從不問她丈夫的事，就像她從不問他從前——那是他們之間的規矩。";
+    lib.N31 = "有一夜她靠在他肩上睡著了，他就那樣睜眼到天亮，生怕一動就弄醒她。";
+    lib.N33 = "他偷偷學會了幾個字，歪歪扭扭寫下「杏花」兩個字，藏在枕頭下。";
+    lib.N35 = "「若你不再來，我就……我就當做了一場很長、很好的夢。」他這樣想。";
+    lib.N37 = "最後一次見面，他把那張寫著「杏花」的紙塞進她手裡，轉身走得很快。";
+    lib.N39 = "後來每年杏花開時，他都會在那棵樹下坐一會兒，也不知道在等誰。";
+
+    // 共 40 節點 (N0~N39)
+    const nodeKeys = [];
+    for (let i = 0; i <= 39; i++) nodeKeys.push('N' + i);
+
+    // 溫柔色調 (沿用你給的12色中的柔和版)
+    const colors = [
+        "#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64",
+        "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994",
+        "#2d6316", "#0c5426"
+    ];
+
+    function getRandomStory() {
+        let lines = [];
+        for (let i = 0; i <= 39; i++) {
+            let key = 'N' + i;
+            // 每個節點固定只有一句（雙視角已預先設計）
+            let text = lib[key];
+            if (!text) text = "月光靜靜落在兩人肩上。";
+            // 加上視角標記
+            let viewMark = (i % 2 === 0) ? "☾ 她 ·" : "☀ 他 ·";
+            lines.push({ view: viewMark, content: text });
+        }
+        return lines;
+    }
+
+    function renderStory() {
+        const story = getRandomStory();
+        const area = document.getElementById('storyArea');
+        let html = '';
+        story.forEach((line, idx) => {
+            const color = colors[idx % colors.length];
+            html += `
+                <div class="verse" style="border-left-color: ${color}; color: ${color};">
+                    <span class="tag" style="color:${color};">${line.view}</span>
+                    <b>${line.content}</b>
+                </div>
+            `;
+        });
+        area.innerHTML = html;
+        area.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('randomBtn').addEventListener('click', renderStory);
+    renderStory();
+</script>
+</body>
+</html>
