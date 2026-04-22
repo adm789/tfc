@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>杏夜獨白 · 自慰視角｜61節點 · 鍵盤控制</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* 避免拖曳選中，不影響閱讀 */
+        }
+
+        body {
+            background: #030101;
+            color: #d0c0b0;
+            font-family: 'Georgia', 'Times New Roman', '宋体', 'Microsoft JhengHei', serif;
+            font-size: 18px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* 固定頂欄 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #0a0507cc;
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #3a2a2a;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .title {
+            color: #bc7a5e;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+        }
+
+        .title span {
+            color: #9e0bab;
+            font-weight: bold;
+        }
+
+        .key-hint {
+            font-size: 0.7rem;
+            color: #a08070;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            background: #5e2a22;
+            border: none;
+            color: #f0ddcf;
+            font-size: 0.75rem;
+            padding: 4px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            background: #9e0bab;
+            color: white;
+        }
+
+        /* 故事輸出區 */
+        #out {
+            width: 90%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 80px 20px 80px 20px;
+        }
+
+        /* 每一行 */
+        .verse-line {
+            display: block;
+            margin-bottom: 18px;
+            padding: 8px 16px 8px 24px;
+            border-left: 4px solid currentColor;
+            text-align: justify;
+            font-weight: bold;
+            transition: all 0.1s ease;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 0 14px 14px 0;
+        }
+
+        /* 詞庫高亮 */
+        .hl {
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-decoration-style: dotted;
+            text-underline-offset: 4px;
+        }
+
+        /* 響應式 */
+        @media (max-width: 700px) {
+            body { font-size: 16px; }
+            .verse-line { padding: 6px 12px; margin-bottom: 12px; }
+            .key-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌸 杏夜獨白 · 自慰視角 <span>【61章 · 鍵盤控制】</span></div>
+    <div class="key-hint">⬆ ⬇ 滾動行 |  ➕ ➖ 縮放字體</div>
+    <button class="btn" id="regenerateBtn">✧ 再織一夜 ✧</button>
+</div>
+
+<div id="out"></div>
+
+<script>
+    // ============================================================
+    // 詞庫系統（你提供的完整版）
+    // ============================================================
+    const tokens = {
+        env: [
+            "春夜躁動的杏花香氣", "月華穿過疏枝篩落", "林間凝滯的濕潤霧氣",
+            "寂靜如死的密林深處", "星子隱沒的幽深夜幕", "帶著花蕊甜腥的暖風",
+            "露水浸透的苔蘚氣息", "暗影浮動的月下小徑", "蟬鳴斷續的燥熱晚空",
+            "幽蘭腐熟般的甜靡氣味"
+        ],
+        feeling: [
+            "羞恥與渴望如藤蔓絞纏", "理智在暗火中寸寸成灰", "一種近乎受刑的豐盈飽脹",
+            "久曠身軀對雨露的極度渴念", "瀕臨滅頂的恍惚極樂", "高貴與卑賤在體內撕扯",
+            "既怕又盼的禁忌甜毒", "道德與本能交戰後的虛脫", "被窺視的戰慄快感",
+            "如墜深淵卻又甘願沉溺"
+        ],
+        action: [
+            "難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入",
+            "如狂浪般上下吞吐", "放肆地揉捏搓弄", "痙攣般地絞緊又放鬆",
+            "近乎癲狂地擺盪腰肢", "斷續破碎地嬌吟", "指尖陷入軟肉留下紅痕",
+            "無意識地迎合撞擊"
+        ]
+    };
+
+    // 替換詞庫函數
+    function replaceTokens(text) {
+        return text.replace(/{(\w+)}/g, (match, key) => {
+            const pool = tokens[key];
+            if (!pool) return match;
+            const randomItem = pool[Math.floor(Math.random() * pool.length)];
+            return `<span class="hl">${randomItem}</span>`;
+        });
+    }
+
+    // ============================================================
+    // 61 節點 · 自慰視角（單人使用，無第二人）
+    // N0 ~ N60
+    // 每節點固定一句，但內含 {env}{feeling}{action} 動態詞庫
+    // ============================================================
+    const lib = {};
+
+    // 第一組：獨處 · 身體覺醒 (N0~N10)
+    lib.N0 = "{env}，黃絨獨臥榻上，衣襟早已散亂，指尖無意識地撫過鎖骨。";
+    lib.N1 = "胸前脹意如潮，她咬唇忍耐片刻，終究顫抖著解開中衣，一對雪峰彈跳而出。";
+    lib.N2 = "乳尖早已挺立，她遲疑地以指腹輕觸，一陣{feeling}竄過全身。";
+    lib.N3 = "「就碰一下……沒人知道……」她喃喃自語，指尖開始{action}。";
+    lib.N4 = "乳汁不知何時滲出，順著乳溝流下，沾濕了小腹，空氣中漫開甜腥。";
+    lib.N5 = "她閉上眼，幻想有一雙粗糙的大手正在揉捏自己，身體不自覺地{action}。";
+    lib.N6 = "另一隻手悄悄探入腿間，隔著薄薄的褻褲，已能摸到一片{feeling}的濕滑。";
+    lib.N7 = "她弓起腰，將褻褲褪至膝彎，指尖撥開層疊花瓣，觸及那顆紅腫的蕊珠。";
+    lib.N8 = "{action}，快感如電流般竄遍四肢，她咬住手背，不讓自己叫出聲。";
+    lib.N9 = "體內越來越空，彷彿有一口深井渴望被填滿，她{action}卻仍不夠。";
+    lib.N10 = "高潮來臨時，她渾身痙攣，乳汁與淫水同時湧出，大腦一片空白。";
+
+    // 第二組：事後 · 餘韻與自省 (N11~N20)
+    lib.N11 = "喘息漸平，她躺在狼藉的床褥上，月光照著濕透的胸腹。";
+    lib.N12 = "{env}，她忽然覺得自己像一隻被餵飽的母獸，慵懶而饜足。";
+    lib.N13 = "「原來一個人也可以……」她輕笑一聲，指尖沾著自己的體液發呆。";
+    lib.N14 = "乳尖仍微微發燙，她伸手輕輕按住，感受殘留的{feeling}。";
+    lib.N15 = "腿間黏膩一片，她沒有立刻清理，反而貪戀這種被自己浸透的感覺。";
+    lib.N16 = "閉上眼，她開始幻想更放肆的畫面——被壓在牆上、被揉捏、被進入。";
+    lib.N17 = "身體又一次燥熱起來，她猶豫片刻，決定{action}。";
+    lib.N18 = "這一次她不再壓抑聲音，低低的呻吟在空蕩的房間裡迴盪。";
+    lib.N19 = "第二次高潮來得更快更猛，她蜷起身體，像一隻煮熟的蝦。";
+    lib.N20 = "事後她癱軟如泥，心想：「這樣下去，會不會壞掉？」";
+
+    // 第三組：白日 · 暗湧 (N21~N30)
+    lib.N21 = "白日裡與人說話，她忽然走神，想起昨夜自己的{action}。";
+    lib.N22 = "腿間不自覺又濕了，她趕緊夾緊雙腿，生怕被人看出異樣。";
+    lib.N23 = "「我是不是……太過分了？」她問自己，身體卻誠實地渴望夜晚降臨。";
+    lib.N24 = "黃昏時她藉口疲倦早早回房，鎖上門，連燈都懶得點。";
+    lib.N25 = "黑暗中她熟練地褪下衣裙，手指直接探入那條{feeling}的溝壑。";
+    lib.N26 = "這一次她試著模仿想像中的節奏，{action}，讓自己喘息越來越重。";
+    lib.N27 = "她開始幻想一個具體的面孔——模糊的、強壯的、沉默的。";
+    lib.N28 = "「叫我的名字……」她在幻想中聽見那個聲音，身體瞬間繃緊。";
+    lib.N29 = "高潮來時她無聲地張嘴，像一條被甩上岸的魚。";
+    lib.N30 = "良久她爬起來清理，看著鏡中潮紅的臉，竟覺得比平日好看。";
+
+    // 第四組：習慣 · 日常儀式 (N31~N40)
+    lib.N31 = "從此每晚入睡前，她都會留一個時辰給自己。";
+    lib.N32 = "{env}，她點一盞小燈，鋪好軟巾，像某種儀式。";
+    lib.N33 = "她開始嘗試不同的手法——輕柔的、粗暴的、迂迴的、直接的。";
+    lib.N34 = "有時她會用枕頭夾在腿間，{action}直到渾身出汗。";
+    lib.N35 = "乳尖被她揉得紅腫，乳汁常常在最高潮時噴濺出來。";
+    lib.N36 = "她學會了控制節奏，讓快感像潮水一樣漲落，延長再延長。";
+    lib.N37 = "有時她會故意不讓自己高潮，就那樣懸在邊緣，享受{feeling}。";
+    lib.N38 = "那種瀕臨卻未到的狀態，比高潮本身更讓人上癮。";
+    lib.N39 = "她開始記錄每一夜的感受，不是日記，只是幾筆暗號。";
+    lib.N40 = "「第三夜，用了左手，很快。」——只有她自己看得懂。";
+
+    // 第五組：探索 · 玩具與禁忌 (N41~N50)
+    lib.N41 = "某一日她買了一支玉勢，藏在枕下，心跳如鼓。";
+    lib.N42 = "初次使用時，冰涼的觸感讓她{action}，好一會兒才適應。";
+    lib.N43 = "她將玉勢慢慢推入體內，那種被填滿的感覺讓她幾乎落淚。";
+    lib.N44 = "「原來……是這種感覺……」她一邊抽送一邊喘息。";
+    lib.N45 = "乳汁在最高潮時噴出，濺在玉勢上，她竟覺得那畫面很美。";
+    lib.N46 = "事後她清洗玉勢，小心收好，像守著一個甜蜜的秘密。";
+    lib.N47 = "從此她有時候用手、有時候用玉勢、有時候兩者並用。";
+    lib.N48 = "她甚至嘗試過在自慰時輕聲叫出那個幻想中的名字。";
+    lib.N49 = "「……再用力一點……」她對空氣說，身體劇烈顫抖。";
+    lib.N50 = "那一夜她高潮了三次，最後一次幾乎昏睡過去。";
+
+    // 第六組：接納 · 不再羞恥 (N51~N60)
+    lib.N51 = "漸漸地，她不再覺得這件事需要隱藏。這是她的身體、她的夜。";
+    lib.N52 = "{env}，她甚至會打開窗戶，讓月光照著自己{action}。";
+    lib.N53 = "「若有人看見便看見吧。」她想，反正沒有人知道她是誰。";
+    lib.N54 = "她開始在自慰後安然入睡，不再有罪惡感，只有滿足。";
+    lib.N55 = "白日裡她依然端莊自持，但只有她知道，夜晚的自己有多放肆。";
+    lib.N56 = "這種雙面生活讓她覺得自己像一枚硬幣，兩面都真實。";
+    lib.N57 = "某一夜她忽然笑出聲——原來一個人也可以這麼快樂。";
+    lib.N58 = "不需要另一個人，不需要理由，只需要{env}和一隻手。";
+    lib.N59 = "她終於明白：身體是自己的，快樂也是。";
+    lib.N60 = "杏花年年落，她年年如此。不為誰，只為自己。";
+
+    // 收集所有節點 (N0 ~ N60)
+    const nodeKeys = [];
+    for (let i = 0; i <= 60; i++) nodeKeys.push('N' + i);
+
+    // 你的12色調
+    const colorPalette = [
+        "#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64",
+        "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994",
+        "#2d6316", "#0c5426"
+    ];
+
+    // 生成完整故事（61句，每句經過詞庫替換）
+    function generateFullStory() {
+        const lines = [];
+        for (let i = 0; i <= 60; i++) {
+            const key = 'N' + i;
+            let raw = lib[key];
+            if (!raw) raw = "{env}，她靜靜躺著，感受自己的心跳。";
+            const cooked = replaceTokens(raw);
+            lines.push(cooked);
+        }
+        return lines;
+    }
+
+    // 渲染到頁面
+    let currentLines = [];
+
+    function renderStory() {
+        currentLines = generateFullStory();
+        const outDiv = document.getElementById('out');
+        let html = '';
+        for (let idx = 0; idx < currentLines.length; idx++) {
+            const color = colorPalette[idx % colorPalette.length];
+            html += `<div class="verse-line" style="color: ${color}; border-left-color: ${color};"><b>${currentLines[idx]}</b></div>`;
+        }
+        outDiv.innerHTML = html;
+        // 重置滾動位置到頂部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============================================================
+    // 鍵盤控制
+    // ============================================================
+    let currentLineIndex = 0;
+    let currentFontSize = 18; // 單位 px
+
+    function updateFontSize(delta) {
+        let newSize = currentFontSize + delta;
+        if (newSize < 12) newSize = 12;
+        if (newSize > 36) newSize = 36;
+        currentFontSize = newSize;
+        document.body.style.fontSize = currentFontSize + 'px';
+    }
+
+    function scrollToLine(index) {
+        const lines = document.querySelectorAll('.verse-line');
+        if (!lines.length) return;
+        if (index < 0) index = 0;
+        if (index >= lines.length) index = lines.length - 1;
+        currentLineIndex = index;
+        lines[currentLineIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 可選：高亮當前行（臨時效果）
+        lines.forEach((line, i) => {
+            line.style.background = i === currentLineIndex ? 'rgba(158,11,171,0.15)' : 'rgba(0,0,0,0.25)';
+        });
+    }
+
+    // 鍵盤事件
+    window.addEventListener('keydown', (e) => {
+        // 上下鍵：滾動行
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            scrollToLine(currentLineIndex - 1);
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            scrollToLine(currentLineIndex + 1);
+        }
+        // +/- 鍵：縮放字體（Shift 或 直接）
+        else if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            updateFontSize(1);
+        } else if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            updateFontSize(-1);
+        }
+    });
+
+    // 按鈕重新生成
+    document.getElementById('regenerateBtn').addEventListener('click', () => {
+        renderStory();
+        // 重置行索引
+        setTimeout(() => {
+            currentLineIndex = 0;
+            scrollToLine(0);
+        }, 100);
+    });
+
+    // 初始化
+    renderStory();
+    setTimeout(() => {
+        currentLineIndex = 0;
+        scrollToLine(0);
+    }, 100);
+</script>
+</body>
+</html>
