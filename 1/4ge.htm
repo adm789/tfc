@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>極彩編織 V4 | 全屏版</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #FF8FAB;
+        overflow: hidden; /* 徹底鎖死滾動條 */
+        font-family: 'Microsoft JhengHei', sans-serif;
+        width: 100vw; height: 100vh;
+    }
+    /* 極簡頂欄 */
+    .header {
+        position: fixed; top: 0; left: 0; width: 100%; height: 30px;
+        background: rgba(10, 0, 5, 0.95);
+        display: flex; justify-content: space-between; align-items: center;
+        z-index: 100; padding: 0 10px; border-bottom: 1px solid #9e0bab;
+    }
+    .title { color: #e0aaff; font-size: 0.75rem; letter-spacing: 1px; }
+    .go-btn {
+        background: #6d1202; border: none; color: #ffe0cc;
+        font-size: 0.7rem; padding: 2px 10px; cursor: pointer; border-radius: 3px;
+    }
+    /* 全屏內容區 */
+    #storyContainer {
+        width: 100vw; height: 100vh; padding-top: 30px;
+        background: #EED9C4; display: flex; flex-direction: column;
+    }
+    .story-line {
+        flex: 1; /* 均分高度 */
+        display: flex; align-items: center;
+        padding: 0 8px; font-size: 1rem; line-height: 1;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        border-left: 4px solid transparent;
+    }
+    .story-line b {
+        color: #ffb7b0; background: #3a0a2a;
+        padding: 0 3px; border-radius: 3px; font-weight: 900;
+    }
+</style>
+</head>
+<body>
+<div class="header">
+    <div class="title">🌸 悠風 · 極彩編織</div>
+    <button class="go-btn" id="weaveBtn">RE-WEAVE</button>
+</div>
+<div id="storyContainer"></div>
+<script>
+    const tokens = {
+        env: ["春夜燥熱的風", "月光透過稀疏枝葉", "林間瀰漫的杏花香", "靜謐死寂的密林", "沾著露水的苔地"],
+        feeling: ["羞恥與渴望並生", "理智在慾火中化為灰燼", "一種近乎折磨的豐盈", "背德的狂喜"],
+        action: ["劇烈起伏", "顫抖著探入", "瘋狂地吞吐", "痙攣般扭動", "失控地墜落"]
+    };
+    const lib = {
+        N0: ["{env}，黃絨立於高處，每一次呼吸都激起一陣{feeling}。"],
+        N1: ["束縛一去，那對<b>雪膩豪乳</b>猛然彈出，<b>乳尖</b>殷紅如硃砂。"],
+        N2: ["一個滾燙堅硬的<b>肉杵</b>抵住了顫抖的<b>花心</b>，{feeling}淹沒理智。"],
+        N3: ["她大口喘息，胸前<b>雙乳</b>上下起伏，<b>乳汁</b>不受控地溢出。"],
+        N4: ["她大膽地握住那沉甸甸的<b>囊袋</b>，觸摸著那股野性。"],
+        N5: ["一根青筋暴起的<b>肉柱</b>怒挺在眼前，散發著窒息的<b>雄性腥氣</b>。"],
+        N6: ["她一手握住粗大的<b>肉棍</b>，指尖觸及紅腫的<b>蕊珠</b>。"],
+        N7: ["她跨坐在悠八腰腹之上，那鐵杵在<b>臀瓣</b>間來回滑動。"],
+        N8: ["那根帶有野性的<b>肉柱</b>長驅直入，狠狠抵上最深處的<b>宮房</b>。"],
+        N9: ["「不行了…要洩了…」<b>陰精</b>噴薄而出，混合著<b>乳汁</b>。"],
+        N10: ["她側臥在狼藉的<b>白濁</b>與<b>奶漬</b>中，月光照著赤裸胴體。"],
+        N11: ["她在溪邊擦洗身體，卻擦不掉體內深處那股被撐開的記憶。"],
+        N12: ["她想起昨夜自己握著那根粗物的觸感，腿間又不自覺濕了。"],
+        N13: ["柴房裡乾草散落一地，她配合地翹起了臀部。"],
+        N14: ["她伸手去抓那根濕淋淋的<b>肉棍</b>塞回體內，{action}。"],
+        N15: ["她愛上了這種背德的快感，像溺水的人抓住浮木。"],
+        N16: ["事後她躺在草堆上，任由<b>白濁</b>從腿間流出，眼神空洞。"],
+        N17: ["她分不清什麼是愛，什麼是慾，身體卻不由自主地濕透。"],
+        N18: ["江湖傳聞黃幫主日漸豐腴風騷，眉梢眼角盡是春意。"],
+        N19: ["柴房裡的喘息聲祭奠著她重生的自由。{env}。"]
+    };
+    const colors = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
+    function render() {
+        let html = '';
+        for(let i=0; i<20; i++) {
+            let raw = lib['N'+i][0];
+            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? tokens[k][Math.floor(Math.random()*tokens[k].length)] : m);
+            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|奶漬|乳尖|乳頭|奶頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
+            const color = colors[Math.floor(Math.random()*colors.length)];
+            html += `<div class="story-line" style="color:${color}; border-left-color:${color};">🌸 ${cooked}</div>`;
+        }
+        document.getElementById('storyContainer').innerHTML = html;
+    }
+    document.getElementById('weaveBtn').onclick = render;
+    window.onload = render;
+</script>
+</body>
+</html>
