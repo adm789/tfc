@@ -1,0 +1,393 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>杏夜堕花 · 随机叙事机 | 20节点版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #e0d6c0;
+            font-family: 'Georgia', 'Times New Roman', '宋体', serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #1e1612;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #5e3a2e;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            color: #e07a5f;
+            margin-bottom: 8px;
+        }
+
+        .sub {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #b87a5a;
+            margin-bottom: 24px;
+            border-bottom: 1px dashed #5e3a2e;
+            padding-bottom: 12px;
+        }
+
+        /* 节点网格预览（小窗展示当前库的摘要） */
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 6px;
+            margin-bottom: 24px;
+            background: #0f0b09;
+            padding: 12px;
+            border-radius: 16px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .node-card {
+            background: #2a201b;
+            border-left: 4px solid #c2472c;
+            padding: 6px 8px;
+            font-size: 11px;
+            color: #ccb9a8;
+            border-radius: 6px;
+        }
+
+        .node-card strong {
+            color: #e07a5f;
+            font-size: 10px;
+        }
+
+        /* 输出故事区 */
+        .story-area {
+            background: #fef7e8;
+            color: #2c1a12;
+            padding: 20px;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: inset 0 0 0 1px #fff8, 0 8px 20px rgba(0,0,0,0.3);
+            display: none;
+        }
+
+        .story-line {
+            display: block;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e2cfb5;
+            font-size: 1.05rem;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .story-line:last-child {
+            border-bottom: none;
+        }
+
+        /* 按钮区 */
+        .button-area {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        #goBtn {
+            background: #b53b1c;
+            border: none;
+            color: white;
+            font-size: 1.4rem;
+            font-weight: bold;
+            padding: 12px 40px;
+            border-radius: 60px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 6px;
+            transition: 0.2s;
+            box-shadow: 0 3px 0 0 #5e1e0a;
+        }
+
+        #goBtn:hover {
+            background: #d65c3a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 0 0 #5e1e0a;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 20px;
+            color: #7e5a48;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌙 杏夜堕花 · 随机叙事机 🌸</h1>
+    <div class="sub">20 个情欲节点 · 每节点 5 种可能 · 每次点击生成全新篇章</div>
+
+    <!-- 节点预览 (仅展示结构) -->
+    <div class="node-grid" id="nodePreview"></div>
+
+    <!-- 随机故事输出区 -->
+    <div class="story-area" id="storyArea">
+        <div id="storyContent"></div>
+    </div>
+
+    <div class="button-area">
+        <button id="goBtn">🌸 再写一次 · 随机缘法 🌸</button>
+    </div>
+    <footer>※ 每次点击，从20个节点中各随机取一句，组成一篇完整的侠女堕花记</footer>
+</div>
+
+<script>
+// ========================
+// 20个节点 · 每个节点5条文本 (基于原文意境扩展)
+// ========================
+const storyNodes = {};
+
+// N0  前缘 · 暗香浮动
+storyNodes.N0 = [
+    "春夜杏花微醺，黃絨獨行林間，衣襟下雙乳脹得發疼，乳汁已滲出薄衫。",
+    "悠八隱在樹後，盯住她豐腴身段，喉頭滾動：「這娘子，像是熟透的水蜜桃。」",
+    "「借力春風杏花雨」——他低吟一句市井豔詞，黃絨聽得耳根發燙。",
+    "胸口的濕意越來越重，她咬唇暗罵自己不爭氣，怎就被這莽漢撩動了心弦。",
+    "月色下，兩道影子一高一低，慾望如藤蔓悄然纏繞上理智的圍牆。"
+];
+
+// N1  樹梢自解 · 玉山傾頹
+storyNodes.N1 = [
+    "她攀上高枝，顫抖著解開衣襟，那對雪膩豪乳猛然彈出，在月光下晃動。",
+    "乳汁順著乳尖滴落，滴滴答答落在樹葉上，空氣中漫開甜腥的奶香。",
+    "「嗯……好脹……」她雙手揉捏自己的雙峰，白線劃破夜空，濺濕了樹下泥土。",
+    "悠八在樹下仰頭張嘴，幾滴乳汁落入口中，他貪婪舔唇：「好甜……」。",
+    "黃絨半瞇著眼，一邊擠奶一邊生出奇異的快感——反正無人看見這羞態。"
+];
+
+// N2  跌落 · 入虎口
+storyNodes.N2 = [
+    "腳下一滑，她如斷翅白鶴直墜而下，還未站穩便被一雙粗臂抵在樹幹。",
+    "「嘶啦——」褻褲在暴力下碎成片片，夜風灌入濕透的腿間，她羞恥得幾乎昏厥。",
+    "悠八一口含住她乳尖猛力吸吮，乳汁咕滋咕滋被吞下，像飢餓的野獸。",
+    "粗糙手掌揉捏她肥碩的臀瓣，指尖順著股溝滑向那片泥濘花園。",
+    "一根滾燙硬物抵在腿根，龜頭撐開陰唇邊緣——她渾身繃緊，驚呼未出。"
+];
+
+// N3  點穴 · 反製為觀
+storyNodes.N3 = [
+    "千鈞一髮，她指尖凝聚真氣，精準點中悠八「膻中穴」，他悶聲倒地。",
+    "黃絨背靠樹幹滑坐在地，大口喘息，胸前乳汁仍不斷滲出，濕透衣襟。",
+    "「好險……再差一寸便……」她不敢再想，卻發現自己下身依然濕得厲害。",
+    "林中復歸死寂，只有遠處蟲鳴和她的心跳交織成曖昧的節奏。",
+    "她低頭看向昏睡的男子，目光竟無法從他敞開的褲襠移開。"
+];
+
+// N4  窺探 · 觸碰禁忌
+storyNodes.N4 = [
+    "那團軟塌塌的肉垂在胯間，毛髮濃密狂亂，透著一股未經開化的野性。",
+    "她鬼使神差伸出指尖，輕輕觸碰那軟物：「男子的東西，竟能縮得這般小？」",
+    "入手溫熱、沉甸甸，與丈夫郭靜的乾淨規整截然不同，她心跳如鼓。",
+    "指尖沾上些許黏膩，她竟不覺噁心，反而更深空虛從下腹升起。",
+    "她縮回手，又忍不住再探，像偷嘗禁果的少女，羞恥又興奮。"
+];
+
+// N5  解穴 · 目睹勃起
+storyNodes.N5 = [
+    "她解開他部分經脈，只留昏睡穴。悠八呼吸粗重，那團軟肉開始突突跳動。",
+    "「小娘子……好白……讓哥哥吃一口……」夢中粗語鑽入耳中，她耳根燙如火燒。",
+    "那物在她掌心迅速膨大、變硬、上翹，青筋畢露，比丈夫的更加驚人。",
+    "龜頭雞蛋般大小，前端微彎，散發著濃烈的雄性腥氣，她口乾舌燥。",
+    "她握著那滾燙肉杵，感覺它在手中脈動，理智正在一寸寸崩坍。"
+];
+
+// N6  品簫撫琴 · 孤獨自瀆
+storyNodes.N6 = [
+    "黃絨一手握住陽具輕輕套弄，一手探入自己濕透的腿間。",
+    "指尖撥開層層疊疊的花瓣，觸及那顆紅腫的蕊珠，一陣酥麻竄遍全身。",
+    "月下林間，一代俠女衣衫半解，一手品簫、一手撫琴，畫面淫靡至極。",
+    "「嗯……不夠……這樣不夠……」越是撫弄，體內那口深井越是乾渴。",
+    "淫水順著大腿流下，她一邊嚕動肉棍，一邊揉搓陰唇，幾近瘋狂。"
+];
+
+// N7  跨坐 · 邊緣磨蹭
+storyNodes.N7 = [
+    "她翻身跨上悠八粗壯的腰腹，肥臀貼上他粗糙的肚皮，毛茬扎著嫩肉。",
+    "那根怒龍嵌在臀溝中，龜頭沿著濕滑裂縫來回滑動，每次都擦過洞口。",
+    "陰唇緊貼棍身摩擦，快感如電流般湧遍全身，淫水簌簌而落。",
+    "「就磨一磨……不算真的……」她喃喃自語，腰肢卻越扭越急。",
+    "龜頭撐開陰唇邊緣，只差最後一沉——身體已徹底不聽使喚。"
+];
+
+// N8  沈淪 · 全根沒入
+storyNodes.N8 = [
+    "「便只一次……權當春夢……」肥臀一沉，粗物連根沒入，她仰頭泣叫。",
+    "「噗滋——」淫水四濺，撕裂與充實同時炸開，淚水與淫水一齊湧出。",
+    "體內被蠻橫撐開，久違的充實感讓她幾乎暈厥，那是丈夫從未給過的深度。",
+    "她在他身上瘋狂起伏，雙乳甩出乳白弧線，奶水噴了他滿臉。",
+    "「啊……太深了……要壞了……」她悲鳴著，卻怎樣也停不下來。"
+];
+
+// N9  高潮 · 上下雙洩
+storyNodes.N9 = [
+    "「不行了……要洩了……噢——」陰精如潮噴出，乳汁同時激射，上下雙洩。",
+    "悠八在夢中低吼，腰身猛地挺動，滾燙陽精狠狠灌入花心深處。",
+    "「別……不能射在裡面……」她驚叫著要起身，卻被那一波波熱流燙得渾身痙攣。",
+    "那股熱力彷彿要將她融化，她癱軟在他身上，大腦一片空白。",
+    "良久，她趴在他胸口，感受體內那根東西慢慢變軟，心中說不清是悔還是饜足。"
+];
+
+// N10 餘韻 · 狼藉月光
+storyNodes.N10 = [
+    "風止花落。她側臥在狼藉的白濁與奶漬中，月光照著赤裸胴體。",
+    "腿間那一片泥濘在月色下反光，陽精與淫水混合，順著大腿根流下。",
+    "她看著依然昏睡的悠八，嘴角竟不自覺勾起一絲苦笑：「荒唐……」",
+    "心中羞恥難當，卻又隱隱覺得某種壓抑多年的東西被釋放了。",
+    "「碎了一地……卻又像重生一般……」她閉上眼睛，不願再想。"
+];
+
+// N11 拂曉 · 暗痕
+storyNodes.N11 = [
+    "天色微明，黃絨穿好衣衫，將殘破的褻褲塞入袖中。",
+    "她回頭看了悠八最後一眼，那醜陋的臉上還掛著滿足的笑意。",
+    "腿間的酸軟和黏膩提醒她昨夜的一切不是夢，是真實的墮落。",
+    "她咬咬牙，提氣躍上枝頭，身影消失在晨霧之中。",
+    "杏花落了滿地，像極了她碎了一地的貞節牌坊。"
+];
+
+// N12 歸途 · 暗湧
+storyNodes.N12 = [
+    "回到客棧，丈夫郭靜仍在酣睡。她悄悄褪下衣衫，看見身上青紫的指痕。",
+    "胸前乳尖還微微發燙，乳汁又漲了出來，浸濕了中衣。",
+    "她坐在鏡前，看著鏡中那張仍帶潮紅的臉，覺得既熟悉又陌生。",
+    "「只此一次……再不會了……」她對自己說，卻連自己都不信。",
+    "窗外晨光刺眼，她閉上眼，腦中浮現的竟是悠八那根青筋暴起的陽物。"
+];
+
+// N13 白日 · 回想
+storyNodes.N13 = [
+    "白日裡與郭靜對弈，她屢屢走神，棋子落錯了七八次。",
+    "郭靜笑問：「夫人昨夜沒睡好？」她心虛低頭，耳根泛紅。",
+    "手指捏著棋子，卻想起昨夜自己握著那根粗物套弄的觸感。",
+    "腿間又不自覺濕了，她趕緊夾緊雙腿，生怕被看出異樣。",
+    "那種禁忌的刺激在白日裡回想起來，竟比昨夜更加撩人。"
+];
+
+// N14 再遇 · 心魔
+storyNodes.N14 = [
+    "傍晚她獨自去集市買胭脂，卻在巷口撞見那個熟悉的身影。",
+    "悠八笑嘻嘻湊過來：「小娘子，昨夜睡得可好？」",
+    "她心跳如雷，想轉身離去，腳卻像釘在地上。",
+    "他低聲道：「哥哥那裡還有些新鮮玩意兒，娘子若有空……」",
+    "她咬唇不語，最終竟鬼使神差跟著他走進了巷子深處。"
+];
+
+// N15 第二次 · 熟門熟路
+storyNodes.N15 = [
+    "柴房裡乾草散落一地，還未站穩，悠八已從背後摟住她的腰。",
+    "這一次沒有點穴，沒有掙扎。她甚至配合地翹起臀部。",
+    "裙子被撩起，褻褲扯到膝彎，那根滾燙的肉杵直接頂了進來。",
+    "「啊……輕些……」她扶著牆壁，承受著背後猛烈的撞擊。",
+    "乳汁隨著每一下撞擊噴出，濺在乾草上，空氣中全是甜腥。"
+];
+
+// N16 沈溺 · 不再抗拒
+storyNodes.N16 = [
+    "「你不是有丈夫嗎？怎的還這般飢渴？」悠八一邊抽送一邊調笑。",
+    "她已經說不出完整的話，只能發出破碎的呻吟：「閉……閉嘴……嗯……」",
+    "他故意拔出來，她竟慌張地伸手去抓那根濕淋淋的肉棍塞回體內。",
+    "「騷娘子，還說不想要？」他大笑，把她翻過來壓在草堆上。",
+    "她雙腿纏上他的腰，主動迎合，什麼俠女風範全丟到了九霄雲外。"
+];
+
+// N17 墮落 · 認命
+storyNodes.N17 = [
+    "事後她躺在草堆上，任由白濁從腿間流出，眼神空洞。",
+    "「我是不是……壞掉了？」她喃喃自語。",
+    "悠八點了一根煙桿，吐著煙圈：「壞什麼壞，這才叫快活。」",
+    "她忽然笑出聲，笑得眼淚都出來了：「是啊……快活……」",
+    "那一夜她沒有回客棧，在柴房裡與那個無賴纏綿了整整一夜。"
+];
+
+// N18 偷情 · 慣犯
+storyNodes.N18 = [
+    "從此每隔三五日，她便藉口採藥、賞花，去那間柴房赴約。",
+    "悠八總能想出各種新鮮花樣，讓她欲仙欲死。",
+    "她甚至學會了主動騎在他臉上，讓他用舌頭伺候自己。",
+    "奶水依然豐沛，每次都被他吸得一滴不剩，脹痛再也沒有了。",
+    "她愛上了這種背德的快感，甚至開始期待每一次幽會。"
+];
+
+// N19 終章 · 杏花落盡
+storyNodes.N19 = [
+    "那年秋天，郭靜偶然發現了她袖中的男人汗巾，沉默良久。",
+    "他沒有揭穿，只是從此夜不歸宿。黃絨也不追問。",
+    "杏花林中的那間柴房，成了她真正的歸宿。",
+    "江湖傳聞，黃幫主日漸豐腴風騷，卻再也不問武林事。",
+    "有人說曾在杏花林見過她，衣衫半解，靠著一個粗漢子喝酒。"
+];
+
+// 將所有節點收集成陣列 (N0 ~ N19)
+const nodeKeys = [];
+for (let i = 0; i <= 19; i++) {
+    const key = 'N' + i;
+    nodeKeys.push(key);
+}
+
+// 預覽節點 (顯示每個節點的第一句)
+function buildPreview() {
+    const previewDiv = document.getElementById('nodePreview');
+    previewDiv.innerHTML = '';
+    for (let i = 0; i <= 19; i++) {
+        const key = 'N' + i;
+        const firstLine = storyNodes[key][0];
+        const card = document.createElement('div');
+        card.className = 'node-card';
+        card.innerHTML = `<strong>${key}</strong><br>${firstLine.substring(0, 38)}…`;
+        previewDiv.appendChild(card);
+    }
+}
+
+// 核心：隨機生成一篇完整故事
+function generateRandomStory() {
+    let storyLines = [];
+    for (let i = 0; i <= 19; i++) {
+        const key = 'N' + i;
+        const texts = storyNodes[key];
+        const randomIndex = Math.floor(Math.random() * texts.length);
+        storyLines.push(texts[randomIndex]);
+    }
+    return storyLines;
+}
+
+// 渲染故事到畫面
+function renderStory() {
+    const storyLines = generateRandomStory();
+    const storyContent = document.getElementById('storyContent');
+    const storyArea = document.getElementById('storyArea');
+    
+    storyContent.innerHTML = storyLines.map(line => `<span class="story-line">🌸 ${line}</span>`).join('');
+    storyArea.style.display = 'block';
+    storyArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 初始化
+buildPreview();
+
+// 綁定按鈕
+document.getElementById('goBtn').addEventListener('click', renderStory);
+
+// 初次加載時自動生成一篇
+renderStory();
+</script>
+</body>
+</html>
