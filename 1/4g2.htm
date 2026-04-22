@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>悠風 · 極彩墮花 V4 | 20節點全屏</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #FF8FAB;
+        color: #ddd;
+        font-family: 'Georgia', 'Microsoft JhengHei', serif;
+        overflow-x: hidden;
+        line-height: 1.2;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 35px;
+        background: rgba(10, 0, 5, 0.95);
+        border-bottom: 1px solid #9e0bab;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 100;
+        padding: 0 15px;
+    }
+
+    .title { color: #e0aaff; font-size: 0.85rem; letter-spacing: 1px; }
+
+    .go-btn {
+        background: #6d1202;
+        border: 1px solid #9e0bab;
+        color: #ffe0cc;
+        font-size: 0.75rem;
+        padding: 2px 15px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    #storyContainer {
+        width: 100%;
+        min-height: 100vh;
+        padding: 45px 20px 20px 20px;
+        background: #EED9C4;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .story-line {
+        margin-bottom: 5px;
+        padding: 5px 10px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+    }
+
+    .story-line b {
+        color: #ffb7b0;
+        background: linear-gradient(135deg, #3a0a2a, #1f0518);
+        padding: 0 4px;
+        border-radius: 8px;
+        text-shadow: 0 0 2px #9e0bab;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌸 悠風 · 極彩墮花 (20 Nodes Full Update)</div>
+    <button class="go-btn" id="weaveBtn">RE-WEAVE</button>
+</div>
+
+<div id="storyContainer"></div>
+
+<script>
+    const tokens = {
+        env: ["春夜燥熱的風", "月光透過稀疏枝葉", "林間瀰漫的杏花香", "靜謐死寂的密林", "月隱星沈的深夜", "沾著露水的苔地", "杏花飄落的暗影", "帶著泥土腥氣的夜霧"],
+        feeling: ["羞恥與渴望並生", "理智在慾火中化為灰燼", "一種近乎折磨的豐盈", "久曠身體的極度渴望", "瀕死的極樂", "背德的狂喜與空虛交織", "壓抑多年的本能甦醒", "靈魂與肉體的分裂"],
+        action: ["劇烈起伏", "顫抖著探入", "蠻不講理地釘入", "瘋狂地吞吐", "肆無忌憚地揉捏", "痙攣般扭動", "貪婪地吸吮", "失控地墜落"]
+    };
+
+    const lib = {
+        N0: ["{env}，黃絨立於高處枝椏，衣襟下的束縛勒出紅痕，每一次呼吸都激起一陣{feeling}。"],
+        N1: ["束縛一去，那對被壓抑許久的<b>雪膩豪乳</b>猛然彈出，宛如兩座月光浸透的玉山。"],
+        N2: ["「嘶啦——」<b>褻褲</b>在暴力下分崩離析，碎片如白蝶飄落。一個滾燙堅硬的<b>巨物</b>抵住了顫抖的<b>花心</b>。"],
+        N3: ["指尖凝聚一縷真氣，精準點中悠八「羶中穴」。林間復歸死寂，胸前<b>雙乳</b>隨著急促呼吸上下起伏。"],
+        N4: ["她顫巍巍伸出纖纖玉指，觸及那團軟肉時羞得滿臉通紅，一種「無人知曉」的放縱感悄然滋生。"],
+        N5: ["一根青筋暴起、碩大無朋的<b>肉杵</b>怒挺在眼前。那前端上翹的弧度猙獰而驕傲，散發著<b>雄性腥氣</b>。"],
+        N6: ["黃絨一手握住那根粗大的<b>肉棍</b>輕輕套弄，一手探入自己濕透的腿間，觸及紅腫的<b>蕊珠</b>。"],
+        N7: ["她跨坐在悠八粗壯腰腹之上。那根滾燙鐵杵嵌在肥美<b>臀瓣</b>間，隨著腰肢擺動來回滑動。"],
+        N8: ["粗糲碩大的<b>龜頭</b>悍然撐開<b>花瓣</b>。那根帶著野性氣息的<b>肉柱</b>長驅直入，狠狠抵上最深處的<b>宮房</b>。"],
+        N9: ["「不行了…要洩了…」<b>陰精</b>如潮噴薄而出，兩股濃鬱的<b>乳汁</b>激射而出，上下雙洩。"],
+        N10: ["她側臥在狼藉的<b>白濁</b>與<b>奶漬</b>中，腿間那一片泥濘在月色下反光，{feeling}。"],
+        N11: ["天色微明，黃絨穿好衣衫。腿間的酸軟和黏膩提醒她昨夜的一切不是夢，是真實的墮落。"],
+        N12: ["回到客棧，手指捏著棋子，卻想起昨夜自己握著那根粗物套弄的觸感。腿間又不自覺濕了。"],
+        N13: ["柴房裡乾草散落一地，悠八已從背後摟住她的腰。{env}，理智在這一刻徹底讓位。"],
+        N14: ["他故意拔出來，她竟慌張地伸手去抓那根濕淋淋的<b>肉棍</b>塞回體內。她雙腿纏上他的腰，{action}。"],
+        N15: ["她愛上了這種背德的快感，甚至學會了主動騎在他臉上，<b>奶水</b>依然豐沛，每次都被他吸得一滴不剩。"],
+        N16: ["事後她躺在草堆上，任由<b>白濁</b>從腿間流出，眼神空洞。{env}，她知道自己回不去了。"],
+        N17: ["她發現自己愛上了悠八身上的汗味、粗話和那根永遠不知疲倦的<b>陽物</b>。{feeling}。"],
+        N18: ["江湖上傳聞黃幫主日漸豐腴風騷，眉梢眼角盡是春意。有人見她在杏花林笑得放浪形骸。"],
+        N19: ["柴房裡的喘息聲從未停止，祭奠著她重生的自由。{env}，那間柴房裡的儀式永不落幕。"]
+    };
+
+    const colorPalette = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
+
+    function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function renderStory() {
+        const container = document.getElementById('storyContainer');
+        let html = '';
+        for (let i = 0; i <= 19; i++) {
+            const nodeKey = 'N' + i;
+            let raw = randomItem(lib[nodeKey]);
+            
+            // 替換 {env}, {feeling}, {action}
+            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? randomItem(tokens[k]) : m);
+            
+            // 渲染關鍵字 <b>
+            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|奶漬|乳尖|乳頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
+            
+            const randomColor = randomItem(colorPalette);
+            html += `<div class="story-line" style="color: ${randomColor}; border-left-color: ${randomColor};">🌸 ${cooked}</div>`;
+        }
+        container.innerHTML = html;
+        window.scrollTo(0, 0);
+    }
+
+    document.getElementById('weaveBtn').addEventListener('click', renderStory);
+    window.addEventListener('DOMContentLoaded', renderStory);
+</script>
+</body>
+</html>
