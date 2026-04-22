@@ -1,244 +1,169 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>杏花林·春夢隨機生成器</title>
-    <style>
-        body {
-            font-family: "Microsoft YaHei", "華文細黑", serif;
-            background: linear-gradient(135deg, #2c0f0f, #1a0a0a);
-            color: #f8e4d2;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.9;
-            background-image: url('https://images.unsplash.com/photo-1587502537745-84b86da1204f?ixlib=rb-4.0.3&auto=format&fit=crop&q=80');
-            background-size: cover;
-            background-attachment: fixed;
-        }
-        .container {
-            max-width: 880px;
-            margin: 0 auto;
-            background: rgba(15, 5, 5, 0.94);
-            border: 4px double #b36b4e;
-            border-radius: 20px;
-            padding: 40px 35px;
-            box-shadow: 0 0 50px rgba(180, 60, 40, 0.6);
-        }
-        h1 { text-align: center; color: #ffccaa; text-shadow: 0 0 15px #c62828; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #e57373; margin-bottom: 35px; font-size: 1.2em; }
-        .node-title {
-            color: #ff3366;
-            font-size: 1.5em;
-            text-align: center;
-            margin: 25px 0 15px;
-            border-bottom: 2px solid #c62828;
-            padding-bottom: 10px;
-        }
-        .story-text {
-            font-size: 1.22em;
-            min-height: 320px;
-            padding: 28px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 15px;
-            border: 1px solid #8b5a2b;
-            margin: 20px 0;
-            box-shadow: inset 0 4px 20px rgba(0,0,0,0.7);
-        }
-        .btn {
-            display: block;
-            width: 100%;
-            max-width: 340px;
-            margin: 35px auto 20px;
-            padding: 18px 45px;
-            font-size: 1.4em;
-            background: linear-gradient(#c62828, #8b0000);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 10px 25px rgba(198,40,40,0.6);
-        }
-        .btn:hover { transform: scale(1.07); background: linear-gradient(#f44336, #c62828); }
-        .restart { background: #5d0000; margin-top: 15px; }
-        .info { text-align: center; color: #ffbb99; margin-top: 20px; font-size: 1em; }
-    </style>
+<meta charset="UTF-8">
+<title>悠風慫力 · 極彩墮花編織器 V4 | 20節點全屏版</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: #FF8FAB;
+        color: #ddd;
+        font-family: 'Georgia', 'Times New Roman', '宋体', 'Microsoft JhengHei', serif;
+        overflow: hidden; /* Prevent scroll bars */
+        line-height: 1;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* Fixed Header - Reduced Height */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 35px; /* Thinner header */
+        background: rgba(10, 0, 5, 0.92);
+        backdrop-filter: blur(4px);
+        border-bottom: 1px solid #9e0bab;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 100;
+        padding: 0 15px;
+    }
+
+    .title {
+        color: #e0aaff;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        font-weight: 400;
+        text-shadow: 0 0 4px #9e0bab;
+    }
+
+    .go-btn {
+        background: #6d1202;
+        border: none;
+        color: #ffe0cc;
+        font-size: 0.75rem;
+        font-weight: bold;
+        padding: 2px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: 0.2s;
+        font-family: inherit;
+    }
+
+    .go-btn:hover {
+        background: #b01c08;
+        color: white;
+        transform: scale(0.97);
+    }
+
+    /* Full Screen Container - No Scrolling */
+    #storyContainer {
+        width: 100vw;
+        height: 100vh;
+        padding-top: 35px; /* Match header height */
+        background: #EED9C4;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    .story-line {
+        display: block;
+        flex: 1; /* Distribute space evenly to fill screen */
+        padding: 0 10px;
+        font-size: 1.05rem;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        font-weight: 450;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        border-left: 3px solid transparent;
+        display: flex;
+        align-items: center; /* Center text vertically within its slice */
+    }
+
+    .story-line b {
+        color: #ffb7b0;
+        font-weight: 800;
+        text-shadow: 0 0 3px #9e0bab;
+        background: linear-gradient(135deg, #3a0a2a, #1f0518);
+        padding: 0 2px;
+        border-radius: 4px;
+    }
+
+    footer {
+        display: none; /* Hide to save space for full screen effect */
+    }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>杏花林 · 春夢隨機生成器</h1>
-        <p class="subtitle">9 個細節節點 • 每段都是全新隨機文本</p>
-        
-        <div id="nodeTitle" class="node-title">N0 · 日間撩撥</div>
-        <div id="storyText" class="story-text">載入春夢中...</div>
-        
-        <button id="goBtn" class="btn">繼續春夢 →</button>
-        <button id="restartBtn" class="btn restart" style="display:none;">重新開始這一夜</button>
-        
-        <div class="info">
-            當前節點： <span id="currentNode">N0</span> / N9
-        </div>
-    </div>
 
-    <script>
-        const nodes = {
-            "N0": {
-                title: "N0 · 日間撩撥",
-                texts: [
-                    "悠八湊近黃絨耳畔，聲音低沉帶著笑意：「小娘子這身段，胸前鼓鼓囊囊，定是久未得人好好疼愛了吧？」",
-                    "黃絨表面冷笑，心中卻莫名一熱。那粗魯的話語像一根羽毛，輕輕撩過她心底最隱秘的地方。",
-                    "他言語越來越露骨，什麼「伏鳳十八式」、「讓你欲仙欲死」，黃絨聽得耳根發燙，竟忘了立刻斥退。",
-                    "杏花林中春風拂面，她故意與他周旋，欲擒故縱，誰知自己先春心蕩漾起來。",
-                    "「借力春風杏花雨」——這句他隨口說出的雙關語，在她腦中反覆盤旋，越想越覺心慌意亂。",
-                    "悠八的眼神赤裸而貪婪，黃絨表面裝作不動聲色，體內卻有一股異樣的燥熱悄然升起。"
-                ]
-            },
-            "N1": {
-                title: "N1 · 樹梢解衣",
-                texts: [
-                    "立於高枝之上，黃絨再也忍不住胸前的脹痛。她扯開衣襟，那對雪白豐盈的玉乳猛然彈跳而出，在月光下顫巍巍晃動。",
-                    "她雙手捧住沈甸甸的雪峰用力揉擠，兩道細細的白線劃破夜空，帶著甜香的乳汁滴滴答答墜落樹下。",
-                    "悠八在樹下仰頭張大嘴巴，試圖接住從天而降的乳汁，喉嚨裡發出滿足的咕滋聲。",
-                    "奶水噴灑的瞬間，脹痛化為難言的輕鬆。她心中暗想：「就讓這無賴看著，卻吃不到。」",
-                    "乳汁越擠越多，她故意將乳尖對準樹下那道身影，晶瑩的瓊漿如雨般灑落在他臉上。",
-                    "真氣因情慾而有些渙散，她忘情地揉弄著自己，卻沒留意腳下已有些不穩。"
-                ]
-            },
-            "N2": {
-                title: "N2 · 墜地入懷",
-                texts: [
-                    "腳下一虛，黃絨整個人從樹梢墜落。還未站穩，便被悠八粗壯的臂膀猛然壓在粗糙的樹幹上。",
-                    "那張帶著熱氣的大嘴一口含住她左邊紅蕊，狂野地吸吮起來，乳汁源源不斷被吞入腹中。",
-                    "「嘶啦——」一聲，褻褲被大手粗暴撕碎，夜風瞬間灌入她早已濕熱不堪的下體。",
-                    "悠八一邊大口吞咽乳汁，一邊大手肆意揉捏她豐滿肥美的臀肉，指尖已探向那片泥濘。",
-                    "一根滾燙堅硬如鐵的巨物，死死抵在她腿根，龜頭已撐開兩片嬌嫩花唇，只差最後一寸。",
-                    "背脊的刺痛與胸前的極樂同時襲來，黃絨腦中一片空白，只剩破碎的喘息。"
-                ]
-            },
-            "N3": {
-                title: "N3 · 反制點穴",
-                texts: [
-                    "千鈞一髮之際，黃絨眸光一清，指尖凝聚真氣，精準點在悠八「膻中穴」上。",
-                    "悠八悶哼一聲，身子一軟，仰面翻倒，直挺挺地昏睡過去。",
-                    "黃絨靠著樹幹緩緩滑坐在地，赤裸的雙乳仍在急促起伏，下身一片狼藉。",
-                    "她大口喘息，心中既後怕又慶幸：「再晚片刻，清白就要毀在這登徒子手裡了。」",
-                    "月光灑落林間，四周只剩蟲鳴與她凌亂的心跳聲。",
-                    "看著昏睡的悠八，她本該離去，雙腿卻像生了根般動彈不得。"
-                ]
-            },
-            "N4": {
-                title: "N4 · 窺探陽物",
-                texts: [
-                    "黃絨低頭，看見悠八敞開的褲襠中那團軟軟垂著的肉條，竟鬼使神差地伸出手指輕輕觸碰。",
-                    "入手溫熱、毛茸茸、沉甸甸，與她夫君郭靜乾淨規整的模樣完全不同。",
-                    "「男子的這東西……竟能縮得如此小？」她好奇地用指尖輕輕撩撥那軟垂的囊袋。",
-                    "指尖沾上些許黏膩的液體，她本該覺得羞恥，卻只感到心頭那股空虛更加明顯。",
-                    "她縮回手，又忍不住再次探出，一顆心跳得幾乎要從胸口蹦出來。",
-                    "月色下，這位名門俠女正專注地研究一個粗鄙漢子的私處，畫面既荒誕又誘人。"
-                ]
-            },
-            "N5": {
-                title: "N5 · 解穴觀變",
-                texts: [
-                    "她輕輕解開部分被封的經脈，只留睡穴。悠八的呼吸立刻變得粗重起來。",
-                    "「小娘子……好白……讓哥哥好好吃一口……」夢中的粗鄙夢話讓她耳根瞬間燒紅。",
-                    "掌心那團軟肉開始突突跳動，以肉眼可見的速度迅速充血、膨脹、變硬。",
-                    "不過片刻，一根青筋暴起、粗長上翹的怒龍便挺立在她眼前，比她夫君的還要驚人。",
-                    "龜頭肥大如雞蛋，前端微微上彎，散發著濃烈的雄性腥氣，讓她口乾舌燥。",
-                    "她握住那滾燙跳動的肉杵，只覺一股熱流直衝小腹，體內空虛感越發強烈。"
-                ]
-            },
-            "N6": {
-                title: "N6 · 品簫撫琴",
-                texts: [
-                    "黃絨一手握住悠八粗硬的陽具，緩緩上下套弄，另一手探入自己早已氾濫的腿間。",
-                    "指尖撥開濕滑的花瓣，輕輕揉按那顆腫脹敏感的蕊珠，一陣陣酥麻直竄天靈。",
-                    "月下林間，一代俠女衣衫半解，一手品簫、一手撫琴，畫面淫靡而極致艷麗。",
-                    "「嗯……這樣還不夠……」越是撫慰，體內那口深井就越發乾渴難耐。",
-                    "她一邊快速套弄那根粗大的肉棍，一邊將兩根手指沒入自己泥濘的甬道。",
-                    "淫水順著她雪白的大腿根部不斷流下，在月光下閃著晶瑩的光澤。"
-                ]
-            },
-            "N7": {
-                title: "N7 · 跨坐磨蹭",
-                texts: [
-                    "她再也忍不住，翻身跨坐在悠八粗壯的腰腹之上，豐滿雪臀緊貼他粗糙的皮膚。",
-                    "那根怒挺的肉龍嵌在她肥美的臀溝中，龜頭沿著濕滑的裂縫來回緩慢摩擦。",
-                    "每次龜頭擦過洞口，都帶來強烈的快感，卻始終不肯真正進入，讓她幾乎發狂。",
-                    "「就磨一磨……不算真的進去……」她喃喃自語，腰肢卻扭得越來越急。",
-                    "陰唇緊緊包裹著粗熱的棍身，淫水如泉湧般流出，浸濕了兩人結合之處。",
-                    "龜頭已撐開兩片花唇，只差最後一沉，她腦中卻閃過郭靜的臉龐。"
-                ]
-            },
-            "N8": {
-                title: "N8 · 破防插入",
-                texts: [
-                    "「便只這一次……權當是一場春夢……」黃絨心一橫，豐滿雪臀猛然下沉。",
-                    "「噗滋——」一聲水響，那粗長巨物連根沒入她緊緻的甬道，巨大的充實感讓她仰頭泣叫。",
-                    "她開始忘情地上下起伏，雙乳劇烈晃動，甩出一道道乳白色的弧線。",
-                    "快感如海嘯般襲來，她發出淒美的長吟，陰精與乳汁同時噴薄而出。",
-                    "就在她高潮痙攣之際，悠八在夢中猛然一挺腰，一股滾燙濃稠的陽精狠狠灌入她最深處。",
-                    "上下齊泄，她整個人如同被抽去骨頭，癱軟在悠八胸前不住顫抖。"
-                ]
-            },
-            "N9": {
-                title: "N9 · 事後餘韻",
-                texts: [
-                    "林間重歸寂靜，黃絨側臥在草地上，腿間一片狼藉的白濁與淫水混合著乳汁。",
-                    "月光照在她雪白的胴體上，汗水、奶漬和陽精在她肌膚上閃著曖昧的光澤。",
-                    "她低頭看著自己泥濘不堪的下體，心中羞恥、悔恨與隱秘的滿足交織在一起。",
-                    "「這一夜……碎了一地，卻又像重生了一般……」她輕聲呢喃，閉上了眼睛。",
-                    "身旁的悠八依然昏睡，嘴角掛著滿足的笑意，仿佛真的做了一場極美的春夢。",
-                    "杏花隨風飄落，蓋在兩人交纏的身體上。這一夜的荒唐，或許才剛剛開始。"
-                ]
-            }
-        };
+<div class="header">
+    <div class="title">🌙 悠風 · 極彩墮花</div>
+    <button class="go-btn" id="weaveBtn">EXECUTE</button>
+</div>
 
-        let currentNode = "N0";
-        const nodeOrder = ["N0","N1","N2","N3","N4","N5","N6","N7","N8","N9"];
+<div id="storyContainer"></div>
 
-        function getNextNode(current) {
-            let idx = nodeOrder.indexOf(current);
-            if (idx === -1 || idx === nodeOrder.length - 1) {
-                return nodeOrder[Math.floor(Math.random() * nodeOrder.length)];
-            }
-            // 大多數情況順序推進，但有小機率跳躍
-            if (Math.random() < 0.25) {
-                return nodeOrder[Math.floor(Math.random() * nodeOrder.length)];
-            }
-            return nodeOrder[idx + 1];
+<script>
+    const tokens = {
+        env: ["春夜燥熱的風", "月光透過稀疏枝葉", "林間瀰漫的杏花香", "靜謐死寂的密林", "月隱星沈的深夜", "沾著露水的苔地", "杏花飄落的暗影", "帶著泥土腥氣的夜霧"],
+        feeling: ["羞恥與渴望並生", "理智在慾火中化為灰燼", "一種近乎折磨的豐盈", "久曠身體的極度渴望", "瀕死的極樂", "背德的狂喜與空虛交織", "壓抑多年的本能甦醒", "靈魂與肉體的分裂"],
+        action: ["劇烈起伏", "顫抖著探入", "蠻不講理地釘入", "瘋狂地吞吐", "肆無忌憚地揉捏", "痙攣般扭動", "貪婪地吸吮", "失控地墜落"]
+    };
+
+    const lib = {
+        N0: ["{env}，黃絨立於高處枝椏，衣襟下的束縛勒出紅痕，每一次呼吸都激起一陣{feeling}。", "{env}，黃絨咬著下唇，那一絲人妻的矜持終究敵不過身體的哀鳴，指尖顫抖著勾住了衣帶。"],
+        N1: ["束縛一去，那對被壓抑許久的<b>雪膩豪乳</b>猛然彈出，宛如兩座月光浸透的玉山，<b>乳尖</b>殷紅如硃砂。", "那是一種折磨的豐盈，衣襟早已大敞，月光照著濕漉漉的<b>乳頭</b>，{env}，她像供奉自己的<b>祭品</b>。"],
+        N2: ["「嘶啦——」<b>褻褲</b>在暴力下分崩離析，碎片如白蝶飄落。一個滾燙堅硬的<b>巨物</b>抵住了顫抖的<b>花心</b>。", "黃絨驚呼未定，便覺那根<b>肉杵</b>隔著濕滑的<b>陰唇</b>邊緣來回碾壓，{feeling}幾乎淹沒最後的理智。"],
+        N3: ["她大口喘息，胸前<b>雙乳</b>隨著急促呼吸上下起伏，<b>乳汁</b>補充受控地溢出，浸濕半乾的衣襟。", "{env}，她看著倒地的男人，心中後怕，可下體仍是一片濕熱。"],
+        N4: ["「男子的那話兒，竟能如此縮放自如？」荒唐念頭一旦升起便難以遏制，一種「無人知曉」的放縱感悄然滋生。", "她大膽地握住那沉甸甸的<b>囊袋</b>，與丈夫的乾淨規整截然不同，透著一股野性。"],
+        N5: ["一根青筋暴起、碩大無朋的<b>肉杵</b>怒挺在眼前。那前端上翹的弧度猙獰而驕傲，散發著令人窒息的<b>雄性腥氣</b>。", "{env}，她看著那根比丈夫更加驚人的上翹弧度，腦中一片空白，只剩下身體最原始的震撼。"],
+        N6: ["黃絨一手握住那根粗大的<b>肉棍</b>輕輕套弄，一手探入自己濕透的腿間，觸及紅腫的<b>蕊珠</b>。", "她迷離的目光死死盯著那根擎天巨柱，理智在慾望烈火中化為灰燼，{env}，只剩最原始的飢渴。"],
+        N7: ["她身子一軟，跨坐在悠八粗壯腰腹之上。那根滾燙鐵杵嵌在肥美<b>臀瓣</b>間，在那條泥濘溝壑中來回滑動。", "每一寸肌膚的摩擦都在叫囂著最後的結合。那熱度燙得驚人。"],
+        N8: ["「噗滋——」水聲靡靡，泥濘四濺。那根帶著野性氣息的<b>肉柱</b>長驅直入，狠狠抵上最深處的<b>宮房</b>。", "她在鐵柱上瘋狂吞吐，碩大<b>雪峰</b>隨之劇烈晃動，甩出令人目眩的乳白弧線，{action}，完全淪為慾望的俘虜。"],
+        N9: ["「不行了…要洩了…噢——」<b>陰精</b>如潮噴薄而出，與此同時胸前兩點紅梅失守，兩股濃鬱的<b>乳汁</b>激射而出。", "那股熱力彷彿要將她融化，她癱軟在他身上不住抽搐，大腦一片空白，{feeling}，魂飛天外。"],
+        N10: ["她側臥在狼藉的<b>白濁</b>與<b>奶漬</b>中，月光照著赤裸胴體，腿間那一片泥濘在月色下反光。", "那一夜，春風無力，杏花零落，在這片狼藉的落紅與愛液中，那位冰清玉潔的黃幫主已然不再。"],
+        N11: ["回到客棧前，她在溪邊拼命擦洗身體，卻擦不掉肌膚上那些青紫指痕，也擦不掉體內深處那股被撐開的記憶。", "「只此一次…再不會了…」她對自己說，可那話語輕得像風中杏花。"],
+        N12: ["手指捏著棋子，卻想起昨夜自己握著那根粗物套弄的觸感。腿間又不自覺濕了，她趕緊夾緊雙腿。", "那種禁忌的刺激在白日裡回想起來，竟比昨夜更加撩人。{feeling}。"],
+        N13: ["柴房裡乾草散落一地，還未站穩，悠八已從背後摟住她的腰。這一次沒有點穴，沒有掙扎。", "她甚至配合地翹起了臀部，{env}，理智在這一刻徹底讓位。"],
+        N14: ["他故意拔出來，她竟慌張地伸手去抓那根濕淋淋的<b>肉棍</b>塞回體內。「騷娘子，還說不想要？」他大笑。", "她雙腿纏上他的腰，主動迎合，什麼俠女風範全丟到了九霄雲外。{action}。"],
+        N15: ["她愛上了這種背德的快感，甚至開始期待每一次幽會。{feeling}，像溺水的人抓住浮木。", "那種瀕臨被發現的恐懼，竟轉化成更強烈的慾火。她發現自己已經徹底壞掉了。"],
+        N16: ["事後她躺在草堆上，任由<b>白濁</b>從腿間流出，眼神空洞。「我是不是…壞掉了？」她喃喃自語。", "晨光透進柴房縫隙，她看著身旁鼾聲如雷的男人，心中竟生出一絲奇異的安寧。"],
+        N17: ["她開始在與郭靜同床時閉上眼睛，把丈夫想像成悠八，才能獲得高潮。罪惡感越來越淡，快感越來越純粹。", "{feeling}，她已經分不清什麼是愛，什麼是慾。"],
+        N18: ["江湖上開始有傳聞，說黃幫主日漸豐腴風騷，眉梢眼角盡是春意，卻再也不問武林事。", "有人說曾在杏花林見過她，衣衫半解，笑得放浪形骸，哪還有半點俠女風範。"],
+        N19: ["柴房裡的喘息聲從未停止，就像某種秘密的儀式，祭奠著她死去的貞潔和重生的自由。", "她同時擁有了兩個世界：白天的幫主夫人，夜晚的柴房淫婦。{env}。"]
+    };
+
+    const colorPalette = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
+
+    function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function renderStory() {
+        const container = document.getElementById('storyContainer');
+        let html = '';
+        for (let i = 0; i <= 19; i++) {
+            const texts = lib['N' + i];
+            let raw = randomItem(texts);
+            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? randomItem(tokens[k]) : m);
+            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|奶漬|乳尖|乳頭|奶頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
+            const color = randomItem(colorPalette);
+            html += `<div class="story-line" style="color: ${color}; border-left-color: ${color};">🌸 ${cooked}</div>`;
         }
+        container.innerHTML = html;
+    }
 
-        function displayRandomText(nodeId) {
-            const node = nodes[nodeId];
-            const randomIndex = Math.floor(Math.random() * node.texts.length);
-            document.getElementById('storyText').textContent = node.texts[randomIndex];
-            document.getElementById('nodeTitle').textContent = node.title;
-            document.getElementById('currentNode').textContent = nodeId;
-        }
-
-        document.getElementById('goBtn').addEventListener('click', () => {
-            currentNode = getNextNode(currentNode);
-            displayRandomText(currentNode);
-            
-            // 到達最後一節點時顯示重啟按鈕
-            if (currentNode === "N9") {
-                setTimeout(() => {
-                    document.getElementById('restartBtn').style.display = 'block';
-                }, 800);
-            }
-        });
-
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            currentNode = "N0";
-            document.getElementById('restartBtn').style.display = 'none';
-            displayRandomText(currentNode);
-        });
-
-        // 初始顯示
-        window.onload = () => {
-            displayRandomText("N0");
-        };
-    </script>
+    document.getElementById('weaveBtn').addEventListener('click', renderStory);
+    window.addEventListener('DOMContentLoaded', renderStory);
+</script>
 </body>
 </html>
