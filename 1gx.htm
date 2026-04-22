@@ -2,11 +2,11 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>悠風 · 極彩墮花 V6.1 | 61節點導航版</title>
+<title>悠風 · 極彩墮花 V6.1 | 61節點自適應版</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-        background: #0A0005; /* 深背景 */
+        background: #0A0005; 
         color: #ddd;
         font-family: 'Georgia', 'Microsoft JhengHei', serif;
         overflow: hidden;
@@ -14,104 +14,91 @@
         height: 100vh;
     }
 
-    /* 頂欄 - 隱藏控制提示，點擊標題可手動更新 (針對 iPad) */
+    /* 頂欄 - 隱藏式設計 */
     .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 32px;
-        background: rgba(10, 0, 5, 0.85);
+        position: fixed; top: 0; left: 0; width: 100%; height: 30px;
+        background: rgba(10, 0, 5, 0.8);
         border-bottom: 1px solid #4a0a6f;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 1000;
-        padding: 0 15px;
-        opacity: 0.2;
-        transition: opacity 0.3s;
-        cursor: pointer;
+        display: flex; justify-content: space-between; align-items: center;
+        z-index: 1000; padding: 0 15px; opacity: 0.1; transition: opacity 0.3s;
     }
     .header:hover { opacity: 1; }
+    .title { color: #e0aaff; font-size: 0.75rem; }
 
-    .title { color: #e0aaff; font-size: 0.8rem; letter-spacing: 1px; }
-
-    /* 觸控控制區 (專為 iPad 設計，平常隱藏) */
+    /* iPad/觸控 增強控制區 (透明) */
     .touch-ctrl {
-        display: flex;
-        gap: 15px;
+        position: fixed; bottom: 20px; right: 20px; z-index: 2000;
+        display: flex; gap: 10px; opacity: 0.2;
     }
-    .ctrl-btn {
-        color: #9e0bab;
-        font-size: 1.2rem;
-        padding: 0 10px;
-        user-select: none;
+    .touch-ctrl:hover { opacity: 1; }
+    .t-btn {
+        width: 40px; height: 40px; background: #6d1202; border: 1px solid #9e0bab;
+        color: white; border-radius: 50%; display: flex; align-items: center;
+        justify-content: center; cursor: pointer; font-size: 1.2rem;
     }
 
     #storyContainer {
-        width: 100vw;
-        background: #1A0A15; /* 參考 1b.htm 深色背景 */
-        position: absolute;
-        top: 0;
-        left: 0;
-        padding-top: 35px;
-        will-change: transform;
+        width: 100vw; background: #1A0A15; position: absolute;
+        top: 0; left: 0; padding: 40px 0; will-change: transform;
     }
 
     .story-line {
-        padding: 15px 25px;
-        font-weight: 500;
-        border-left: 4px solid;
-        line-height: 1.6;
-        transition: font-size 0.2s ease;
-        word-break: break-all;
+        padding: 10px 20px; font-weight: 500; border-left: 4px solid;
+        line-height: 1.6; transition: font-size 0.2s ease; word-break: break-all;
     }
 
-    /* 關鍵字特效 */
+    /* 強化關鍵字標籤樣式 */
     .story-line b {
-        color: #ffb7b0;
-        background: rgba(58, 10, 42, 0.8);
-        padding: 0 4px;
-        border-radius: 4px;
-        text-shadow: 0 0 2px #9e0bab;
+        color: #ffb7b0; background: rgba(58, 10, 42, 0.9);
+        padding: 0 4px; border-radius: 4px; text-shadow: 0 0 3px #9e0bab;
     }
 </style>
 </head>
 <body>
 
-<div class="header" id="mainHeader">
-    <div class="title" id="renewBtn">🌙 悠風 · 極彩墮花 (61 Nodes)</div>
-    <div class="touch-ctrl">
-        <span class="ctrl-btn" id="sizeDown">A-</span>
-        <span class="ctrl-btn" id="sizeUp">A+</span>
-        <span class="ctrl-btn" id="pauseBtn">⏯</span>
-    </div>
+<div class="header">
+    <div class="title">🌙 悠風 · 極彩墮花 (61 Nodes)</div>
+    <div id="scrollIndicator" style="font-size: 0.7rem; color: #9e0bab;">[ 運行中 ]</div>
+</div>
+
+<div class="touch-ctrl">
+    <div class="t-btn" onclick="changeFontSize(2)">+</div>
+    <div class="t-btn" onclick="changeFontSize(-2)">-</div>
+    <div class="t-btn" onclick="togglePlay()">⏯️</div>
+    <div class="t-btn" onclick="resetAll()">⟳</div>
 </div>
 
 <div id="storyContainer"></div>
 
 <script>
     const tokens = {
-        env: ["春夜燥動的杏花香氣", "月華穿過疏枝篩落", "林間凝滯的濕潤霧氣", "寂靜如死的密林深處", "星子隱沒的幽深夜幕", "帶著花蕊甜腥的暖風", "露水浸透的苔蘚氣息", "暗影浮動的月下小徑", "蟬鳴斷續的燥熱晚空", "幽蘭腐熟般的甜靡氣味"],
-        feeling: ["羞恥與渴望如藤蔓絞纏", "理智在暗火中寸寸成灰", "一種近乎受刑的豐盈飽脹", "久曠身軀對雨露的極度渴念", "瀕臨滅頂的恍惚極樂", "既怕又盼的禁忌甜毒", "道德與本能交戰後的虛脫", "被窺視的戰慄快感", "如墜深淵卻又甘願沉溺"],
-        action: ["難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入", "如狂浪般上下吞吐", "放肆地揉捏搓弄", "痙攣般地絞緊又放鬆", "近乎癲狂地擺盪腰肢", "斷續破碎地嬌吟", "指尖陷入軟肉留下紅痕", "無意識地迎合撞擊"]
+        env: ["春夜燥動的杏花香氣", "月華穿過疏枝篩落", "林間凝滯的濕潤霧氣", "寂靜如死的密林深處", "幽蘭腐熟般的甜靡氣味", "帶著花蕊甜腥的暖風"],
+        feeling: ["羞恥與渴望如藤蔓絞纏", "理智在暗火中寸寸成灰", "一種近乎受刑的豐盈飽脹", "瀕臨滅頂的恍惚極樂", "道德與本能交戰後的虛脫", "如墜深淵卻又甘願沉溺"],
+        action: ["難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入", "如狂浪般上下吞吐", "痙攣般地絞緊又放鬆", "無意識地迎合撞擊", "指尖陷入軟肉留下紅痕"],
+        solo: ["獨自對著鏡中潮紅的面龐", "在無人的深閨中輕撫濕潤", "想像著那根粗糲的觸感自瀆", "指尖撥開層層疊疊的花瓣", "揉搓著紅腫的蕊珠求取片刻解脫"]
     };
 
-    const baseTexts = [
+    // 建立 61 個節點，並加入「自慰視角」內容
+    const lib = {};
+    const templates = [
         "{env}，她感覺到{feeling}，雙腿不由自主地{action}。",
         "在那片狼藉中，{feeling}瀰漫開來，身體隨著{action}而劇烈顫抖。",
-        "月色之下，原本清冷的肌膚泛起潮紅，{feeling}讓她只能{action}。",
-        "空氣中充斥著{env}，那種{feeling}的熱度逼迫她不斷地{action}。"
+        "{env}，她{solo}，伴隨著{feeling}，感受到體內深處的空虛與渴求。",
+        "她迷離地低吟，{solo}，每一次{action}都讓{feeling}更加濃烈。"
     ];
+
+    for(let i=0; i<=60; i++) {
+        lib['N'+i] = templates;
+    }
 
     const colorPalette = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
 
     let fontSize = 22;
-    let scrollPos = 35;
+    let scrollPos = 30;
     let scrollSpeed = 0.8;
     let isRunning = true;
 
-    // --- 防重複抽取邏輯 ---
+    // 避免重複：隨機洗牌函式
     function shuffle(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -120,31 +107,22 @@
         return array;
     }
 
-    let tokenPools = { env: [], feeling: [], action: [], text: [] };
-
-    function getUniqueItem(type) {
-        if (tokenPools[type].length === 0) {
-            tokenPools[type] = shuffle([...(type === 'text' ? baseTexts : tokens[type])]);
-        }
-        return tokenPools[type].pop();
-    }
-
     function renderStory() {
         const container = document.getElementById('storyContainer');
         let html = '';
-        // 生成 61 個節點，每行重新抽取確保不重複
-        for (let i = 0; i <= 60; i++) {
-            let raw = getUniqueItem('text');
-            let cooked = raw.replace(/{env}/g, () => getUniqueItem('env'))
-                            .replace(/{feeling}/g, () => getUniqueItem('feeling'))
-                            .replace(/{action}/g, () => getUniqueItem('action'));
-
-            // 關鍵字高亮
-            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|乳尖|乳頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
+        // 隨機選取節點順序
+        const sequence = shuffle([...Array(61).keys()]);
+        
+        sequence.forEach(idx => {
+            let raw = templates[Math.floor(Math.random() * templates.length)];
+            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? tokens[k][Math.floor(Math.random()*tokens[k].length)] : m);
             
-            const color = colorPalette[i % colorPalette.length];
+            // 關鍵字高亮
+            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|陽物|肉杵|肉柱|花心|花瓣|蕊珠|陰精|淫水|白濁|自瀆)/g, '<b>$1</b>');
+            
+            const color = colorPalette[idx % colorPalette.length];
             html += `<div class="story-line" style="color: ${color}; border-left-color: ${color}; font-size: ${fontSize}px;">🌸 ${cooked}</div>`;
-        }
+        });
         container.innerHTML = html;
     }
 
@@ -153,40 +131,41 @@
             const container = document.getElementById('storyContainer');
             scrollPos -= scrollSpeed;
             if (Math.abs(scrollPos) > container.offsetHeight - window.innerHeight) {
-                scrollPos = 35;
-                renderStory(); // 循環時自動刷新
+                scrollPos = 30;
+                renderStory(); // 捲動到底自動重整
             }
             container.style.transform = `translateY(${scrollPos}px)`;
         }
         requestAnimationFrame(animate);
     }
 
-    // --- 控制邏輯 (鍵盤 + 觸控) ---
-    const updateFontSize = (delta) => {
-        fontSize = Math.max(12, fontSize + delta);
+    // 功能函式 (支援鍵盤與 iPad 觸摸)
+    function changeFontSize(delta) {
+        fontSize += delta;
         document.querySelectorAll('.story-line').forEach(l => l.style.fontSize = fontSize + 'px');
-    };
+    }
 
-    // 鍵盤
+    function togglePlay() {
+        isRunning = !isRunning;
+        document.getElementById('scrollIndicator').innerText = isRunning ? "[ 運行中 ]" : "[ 已暫停 ]";
+    }
+
+    function resetAll() {
+        scrollSpeed = 0.8;
+        scrollPos = 30;
+        renderStory();
+    }
+
     window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') { e.preventDefault(); isRunning = !isRunning; }
-        if (e.key === '+' || e.key === '=') updateFontSize(2);
-        if (e.key === '-' || e.key === '_') updateFontSize(-2);
+        if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        if (e.key === '+' || e.key === '=') changeFontSize(2);
+        if (e.key === '-' || e.key === '_') changeFontSize(-2);
+        if (e.key === 'Escape') resetAll();
         if (e.key === 'ArrowUp') scrollSpeed += 0.2;
         if (e.key === 'ArrowDown') scrollSpeed = Math.max(0, scrollSpeed - 0.2);
-        if (e.key === 'Escape') { scrollPos = 35; renderStory(); }
     });
 
-    // 觸控/點擊按鈕 (針對 iPad)
-    document.getElementById('sizeUp').onclick = (e) => { e.stopPropagation(); updateFontSize(2); };
-    document.getElementById('sizeDown').onclick = (e) => { e.stopPropagation(); updateFontSize(-2); };
-    document.getElementById('pauseBtn').onclick = (e) => { e.stopPropagation(); isRunning = !isRunning; };
-    document.getElementById('renewBtn').onclick = () => { scrollPos = 35; renderStory(); };
-
-    window.addEventListener('DOMContentLoaded', () => {
-        renderStory();
-        animate();
-    });
+    window.addEventListener('DOMContentLoaded', () => { renderStory(); animate(); });
 </script>
 </body>
 </html>
