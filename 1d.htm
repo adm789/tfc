@@ -1,124 +1,111 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>杏夜堕花 · 情欲节点游戏</title>
+<title>悠風慫力：極致長篇編織器 V3</title>
 <style>
-  body { background: #1a0e0b; color: #f0e6d0; font-family: 'Georgia', serif; padding: 2rem; }
-  .container { max-width: 700px; margin: auto; background: #2e1e18; padding: 2rem; border-radius: 20px; box-shadow: 0 0 20px #aa6f5e; }
-  .node-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2rem; }
-  .node-btn { background: #5e2e2a; color: #ffdab9; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; }
-  .node-btn.active { background: #c2472c; box-shadow: 0 0 8px #ff8a5c; }
-  .text-box { background: #0f0705; padding: 1.5rem; border-radius: 24px; min-height: 200px; font-size: 1.2rem; line-height: 1.5; border-left: 8px solid #c2472c; margin: 1rem 0; }
-  .go-btn { background: #c2472c; color: white; font-size: 1.3rem; border: none; padding: 12px 24px; border-radius: 60px; cursor: pointer; width: 100%; font-weight: bold; letter-spacing: 2px; }
-  .go-btn:hover { background: #e06b4a; }
+    /* 螢幕鋪滿佈局 */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#050505; color:#999; font:16px/1.4 "Microsoft JhengHei",serif; overflow-x:hidden; }
+    
+    /* 極簡控制區 */
+    .header { width:100%; background:#1a0000; border-bottom:1px solid #400; padding:5px 15px; display:flex; justify-content:space-between; align-items:center; position:fixed; top:0; z-index:100; }
+    .title { color:#c62828; font-size:14px; letter-spacing:2px; font-weight:bold; }
+    .go-btn { background:#b0120a; color:#fff; border:none; padding:4px 25px; cursor:pointer; font-weight:bold; border-radius:2px; font-size:13px; }
+    .go-btn:hover { background:#ff1744; box-shadow:0 0 10px #f00; }
+
+    /* 全螢幕輸出區 */
+    #out { width:100%; min-height:100vh; padding:60px 20px 20px 20px; display:none; }
+    .ln { display:block; margin-bottom:15px; border-left:3px solid #300; padding-left:15px; text-align:justify; transition:all 0.5s; }
+    
+    /* 詞庫隨機染色 */
+    .hl { font-weight:bold; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h2 style="text-align:center;">🌸 杏夜堕花 · 随机演绎 🌸</h2>
-  <div class="node-buttons" id="nodeButtons"></div>
-  <div class="text-box" id="displayText">选择一个节点，然后点击「杏夜·堕花」</div>
-  <button class="go-btn" id="goBtn">🌸 杏夜·堕花 (随机一句) 🌸</button>
+
+<div class="header">
+    <div class="title">悠風慫力 · 長篇動態編織 [Full-Screen Mode]</div>
+    <button class="go-btn" onclick="weaveFull()">[ EXECUTING WEAVE ]</button>
 </div>
 
+<div id="out"></div>
+
 <script>
-  // 节点数据
-  const nodes = {
-    N1: {
-      name: "树梢自解",
-      texts: [
-        "杏花香气混着汗意，黄绒解开衣襟，胸乳如脱兔般弹跳而出，乳汁顺着月光滑落。",
-        "“好胀……怎会这般难耐……”她咬着唇，指尖颤抖着揉按那对涨得发疼的雪峰。",
-        "奶水细细喷出，沾湿了树梢的嫩叶，她竟生出一丝报复的快意——反正无人看见。",
-        "树下的悠八仰头盯着那道白线，喉咙发干，裤裆已顶起狰狞的弧度。",
-        "黄绒半眯着眼，恍惚间觉得自己的身体不属于自己，只属于这春夜与燥风。"
-      ]
-    },
-    N2: {
-      name: "坠入虎口",
-      texts: [
-        "脚下一滑，她如断翅的鹤直直坠落，还未站稳便被一双粗臂死死抵在树干上。",
-        "褻裤在暴力下撕成碎片，夜风灌入腿间，她羞耻地发现自己早已湿透。",
-        "“小娘子，这可是你自己送上门的！”悠八的嘴粗鲁地含住她乳尖，猛力吸吮。",
-        "乳汁被大口吞咽的声音在夜中格外清晰，黄绒想推开，手却软得如春泥。",
-        "一根滚烫硬物抵住她湿滑的腿根，只差一寸便要闯入——她浑身紧绷，几乎尖叫。"
-      ]
-    },
-    N3: {
-      name: "反制与凝视",
-      texts: [
-        "指尖一点，“膻中穴”被封，悠八闷哼倒地。黄绒靠着树滑坐，喘息未定。",
-        "她低头看见他敞开的裤裆中那团软塌塌的肉，竟鬼使神差地伸出手指轻触。",
-        "“男子的这东西……竟能缩得这般小？”她心跳如鼓，像偷糖的孩童。",
-        "那毛茸茸的囊袋入手温热，与丈夫的干净规整截然不同，透着一股野性。",
-        "她缩回手，又忍不住再探，指尖沾上些许黏腻，竟不觉厌恶，只觉更深空虚。"
-      ]
-    },
-    N4: {
-      name: "解穴观变",
-      texts: [
-        "她解开他部分经脉，只留昏睡穴。悠八呼吸渐重，那团软肉开始突突跳动。",
-        "“小娘子……好白……让哥哥吃一口……”梦中粗语钻入耳中，她耳根烫如火烧。",
-        "那物在她掌心迅速膨大、变硬、上翘，青筋毕露，比她夫君的还要惊人。",
-        "黄绒一手握住那滚烫的肉杵，一手探入自己腿间，月下自渎，品簫抚琴。",
-        "“不行……这样不够……”她越揉越痒，体内像有一口干涸的井，渴望被狠狠填满。"
-      ]
-    },
-    N5: {
-      name: "跨坐磨蹭",
-      texts: [
-        "她跨上他粗壮的腰腹，臀下毛茬扎着嫩肉，带来微痛又畅快的刺激。",
-        "那根怒龙嵌在她臀沟中，龟头沿着湿滑的裂缝来回滑动，每次都擦过洞口却绝不进入。",
-        "爱液顺着他的肚皮流下，黄绒低头看着自己雪白的身体骑在这粗汉身上，羞耻化作更烈的火。",
-        "“就磨一磨……不算真的……”她喃喃自语，腰肢却越扭越急，喘息破碎。",
-        "龟头已撑开阴唇边缘，只差最后一沉——她脑中闪过郭静的脸，身体却已不是自己的了。"
-      ]
-    },
-    N6: {
-      name: "深渊一刻",
-      texts: [
-        "“便只一次……权当春梦……”臀瓣一沉，那根粗物连根没入，她仰头泣叫。",
-        "体内被蛮横撑开，久违的撕裂与充实同时炸开，泪水与淫水一齐涌出。",
-        "她在他身上疯狂起伏，双乳甩出乳白弧线，奶水喷了他满脸，上下双泄。",
-        "“别……不能射在里面……”她惊叫着要起身，却被一股滚烫的阳精狠狠灌入花心。",
-        "良久，风止花落。她侧卧在狼藉的爱液与白浊中，觉得自己碎了一地，却又隐秘地重生。"
-      ]
+// 詞庫系統：增加文本厚度
+const tokens = {
+    env: ["春夜燥熱的風","月光透過稀疏枝葉","林間瀰漫的杏花香","靜謐死寂的密林","月隱星沈的深夜"],
+    feeling: ["羞恥與渴望並生","理智在慾火中化為灰燼","一種近乎折磨的豐盈","久曠身體的極度渴望","瀕死的極樂"],
+    action: ["劇烈起伏","顫抖著探入","蠻不講理地釘入","瘋狂地吞吐","肆無忌憚地揉捏"]
+};
+
+// 擴展後的長篇節點文本庫
+const lib = {
+    N0: [
+        "{env}，黃絨立於高處枝椏，衣襟下的束縛早已勒出一道道紅痕，每一次呼吸，褻衣便與緊繃肌膚相互研磨，激起一陣陣{feeling}。",
+        "悠八在樹下仰頭，看著那高高在上、嬌不可攀的美人，此刻正似一條無骨的蛇，在高處難耐地{action}。"
+    ],
+    N1: [
+        "束縛一去，那被壓抑許久的雪膩猛然彈跳而出，宛如兩座被月光浸透的玉山，乳尖殷紅如硃砂，正掛著{adj}的瓊漿。",
+        "她雙手捧住那沈甸甸的柔膩，十指陷入軟肉之中，隨著她的揉弄，兩道細細的白線劃破夜空，帶著體溫的乳香滴落。"
+    ],
+    N2: [
+        "腳下一虛，她如斷線紙鳶墜入一個帶著濃烈汗味的懷抱。悠八如餓虎撲食將她死死抵在粗糙樹幹上，大嘴毫不客氣地噙住了那點紅蕊。",
+        "脆弱的褻褲在暴力下分崩離析，碎片如白蝶般飄落。微涼夜風灌入腿間，一個滾燙堅硬如鐵的巨物，死死抵住了她那顫抖的花心。"
+    ],
+    N3: [
+        "千鈞一髮之際，指尖凝聚的一縷真氣如蘭花拂穴，精準點在悠八「羶中穴」。林間復歸死寂，唯有黃絨急促的喘息與遠處蟲鳴交織。",
+        "黃絨背靠粗糲樹皮滑坐在地，夜風拂過赤裸大腿與狼藉奶漬，帶來刺骨涼意，卻冷卻不了體內那股四處亂竄的燥熱。"
+    ],
+    N4: [
+        "她借著斑駁月色，看著悠八褲子褪至膝彎，那方才還氣勢洶洶的陽物，此刻隨著昏睡竟縮成一團軟肉，蟄伏在濃密的黑草叢中。",
+        "「男子的那話兒，竟能如此縮放自如？」這荒唐念頭一旦升起便難以遏制，一種「無人知曉」的放縱感在她心中悄然滋生。"
+    ],
+    N5: [
+        "隨著經脈暢通，那物事在她掌心握住下，竟似活過來一般，突突跳動，以肉眼可見的速度充血、膨脹、變硬，散發出令人窒息的雄性腥氣。",
+        "一根青筋暴起、碩大無朋的肉杵怒挺在眼前。那前端上翹的弧度猙獰而驕傲，令她呼吸急促，胸前雪乳隨著劇烈喘息上下起伏。"
+    ],
+    N6: [
+        "月下林間，一代俠女衣衫半解，一手品簫、一手撫琴。這幅畫面淫靡而荒誕，卻透著極致的艷麗。指尖的慰藉終究只是隔靴搔癢。",
+        "她一邊嚕動那根粗大的肉棍，一邊揉搓自己的陰唇，淫水順著大腿流下。體內那口深井越發乾渴，渴望著被粗大實物填滿撐開。"
+    ],
+    N7: [
+        "她身子一軟，跨坐在悠八粗壯腰腹之上。那一根滾燙鐵杵嵌在肥美臀瓣間，隨著腰肢擺動，在那條泥濘溝壑中來回滑動，一次次擦過紅腫陰唇。",
+        "這種邊緣的試探將快感拉長到極致，每一寸肌膚的摩擦都在叫囂著最後的結合。那熱度燙得驚人，彷彿要將她融化在這無邊春夜裡。"
+    ],
+    N8: [
+        "「便只這一次……權當一場春夢……」黃絨決然下沉，粗糲碩大的龜頭悍然撐開花瓣。緊緻甬道被強行拓寬，一種近乎撕裂的充實感瞬間填滿空虛。",
+        "水聲靡靡，泥濘四濺。她在鐵柱上瘋狂吞吐，碩大雪峰隨之劇烈晃動，甩出令人目眩的乳白弧線。陰精如潮噴薄，與胸前乳汁激射而出。"
+    ],
+    N9: [
+        "兩人的下身依舊狼藉地糾纏在一起，白皙與黝黑達成詭異的和諧。她看著腿間混合著白濁陽精與乳白奶汁的泥濘，眼神複雜難辨。",
+        "碎了一地，卻又在某種隱秘角落獲得了前所未有的重生。那一夜，春風無力，杏花零落，在這片狼藉中，那位冰清玉潔的黃幫主已然不再。"
+    ]
+};
+
+function weaveFull() {
+    const o = document.getElementById('out');
+    const colors = ["#c62828", "#ad1457", "#d81b60", "#880e4f", "#b71c1c"];
+    let html = "";
+    
+    for(let i=0; i<=9; i++) {
+        let n = 'N'+i;
+        let pool = lib[n];
+        let raw = pool[Math.floor(Math.random()*pool.length)];
+        
+        // 執行詞庫替換
+        let cooked = raw.replace(/{(\w+)}/g, (m, key) => {
+            let tPool = tokens[key];
+            return `<span class="hl">${tPool[Math.floor(Math.random()*tPool.length)]}</span>`;
+        });
+        
+        html += `<div class="ln" style="color:${colors[i%5]}">${cooked}</div>`;
     }
-  };
-
-  let currentNode = "N1";
-
-  // 渲染节点按钮
-  const container = document.getElementById("nodeButtons");
-  for (let [key, val] of Object.entries(nodes)) {
-    const btn = document.createElement("button");
-    btn.innerText = val.name;
-    btn.classList.add("node-btn");
-    if (key === currentNode) btn.classList.add("active");
-    btn.onclick = () => {
-      currentNode = key;
-      document.querySelectorAll(".node-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("displayText").innerText = "✨ 已切换至：「" + val.name + "」✨\n点击下方按钮随机演绎。";
-    };
-    container.appendChild(btn);
-  }
-
-  // go按钮逻辑
-  const goBtn = document.getElementById("goBtn");
-  const displayDiv = document.getElementById("displayText");
-
-  function getRandomTextFromNode(nodeId) {
-    const texts = nodes[nodeId].texts;
-    const randomIndex = Math.floor(Math.random() * texts.length);
-    return texts[randomIndex];
-  }
-
-  goBtn.addEventListener("click", () => {
-    const randomLine = getRandomTextFromNode(currentNode);
-    displayDiv.innerHTML = `🌙 【${nodes[currentNode].name}】 🌙<br><br>“${randomLine}”`;
-  });
+    
+    o.innerHTML = html;
+    o.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 </script>
 </body>
 </html>
