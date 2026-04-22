@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+    /* 全域緊湊化 */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background:#121212; color:#bbb; font:13px/1.2 "Microsoft JhengHei",serif; padding:5px; }
+    .container { max-width:800px; margin:0 auto; background:#1e1e1e; padding:10px; border:1px solid #333; }
+    
+    /* 標題與預覽區：縮小間距 */
+    h1 { font-size:14px; color:#b0120a; text-align:center; border-bottom:1px solid #444; margin-bottom:5px; padding-bottom:2px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:3px; }
+    .node { background:#252525; padding:4px; border:1px solid #333; font-size:11px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .label { color:#b0120a; font-weight:bold; margin-right:3px; }
+
+    /* 按鈕 */
+    .ctrl { text-align:center; margin:8px 0; }
+    #goBtn { background:#800; color:#fff; border:none; padding:4px 20px; cursor:pointer; font-size:12px; }
+    
+    /* 輸出區：無空行、緊湊行高 */
+    #out { background:#fff; color:#222; padding:8px; border-radius:2px; display:none; line-height:1.3; }
+    .line { display:block; border-bottom:1px solid #eee; margin:0; padding:1px 0; } /* 消除段落間距 */
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>悠風慫力·編織器 (Compact Mode)</h1>
+    <div class="grid" id="gr"></div>
+    <div class="ctrl"><button id="goBtn" onclick="gen()">GO!</button></div>
+    <div id="out"></div>
+</div>
+
+<script>
+const lib = {
+    N0: ["悠八湊近...","黃絨冷笑...","言語露骨...","春風雨句...","假意應承..."],
+    N1: ["衣襟扯開...","雙手揉搓...","仰頭接汁...","饞死你...","噴向臉部..."],
+    N2: ["墜地入懷...","狂吮奶頭...","褻褲撕碎...","揉捏肥臀...","硬物抵腿..."],
+    N3: ["指尖點穴...","悶哼倒地...","喘息狼藉...","心中後怕...","死寂中..."],
+    N4: ["窺探陽物...","毛茸沉甸...","軟垂肉條...","黏膩液體...","忍不住..."],
+    N5: ["解穴觀變...","呼吸漸重...","肉杵膨硬...","雞蛋大小...","口乾舌燥..."],
+    N6: ["品簫撫琴...","觸及蕊珠...","淫靡荒誕...","體內乾渴...","淫水流下..."],
+    N7: ["跨坐磨蹭...","怒龍嵌溝...","電流湧遍...","腰肢扭急...","撐開邊緣..."],
+    N8: ["肥臀一沉...","淫水四濺...","狂亂起伏...","上下雙洩...","灌入花心..."],
+    N9: ["良久風止...","胴體反光...","羞恥暢快...","碎地重生...","滿足笑意..."]
+};
+
+function init() {
+    const gr = document.getElementById('gr');
+    for(let i=0; i<10; i++) {
+        let n = 'N'+i;
+        gr.innerHTML += `<div class="node"><span class="label">${n}:</span>${lib[n][Math.floor(Math.random()*5)]}</div>`;
+    }
+}
+
+function gen() {
+    const o = document.getElementById('out');
+    let h = "";
+    const colors = ["#400","#004","#040","#404"];
+    for(let i=0; i<10; i++) {
+        let n = 'N'+i;
+        let c = colors[i % colors.length];
+        // 使用 span 配合 display:block 並消除 margin，達成無空行效果
+        h += `<span class="line" style="color:${c}">${lib[n][Math.floor(Math.random()*5)]}</span>`;
+    }
+    o.innerHTML = h;
+    o.style.display = 'block';
+}
+window.onload = init;
+</script>
+</body>
+</html>
