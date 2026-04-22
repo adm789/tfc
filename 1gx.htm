@@ -2,11 +2,11 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>悠風 · 極彩墮花 V6 | 61節點導航版</title>
+<title>悠風 · 極彩墮花 V6.1 | 61節點導航版</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-        background: #0A0005; /* 改為更深邃的背景色 */
+        background: #0A0005; /* 深背景 */
         color: #ddd;
         font-family: 'Georgia', 'Microsoft JhengHei', serif;
         overflow: hidden;
@@ -14,75 +14,81 @@
         height: 100vh;
     }
 
-    /* 頂欄 - 更緊湊與隱藏式設計 */
+    /* 頂欄 - 隱藏控制提示，點擊標題可手動更新 (針對 iPad) */
     .header {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        height: 28px;
+        height: 32px;
         background: rgba(10, 0, 5, 0.85);
         border-bottom: 1px solid #4a0a6f;
         display: flex;
         justify-content: space-between;
         align-items: center;
         z-index: 1000;
-        padding: 0 10px;
-        opacity: 0.3; /* 預設半透明，滑鼠移入才顯示 */
+        padding: 0 15px;
+        opacity: 0.2;
         transition: opacity 0.3s;
+        cursor: pointer;
     }
     .header:hover { opacity: 1; }
 
-    .title { color: #e0aaff; font-size: 0.75rem; letter-spacing: 1px; }
+    .title { color: #e0aaff; font-size: 0.8rem; letter-spacing: 1px; }
 
-    /* 內容容器 - 移除間距更緊湊 */
+    /* 觸控控制區 (專為 iPad 設計，平常隱藏) */
+    .touch-ctrl {
+        display: flex;
+        gap: 15px;
+    }
+    .ctrl-btn {
+        color: #9e0bab;
+        font-size: 1.2rem;
+        padding: 0 10px;
+        user-select: none;
+    }
+
     #storyContainer {
         width: 100vw;
-        background: #1A0A15; /* 深紫色調背景，參考 1b.htm */
+        background: #1A0A15; /* 參考 1b.htm 深色背景 */
         position: absolute;
         top: 0;
         left: 0;
-        padding-top: 30px;
+        padding-top: 35px;
         will-change: transform;
     }
 
     .story-line {
-        padding: 12px 20px;
+        padding: 15px 25px;
         font-weight: 500;
         border-left: 4px solid;
-        line-height: 1.5;
+        line-height: 1.6;
         transition: font-size 0.2s ease;
         word-break: break-all;
     }
 
+    /* 關鍵字特效 */
     .story-line b {
         color: #ffb7b0;
         background: rgba(58, 10, 42, 0.8);
-        padding: 0 2px;
-        border-radius: 3px;
+        padding: 0 4px;
+        border-radius: 4px;
         text-shadow: 0 0 2px #9e0bab;
-    }
-
-    /* 隱藏訊息提示 */
-    #statusMsg {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        font-size: 0.7rem;
-        color: #555;
-        pointer-events: none;
     }
 </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="title">🌙 悠風 · 極彩墮花 V6 (61 Nodes)</div>
-    <div id="scrollIndicator" style="font-size: 0.7rem; color: #9e0bab;">[ 運行中 ]</div>
+<div class="header" id="mainHeader">
+    <div class="title" id="renewBtn">🌙 悠風 · 極彩墮花 (61 Nodes)</div>
+    <div class="touch-ctrl">
+        <span class="ctrl-btn" id="sizeDown">A-</span>
+        <span class="ctrl-btn" id="sizeUp">A+</span>
+        <span class="ctrl-btn" id="pauseBtn">⏯</span>
+    </div>
 </div>
 
 <div id="storyContainer"></div>
-<div id="statusMsg">Space: Stop/Run | +/-: Size | ↑/↓: Speed</div>
 
 <script>
     const tokens = {
@@ -91,7 +97,6 @@
         action: ["難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入", "如狂浪般上下吞吐", "放肆地揉捏搓弄", "痙攣般地絞緊又放鬆", "近乎癲狂地擺盪腰肢", "斷續破碎地嬌吟", "指尖陷入軟肉留下紅痕", "無意識地迎合撞擊"]
     };
 
-    const lib = {};
     const baseTexts = [
         "{env}，她感覺到{feeling}，雙腿不由自主地{action}。",
         "在那片狼藉中，{feeling}瀰漫開來，身體隨著{action}而劇烈顫抖。",
@@ -99,27 +104,42 @@
         "空氣中充斥著{env}，那種{feeling}的熱度逼迫她不斷地{action}。"
     ];
 
-    // 生成 61 個節點
-    for(let i=0; i<=60; i++) {
-        lib['N'+i] = baseTexts;
-    }
-
     const colorPalette = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
 
-    let fontSize = 20;
-    let scrollPos = 30;
+    let fontSize = 22;
+    let scrollPos = 35;
     let scrollSpeed = 0.8;
     let isRunning = true;
 
-    function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    // --- 防重複抽取邏輯 ---
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    let tokenPools = { env: [], feeling: [], action: [], text: [] };
+
+    function getUniqueItem(type) {
+        if (tokenPools[type].length === 0) {
+            tokenPools[type] = shuffle([...(type === 'text' ? baseTexts : tokens[type])]);
+        }
+        return tokenPools[type].pop();
+    }
 
     function renderStory() {
         const container = document.getElementById('storyContainer');
         let html = '';
+        // 生成 61 個節點，每行重新抽取確保不重複
         for (let i = 0; i <= 60; i++) {
-            let raw = randomItem(lib['N' + i]);
-            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? randomItem(tokens[k]) : m);
-            // 強化關鍵字匹配
+            let raw = getUniqueItem('text');
+            let cooked = raw.replace(/{env}/g, () => getUniqueItem('env'))
+                            .replace(/{feeling}/g, () => getUniqueItem('feeling'))
+                            .replace(/{action}/g, () => getUniqueItem('action'));
+
+            // 關鍵字高亮
             cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|乳尖|乳頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
             
             const color = colorPalette[i % colorPalette.length];
@@ -132,43 +152,36 @@
         if (isRunning) {
             const container = document.getElementById('storyContainer');
             scrollPos -= scrollSpeed;
-            
             if (Math.abs(scrollPos) > container.offsetHeight - window.innerHeight) {
-                scrollPos = 30;
-                renderStory();
+                scrollPos = 35;
+                renderStory(); // 循環時自動刷新
             }
             container.style.transform = `translateY(${scrollPos}px)`;
         }
         requestAnimationFrame(animate);
     }
 
+    // --- 控制邏輯 (鍵盤 + 觸控) ---
+    const updateFontSize = (delta) => {
+        fontSize = Math.max(12, fontSize + delta);
+        document.querySelectorAll('.story-line').forEach(l => l.style.fontSize = fontSize + 'px');
+    };
+
+    // 鍵盤
     window.addEventListener('keydown', (e) => {
-        const lines = document.querySelectorAll('.story-line');
-        const indicator = document.getElementById('scrollIndicator');
-
-        if (e.code === 'Space') {
-            e.preventDefault();
-            isRunning = !isRunning;
-            indicator.innerText = isRunning ? "[ 運行中 ]" : "[ 已暫停 ]";
-        }
-
-        switch(e.key) {
-            case '+': case '=':
-                fontSize += 2;
-                lines.forEach(l => l.style.fontSize = fontSize + 'px');
-                break;
-            case '-': case '_':
-                fontSize = Math.max(10, fontSize - 2);
-                lines.forEach(l => l.style.fontSize = fontSize + 'px');
-                break;
-            case 'ArrowUp':
-                scrollSpeed += 0.2;
-                break;
-            case 'ArrowDown':
-                scrollSpeed = Math.max(0, scrollSpeed - 0.2);
-                break;
-        }
+        if (e.code === 'Space') { e.preventDefault(); isRunning = !isRunning; }
+        if (e.key === '+' || e.key === '=') updateFontSize(2);
+        if (e.key === '-' || e.key === '_') updateFontSize(-2);
+        if (e.key === 'ArrowUp') scrollSpeed += 0.2;
+        if (e.key === 'ArrowDown') scrollSpeed = Math.max(0, scrollSpeed - 0.2);
+        if (e.key === 'Escape') { scrollPos = 35; renderStory(); }
     });
+
+    // 觸控/點擊按鈕 (針對 iPad)
+    document.getElementById('sizeUp').onclick = (e) => { e.stopPropagation(); updateFontSize(2); };
+    document.getElementById('sizeDown').onclick = (e) => { e.stopPropagation(); updateFontSize(-2); };
+    document.getElementById('pauseBtn').onclick = (e) => { e.stopPropagation(); isRunning = !isRunning; };
+    document.getElementById('renewBtn').onclick = () => { scrollPos = 35; renderStory(); };
 
     window.addEventListener('DOMContentLoaded', () => {
         renderStory();
