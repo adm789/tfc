@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>悠風 · 極彩墮花 V5 | 自動巡航版</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #FF8FAB;
+        color: #ddd;
+        font-family: 'Georgia', 'Microsoft JhengHei', serif;
+        overflow: hidden; /* 隱藏原生捲軸，由 JS 控制 */
+        width: 100vw;
+        height: 100vh;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 35px;
+        background: rgba(10, 0, 5, 0.95);
+        border-bottom: 1px solid #9e0bab;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1000;
+        padding: 0 15px;
+    }
+
+    .title {
+        color: #e0aaff;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        text-shadow: 0 0 3px #9e0bab;
+    }
+
+    .info {
+        color: #888;
+        font-size: 0.7rem;
+    }
+
+    #storyContainer {
+        width: 100vw;
+        background: #EED9C4;
+        position: absolute;
+        top: 0;
+        left: 0;
+        padding-top: 40px;
+        transition: top 0.1s linear; /* 平滑捲動關鍵 */
+    }
+
+    .story-line {
+        padding: 15px 25px;
+        font-weight: 500;
+        border-left: 6px solid;
+        margin-bottom: 2px;
+        transition: font-size 0.2s ease;
+        line-height: 1.4;
+    }
+
+    .story-line b {
+        color: #ffb7b0;
+        background: linear-gradient(135deg, #3a0a2a, #1f0518);
+        padding: 0 4px;
+        margin: 0 2px;
+        border-radius: 4px;
+        text-shadow: 0 0 2px #9e0bab;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌙 悠風 · 極彩墮花 V5</div>
+    <div class="info">字體: [+/-] | 捲動: [↑/↓] | [ESC] 重置</div>
+</div>
+
+<div id="storyContainer"></div>
+
+<script>
+    // 詞庫系統：環境 / 感覺 / 動作
+    const tokens = {
+        env: ["春夜燥動的杏花香氣", "月華穿過疏枝篩落", "林間凝滯的濕潤霧氣", "寂靜如死的密林深處", "星子隱沒的幽深夜幕", "帶著花蕊甜腥的暖風", "露水浸透的苔蘚氣息", "暗影浮動的月下小徑", "蟬鳴斷續的燥熱晚空", "幽蘭腐熟般的甜靡氣味"],
+        feeling: ["羞恥與渴望如藤蔓絞纏", "理智在暗火中寸寸成灰", "一種近乎受刑的豐盈飽脹", "久曠身軀對雨露的極度渴念", "瀕臨滅頂的恍惚極樂", "高貴與卑賤在體內撕扯", "既怕又盼的禁忌甜毒", "道德與本能交戰後的虛脫", "被窺視的戰慄快感", "如墜深淵卻又甘願沉溺"],
+        action: ["難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入", "如狂浪般上下吞吐", "放肆地揉捏搓弄", "痙攣般地絞緊又放鬆", "近乎癲狂地擺盪腰肢", "斷續破碎地嬌吟", "指尖陷入軟肉留下紅痕", "無意識地迎合撞擊"]
+    };
+
+    // 21 個節點內容庫 (簡化示範，實作時會調用 tokens)
+    const lib = {};
+    for(let i=0; i<=20; i++) {
+        lib['N'+i] = [
+            `{env}，她感覺到{feeling}，雙腿不由自主地{action}。`,
+            `在那片狼藉中，{feeling}瀰漫開來，身體隨著{action}而劇烈顫抖。`
+        ];
+    }
+
+    const colorPalette = ["#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64", "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994", "#2d6316", "#0c5426"];
+
+    let fontSize = 22; // 預設字體大小 (px)
+    let scrollPos = 35; // 當前捲動位置
+    let scrollSpeed = 1; // 捲動速度
+    let autoScroll = true;
+
+    function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function renderStory() {
+        const container = document.getElementById('storyContainer');
+        let html = '';
+        for (let i = 0; i <= 20; i++) {
+            let raw = randomItem(lib['N' + i]);
+            // 處理詞庫替換
+            let cooked = raw.replace(/{(\w+)}/g, (m, k) => tokens[k] ? randomItem(tokens[k]) : m);
+            // 處理關鍵字標籤
+            cooked = cooked.replace(/(乳房|豪乳|雙乳|雪乳|奶水|乳汁|乳尖|乳頭|陽物|陽具|肉棍|肉杵|肉柱|巨物|龜頭|囊袋|陰唇|花心|花瓣|蕊珠|陰精|淫水|愛液|白濁|陽精|淫液|臀瓣|臀肉|褻褲)/g, '<b>$1</b>');
+            
+            const color = colorPalette[i % colorPalette.length];
+            html += `<div class="story-line" style="color: ${color}; border-left-color: ${color}; font-size: ${fontSize}px;">🌸 ${cooked}</div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // 自動捲動邏輯 (Cycling up/dn)
+    function startAutoScroll() {
+        if (!autoScroll) return;
+        const container = document.getElementById('storyContainer');
+        const screenHeight = window.innerHeight;
+        const contentHeight = container.offsetHeight;
+
+        scrollPos -= scrollSpeed;
+        
+        // 若捲動到底部，重置回頂部實現循環
+        if (Math.abs(scrollPos) > contentHeight - 100) {
+            scrollPos = 35;
+            renderStory(); // 循環時重新編織內容
+        }
+        
+        container.style.top = scrollPos + 'px';
+        requestAnimationFrame(startAutoScroll);
+    }
+
+    // 鍵盤控制系統
+    window.addEventListener('keydown', (e) => {
+        const container = document.getElementById('storyContainer');
+        const lines = document.querySelectorAll('.story-line');
+
+        switch(e.key) {
+            case '+': // 字體變大
+            case '=':
+                fontSize += 2;
+                lines.forEach(l => l.style.fontSize = fontSize + 'px');
+                break;
+            case '-': // 字體變小
+            case '_':
+                fontSize = Math.max(12, fontSize - 2);
+                lines.forEach(l => l.style.fontSize = fontSize + 'px');
+                break;
+            case 'ArrowUp': // 向上加速
+                scrollSpeed += 0.5;
+                break;
+            case 'ArrowDown': // 向下減速/反向
+                scrollSpeed -= 0.5;
+                break;
+            case 'Escape': // 重置
+                scrollSpeed = 1;
+                scrollPos = 35;
+                renderStory();
+                break;
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        renderStory();
+        startAutoScroll();
+    });
+</script>
+</body>
+</html>
