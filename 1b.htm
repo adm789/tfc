@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>自慰视角 · 杏夜独吟 | 70节点 · 全屏滚动</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动选中，不影响阅读 */
+        }
+
+        body {
+            background: #030101;
+            color: #d8c8b5;
+            font-family: 'Georgia', 'Times New Roman', '宋体', 'Microsoft JhengHei', serif;
+            line-height: 1.7;
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 100vh;
+        }
+
+        /* 固定控制栏 */
+        .control-bar {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a0f0cee;
+            backdrop-filter: blur(8px);
+            padding: 10px 18px;
+            border-radius: 40px;
+            font-size: 13px;
+            color: #bc7a5e;
+            border: 1px solid #5e3a2e;
+            z-index: 200;
+            font-family: monospace;
+            pointer-events: none;
+            letter-spacing: 1px;
+        }
+
+        .control-bar span {
+            pointer-events: none;
+            color: #e0aa8a;
+        }
+
+        /* 输出区：全屏沉浸 */
+        #storyContainer {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px 80px 24px;
+        }
+
+        /* 每一行：全粗 + 左装饰 */
+        .verse-line {
+            display: block;
+            margin-bottom: 24px;
+            padding: 10px 18px;
+            border-left: 4px solid currentColor;
+            background: rgba(10, 5, 5, 0.4);
+            border-radius: 0 18px 18px 0;
+            font-weight: bold;
+            line-height: 1.65;
+            transition: all 0.1s ease;
+        }
+
+        /* 高亮词库词 */
+        .hl {
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-decoration-style: dotted;
+            text-underline-offset: 5px;
+        }
+
+        /* 滚动提示小光点 */
+        .scroll-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #2e1a12;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #b87a5a;
+            font-family: monospace;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        @media (max-width: 700px) {
+            .verse-line { font-size: 16px; padding: 6px 12px; margin-bottom: 18px; }
+            #storyContainer { padding: 30px 16px 70px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="control-bar">
+    🎮 空格 启/停 · ↑/↓ 微移 · +/- 字号
+</div>
+<div class="scroll-hint" id="scrollHint">
+    🌸 自动轻卷 · 自慰独白
+</div>
+
+<div id="storyContainer"></div>
+
+<script>
+    // ============================================================
+    // 词库系统（你提供的，保留完整）
+    // ============================================================
+    const tokens = {
+        env: [
+            "春夜躁動的杏花香氣", "月華穿過疏枝篩落", "林間凝滯的濕潤霧氣",
+            "寂靜如死的密林深處", "星子隱沒的幽深夜幕", "帶著花蕊甜腥的暖風",
+            "露水浸透的苔蘚氣息", "暗影浮動的月下小徑", "蟬鳴斷續的燥熱晚空",
+            "幽蘭腐熟般的甜靡氣味"
+        ],
+        feeling: [
+            "羞恥與渴望如藤蔓絞纏", "理智在暗火中寸寸成灰", "一種近乎受刑的豐盈飽脹",
+            "久曠身軀對雨露的極度渴念", "瀕臨滅頂的恍惚極樂", "高貴與卑賤在體內撕扯",
+            "既怕又盼的禁忌甜毒", "道德與本能交戰後的虛脫", "被窺視的戰慄快感",
+            "如墜深淵卻又甘願沉溺"
+        ],
+        action: [
+            "難耐地蜷曲扭動", "顫抖著探入衣襟深處", "蠻橫而不講理地楔入",
+            "如狂浪般上下吞吐", "放肆地揉捏搓弄", "痙攣般地絞緊又放鬆",
+            "近乎癲狂地擺盪腰肢", "斷續破碎地嬌吟", "指尖陷入軟肉留下紅痕",
+            "無意識地迎合撞擊"
+        ]
+    };
+
+    // ============================================================
+    // 70 个自慰视角节点 (第一人称「我」· 单人独白)
+    // 每个节点 2~3 条候选，配合词库可产生巨量变化
+    // ============================================================
+    const lib = {};
+
+    // N0 ~ N69  自慰独白库
+    const soloTexts = [
+        "今夜又無睡意，我躺在那張寬大的床上，指尖從鎖骨緩緩下滑。{env}。",
+        "我閉上眼，讓自己回到那片杏花林裡，{feeling}。",
+        "掌心貼住小腹，那裡的燥熱像一團遲遲不熄的暗火。{action}。",
+        "我試著想像一雙手，不是任何人的，只是最懂我力道的手。{env}。",
+        "乳尖在薄衫下悄悄硬了，我隔著布料輕輕捻動，{feeling}。",
+        "我分開腿，讓夜風從窗縫溜進來，拂過那片最隱密的濕意。{action}。",
+        "沒有羞恥，也沒有觀眾。今夜我只是我自己的祭品。{env}。",
+        "中指沿著肉縫來回游移，卻遲遲不肯按下去——我要把快感拉長。{feeling}。",
+        "我咬住枕角，怕自己叫出聲。其實整間屋子只有我一人。{action}。",
+        "那片花瓣已經充血腫脹，我用兩指撐開，對著鏡子看。{env}。",
+        "高潮前的懸崖最磨人，我停下所有動作，大口喘氣。{feeling}。",
+        "我把枕頭墊在腰下，讓那處微微上翹，方便手指深入。{action}。",
+        "想像杏花瓣落在我赤裸的小腹上，冰涼與滾燙交錯。{env}。",
+        "我從來不知道，自己可以把自己弄成這樣——{feeling}。",
+        "兩根手指撐開甬道入口，空虛感像潮水一樣湧上來。{action}。",
+        "我用唾液沾濕指尖，模仿某種溫熱濕滑的觸感。{env}。",
+        "大腿內側的筋脈在跳動，我弓起腰，像一張拉滿的弓。{feeling}。",
+        "乳房的脹痛需要被揉散，我雙手捧住它們，緩慢施力。{action}。",
+        "我讓自己跪趴在床上，回頭從鏡子裡看見那副淫艷的身體。{env}。",
+        "陰蒂在指腹下像一顆過熟的莓果，輕輕一碰就顫抖。{feeling}。",
+        "我把腿張到最開，讓整個陰戶暴露在空氣與月光中。{action}。",
+        "今夜不追求高潮，只享受那種漫長的、濕潤的煎熬。{env}。",
+        "我學著用最輕的力道畫圈，一圈、兩圈……呼吸亂了。{feeling}。",
+        "我用另一隻手掐住乳頭，微痛讓下面的手指更濕。{action}。",
+        "想像有人在我耳邊低語，說些下流卻不粗鄙的話。{env}。",
+        "小腹深處有一團火，我用指尖去夠，卻總是差一點點。{feeling}。",
+        "我翻身趴著，把陰戶壓在枕角上，輕輕磨蹭。{action}。",
+        "杏花的氣味是假的，是我自己噴在枕頭上的香水。{env}。",
+        "高潮過後我蜷縮著，像一隻被雨淋濕的貓。{feeling}。",
+        "我故意只撫摸大腿內側，不碰那處，讓慾望自己漲滿。{action}。",
+        "今夜用了玩具，震動從那處傳到喉嚨，我發出不像自己的聲音。",
+        "我讓自己緩慢地高潮，像潮水一寸一寸漲起來，再慢慢退去。",
+        "自慰不是為了填補誰，而是確認這具身體還活著、還會渴。",
+        "我學會了在快感最強烈的時候抽手，讓它在體內自己炸開。",
+        "鏡子裡的女人滿臉潮紅，乳尖挺立，腿間亮晶晶的——那是我。",
+        "我用冰塊代替手指，冷與熱在體內打架，我尖叫著投降。",
+        "今夜夢見一片無人的沙灘，浪花一次次衝過我的腿間。",
+        "我不再急著高潮，而是讓手慢慢旅行：鎖骨、乳尖、肚臍、恥骨。",
+        "高潮後的幾分鐘最安靜，我聽著自己的心跳，像雨後屋簷滴水。",
+        "我用羽毛輕輕掃過乳頭和陰蒂，那種癢讓人想哭。",
+        "有時候只是把手放在那處，不加任何動作，光是體溫就夠了。",
+        "我學會了用呼吸控制高潮：吸氣時繃緊，吐氣時釋放。",
+        "今夜不開燈，黑暗中手指比眼睛更誠實。",
+        "我把枕頭夾在腿間，輕輕搖動腰肢，像騎在一朵雲上。",
+        "自慰是寫給身體的情書，每一筆都是自己才懂的暗語。",
+        "高潮時我會無意識地喊出一個名字，但那名字連我自己都聽不清。",
+        "我讓自己保持在高潮邊緣半小時，像走在懸崖邊的鋼索上。",
+        "用溫熱的潤滑油塗滿整個陰戶，滑膩的感覺像另一層皮膚。",
+        "我把手指伸進嘴裡沾濕，模仿別人的體液。",
+        "高潮過後我癱在床上，腿還開著，不想合攏。",
+        "今夜試著只用乳頭達到高潮，揉了很久，終於成功了一次。",
+        "我把自己綁在床上，動彈不得，反而讓快感更集中。",
+        "自慰是我和自己的秘密約會，不需要打扮，不需要說話。",
+        "我把震動玩具調到最弱，貼在陰蒂上一整夜，睡睡醒醒。",
+        "高潮時我咬住手背，眼淚流了下來，不是難過，是太滿了。",
+        "我學會了在自慰後好好清洗自己，像一場溫柔的告別。",
+        "有時候只是撫摸自己的頭髮和臉頰，也能感到一種奇異的安心。",
+        "今夜沒有高潮，只有漫長的、濕潤的、不求解脫的撫摸。",
+        "我用兩面鏡子，看見自己那處的顏色和形狀——像一朵暗紅的花。",
+        "自慰讓我記住：這副身體首先是自己的，然後才是別人的。",
+        "高潮時我弓起背，腳趾蜷縮，像一個回到海洋的嬰兒。",
+        "我讓手指在體內慢慢旋轉，尋找那個最敏感的小點。",
+        "用指尖輕彈陰蒂，那種刺痛像雨點打在火燙的地面上。",
+        "我對著語音備忘錄自慰，錄下自己的聲音，第二天又刪掉。",
+        "把潤滑油塗滿整個身體，滑溜溜的，像一條剛出生的魚。",
+        "高潮後我躺在床上發呆，月光照著腿間那灘亮晶晶的水漬。",
+        "我用震動玩具的尾端輕輕敲打陰蒂，麻癢從那處竄到頭頂。",
+        "今夜想像自己是一隻母獸，在月光下自己舔舐自己。",
+        "自慰結束後，我拉好被子，翻身，一夜無夢。"
+    ];
+
+    // 填入 70 个节点 (N0 ~ N69)
+    for (let i = 0; i <= 69; i++) {
+        // 取模循環，確保每個節點至少有一條，且多樣化
+        const idx = i % soloTexts.length;
+        // 每個節點給 2 條變體（用詞庫）
+        lib['N' + i] = [
+            soloTexts[idx],
+            soloTexts[(idx + 13) % soloTexts.length],
+            soloTexts[(idx + 29) % soloTexts.length]
+        ];
+    }
+
+    // 輔助：隨機取數組一項
+    function randomItem(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // 替換詞庫 {env}/{feeling}/{action}
+    function replaceTokens(text) {
+        return text.replace(/{(\w+)}/g, (match, key) => {
+            const pool = tokens[key];
+            if (!pool) return match;
+            return `<span class="hl">${randomItem(pool)}</span>`;
+        });
+    }
+
+    // 生成一篇故事 (隨機取 40 句，你也可以改成全70句，但建議40~50閱讀舒適)
+    function generateStory(sentenceCount = 48) {
+        const lines = [];
+        // 隨機挑選節點 (避免每次都從 N0 開始)
+        const startIdx = Math.floor(Math.random() * 40);
+        for (let i = 0; i < sentenceCount; i++) {
+            const nodeIdx = (startIdx + i) % 70;
+            const key = 'N' + nodeIdx;
+            const raw = randomItem(lib[key]);
+            const cooked = replaceTokens(raw);
+            lines.push(cooked);
+        }
+        return lines;
+    }
+
+    // 渲染到 DOM
+    let currentLines = [];
+    let autoScrollInterval = null;
+    let isAutoScrolling = true;
+    let currentFontSize = 18;  // px
+
+    const container = document.getElementById('storyContainer');
+    const hint = document.getElementById('scrollHint');
+
+    function renderStory(lines) {
+        const colorPalette = [
+            "#9e0bab", "#862d12", "#503a0f", "#004379", "#450b64",
+            "#3d099f", "#012e5e", "#6d1202", "#4a0a6f", "#098994",
+            "#2d6316", "#0c5426"
+        ];
+        let html = '';
+        lines.forEach((line, idx) => {
+            const color = colorPalette[idx % colorPalette.length];
+            html += `<div class="verse-line" style="color: ${color}; border-left-color: ${color}; font-size: ${currentFontSize}px;"><b>🌙 ${line}</b></div>`;
+        });
+        container.innerHTML = html;
+        currentLines = lines;
+    }
+
+    // 刷新 (隨機新故事)
+    function refreshStory() {
+        const newLines = generateStory(48);  // 48句，舒適長度
+        renderStory(newLines);
+        // 滾動到頂部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // 重啟自動滾動
+        if (autoScrollInterval) clearInterval(autoScrollInterval);
+        isAutoScrolling = true;
+        startAutoScroll();
+    }
+
+    // 自動滾動 (向下)
+    function startAutoScroll() {
+        if (autoScrollInterval) clearInterval(autoScrollInterval);
+        autoScrollInterval = setInterval(() => {
+            if (!isAutoScrolling) return;
+            window.scrollBy({
+                top: 1,
+                behavior: 'auto'
+            });
+            // 如果已經接近底部，稍微緩和
+            const scrollBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+            if (scrollBottom < 50 && isAutoScrolling) {
+                // 可選：到達底部後稍停或循環，這裡保持繼續但不做特殊處理
+            }
+        }, 35);
+    }
+
+    function stopAutoScroll() {
+        isAutoScrolling = false;
+        if (autoScrollInterval) clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+    }
+
+    function toggleAutoScroll() {
+        if (isAutoScrolling) {
+            stopAutoScroll();
+            hint.innerHTML = "⏸ 已暫停 · 按空格繼續";
+        } else {
+            isAutoScrolling = true;
+            startAutoScroll();
+            hint.innerHTML = "🌸 自動輕卷中 · 空格暫停";
+        }
+    }
+
+    // 字體大小調整
+    function changeFontSize(delta) {
+        let newSize = currentFontSize + delta;
+        if (newSize < 12) newSize = 12;
+        if (newSize > 36) newSize = 36;
+        currentFontSize = newSize;
+        // 重新渲染當前故事
+        renderStory(currentLines);
+    }
+
+    // 鍵盤控制
+    function handleKeydown(e) {
+        const key = e.key;
+        if (key === ' ') {
+            e.preventDefault();
+            toggleAutoScroll();
+        } else if (key === 'ArrowUp') {
+            e.preventDefault();
+            window.scrollBy({ top: -60, behavior: 'smooth' });
+        } else if (key === 'ArrowDown') {
+            e.preventDefault();
+            window.scrollBy({ top: 60, behavior: 'smooth' });
+        } else if (key === '+' || key === '=') {
+            e.preventDefault();
+            changeFontSize(2);
+        } else if (key === '-' || key === '_') {
+            e.preventDefault();
+            changeFontSize(-2);
+        } else if (key === 'Escape') {
+            e.preventDefault();
+            refreshStory();
+        }
+    }
+
+    // 初始化
+    function init() {
+        refreshStory();
+        window.addEventListener('keydown', handleKeydown);
+        // 頁面關閉前清理定時器
+        window.addEventListener('beforeunload', () => {
+            if (autoScrollInterval) clearInterval(autoScrollInterval);
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>
+```
