@@ -1,0 +1,440 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 雅化版 | 豐富動態文字池</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a0e0a; font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif; line-height:1.88; overflow-x:hidden; }
+
+.header { position:fixed; top:0; left:0; width:100%; background:rgba(26,14,10,0.93); backdrop-filter:blur(6px); border-bottom:1px solid #bc7a5e; display:flex; justify-content:space-between; align-items:center; z-index:1000; padding:7px 16px; gap:8px; flex-wrap:wrap; }
+.title { color:#e8c4b0; font-size:0.82rem; letter-spacing:2px; flex:1 1 auto; white-space:nowrap; }
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.ctrl-btn { background:#5e2e22; border:none; color:#f0ddcf; padding:5px 11px; border-radius:40px; cursor:pointer; font-size:0.80rem; font-weight:bold; letter-spacing:1px; transition:background .18s, transform .1s; user-select:none; white-space:nowrap; }
+.ctrl-btn:hover { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
+.status-label { color:#c0906a; font-size:0.70rem; letter-spacing:1px; padding:0 2px; white-space:nowrap; min-width:56px; text-align:center; }
+
+#storyContainer { padding-top:58px; width:100%; max-width:800px; margin:0 auto; background:#fef7ef; min-height:100vh; box-shadow:0 0 30px rgba(0,0,0,.22); }
+.story-block { padding:36px 28px; border-bottom:1px solid #ecd9c8; display:flex; flex-direction:column; gap:24px; opacity:0; transform:translateY(18px); transition:opacity .65s ease, transform .65s ease; }
+.story-block.visible { opacity:1; transform:translateY(0); }
+.story-text { font-size:var(--txt-size,1.18rem); font-weight:500; border-left:4px solid #bc7a5e; padding:14px 20px 14px 24px; background:rgba(255,245,235,.55); border-radius:0 18px 18px 0; line-height:1.88; }
+.story-text .txt { background:linear-gradient(135deg,var(--g1),var(--g2),var(--g3)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+
+.img-wrap { position:relative; border-radius:20px; overflow:hidden; cursor:pointer; user-select:none; }
+.story-img { width:100%; max-height:620px; object-fit:contain; background:#2a1a14; display:block; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,.2); border:1px solid #ecd9c8; }
+.img-hint { position:absolute; bottom:10px; right:14px; background:rgba(26,14,10,.68); color:#e8c4b0; font-size:0.68rem; letter-spacing:1px; padding:3px 10px; border-radius:20px; pointer-events:none; opacity:0; transition:opacity .35s; }
+.img-wrap:hover .img-hint { opacity:1; }
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
+
+#speedToast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:rgba(26,14,10,.88); color:#e8c4b0; padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px; pointer-events:none; opacity:0; transition:opacity .3s; z-index:999; }
+#speedToast.show { opacity:1; }
+.bottom-trigger { text-align:center; padding:40px; color:#b08a74; font-size:.8rem; }
+
+#helpOverlay { display:none; position:fixed; inset:0; z-index:2000; background:rgba(10,5,3,0.82); backdrop-filter:blur(4px); justify-content:center; align-items:center; }
+#helpOverlay.show { display:flex; }
+#helpBox { background:#2a160e; border:1px solid #bc7a5e; border-radius:18px; padding:28px 32px 24px; max-width:380px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,.5); color:#e8c4b0; }
+#helpBox h2 { font-size:1rem; letter-spacing:3px; color:#e8a060; margin-bottom:18px; text-align:center; border-bottom:1px solid #5e2e22; padding-bottom:10px; }
+.help-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(188,122,94,0.15); font-size:0.82rem; gap:12px; }
+.help-row:last-child { border-bottom:none; }
+.help-key { background:#3a1a10; color:#e8a060; border-radius:6px; padding:2px 8px; font-family:monospace; font-size:0.78rem; white-space:nowrap; flex-shrink:0; }
+.help-desc { color:#d4b09a; }
+#helpClose { display:block; margin:18px auto 0; background:#5e2e22; border:none; color:#f0ddcf; padding:6px 24px; border-radius:40px; cursor:pointer; font-size:0.82rem; }
+#helpClose:hover { background:#8e5a4a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌙 杏夜絮語 · 雅化版 | 豐富動態池</div>
+    <div class="ctrl-group">
+        <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+        <button class="ctrl-btn" id="sizeUpBtn" title="放大字體 ]">A+</button>
+        <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體 [">A−</button>
+        <button class="ctrl-btn" id="slowBtn" title="減速 − ↓">−</button>
+        <div class="speed-dots" id="speedDots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <button class="ctrl-btn" id="fastBtn" title="加速 + ↑">+</button>
+        <button class="ctrl-btn active" id="pauseBtn" title="暫停/巡航 Space">⏯ 巡航</button>
+        <button class="ctrl-btn" id="restartBtn" title="重讀 ⟳">⟳</button>
+        <button class="ctrl-btn" id="helpBtn" title="快捷鍵 ?">？</button>
+    </div>
+</div>
+
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵說明</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">]</span><span class="help-desc">放大字體</span></div>
+    <div class="help-row"><span class="help-key">[</span><span class="help-desc">縮小字體</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換目前可見圖片</span></div>
+    <div class="help-row"><span class="help-key">?</span><span class="help-desc">開關說明</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ====================== 擴充後的動態文字池 ======================
+const envPool = [
+    "月光如水的臥室", "潔白床單的柔軟深處", "薄霧繚繞的鏡前", 
+    "杏花輕落的窗邊", "燭光輕搖的深夜", "雨夜窗前", 
+    "銀白月色灑落的房間", "花瓣散落的枕畔", "溫暖燈光映照的角落",
+    "夜風輕拂的紗簾旁", "靜謐無人的杏花林邊"
+];
+
+const feelingPool = [
+    "身體輕輕潮熱酥麻", "心跳緩緩加速如鼓", "肌膚泛起細微顫慄",
+    "溫熱的渴望在體內緩慢蔓延", "隱秘的濕熱顫慄", "靈魂被温柔輕輕包覆",
+    "全身如浸在溫泉般鬆軟", "胸口湧起陣陣甜蜜的悸動", "皮膚像被月光輕吻般敏感"
+];
+
+const actionPool = [
+    "指尖緩慢用力游移揉捏", "輕輕按壓最敏感之處", "腰肢如水蛇般微微扭動",
+    "掌心溫柔貼緊肌膚", "舌尖輕舔乾燥的唇瓣", "雙腿緩緩交纏摩擦",
+    "指腹沿著曲線緩慢描繪", "呼吸逐漸加深而悠長", "身體自然弓起迎接觸碰"
+];
+
+const bodyPool = [
+    "豐盈顫抖的胸脯", "圓潤緊致的臀瓣", "大腿內側細膩濕熱的肌膚",
+    "柔軟滾燙的小腹", "修長優美的頸項", "鎖骨下方薄薄的皮膚",
+    "微微起伏的胸口", "纖細的腰肢", "光滑如絲的肩頭"
+];
+
+const desirePool = [
+    "想被温柔而徹底地占有", "渴望在溫柔中慢慢融化", "想讓自己完全敞開任由撫摸",
+    "想在高潮邊緣不斷徘徊", "想把所有羞恥與快感都獻出去", "渴望被這份安靜的熱情填滿",
+    "想讓這一刻永遠延續下去", "渴望與自己最真實的身體深深對話"
+];
+
+const touchPool = [
+    "滑膩溫熱的觸感", "輕柔如羽毛的撫摸", "帶著絲絲涼意的指尖",
+    "掌心傳來的穩重溫度", "指腹緩慢畫圈的癢意", "皮膚與布料摩擦的細微聲響",
+    "油脂在肌膚上緩慢流動的滑順", "呼吸噴灑在頸間的熱氣"
+];
+
+const lightPool = [
+    "柔軟的月光灑落", "燭火搖曳的暖黃光影", "窗外透進的銀白月色",
+    "燈光在肌膚上勾勒出柔和輪廓", "薄霧中朦朧的光暈", "黑暗中隱約可見的柔美曲線"
+];
+
+const emotionPool = [
+    "安靜而深刻的滿足", "混雜著羞澀的甜蜜", "心神徹底放鬆的寧靜",
+    "靈魂被輕輕擁抱的安心", "既脆弱又強大的奇異感覺", "像回到最初的純淨狀態"
+];
+
+function replaceDynamic(text) {
+    let result = text;
+    result = result.replace(/{env}/g,     () => envPool[Math.floor(Math.random()*envPool.length)]);
+    result = result.replace(/{feeling}/g, () => feelingPool[Math.floor(Math.random()*feelingPool.length)]);
+    result = result.replace(/{action}/g,  () => actionPool[Math.floor(Math.random()*actionPool.length)]);
+    result = result.replace(/{body}/g,    () => bodyPool[Math.floor(Math.random()*bodyPool.length)]);
+    result = result.replace(/{desire}/g,  () => desirePool[Math.floor(Math.random()*desirePool.length)]);
+    result = result.replace(/{touch}/g,   () => touchPool[Math.floor(Math.random()*touchPool.length)]);
+    result = result.replace(/{light}/g,   () => lightPool[Math.floor(Math.random()*lightPool.length)]);
+    result = result.replace(/{emotion}/g, () => emotionPool[Math.floor(Math.random()*emotionPool.length)]);
+    return result;
+}
+
+// ====================== 文字庫 ======================
+const specialLines1 = [ // lq1.jpg
+    "在{env}，我輕輕將手臂枕在腦後，讓{body}在潔白床單上舒展，{feeling}如{light}般緩緩流淌，只想{desire}。",
+    "{env}中，我以溫柔眼神望向自己，{action}過{body}，{touch}讓夜晚更加迷人。"
+];
+
+const specialLines2 = [ // lw7.jpg
+    "在{env}，我輕抬一腿，讓{body}的曲線在白色蕾絲下若隱若現，{feeling}如柔風拂過，只想{desire}。",
+    "{env}中，白色蕾絲緊貼身體，我讓呼吸與姿勢一同柔軟，沉浸在{emotion}的{feeling}裡。"
+];
+
+const specialLines3 = [ // lw9.jpg
+    "在{env}，我俯臥於床，微微回首，{body}的弧度在白紗間展露，眼神帶著柔軟邀請，只想{desire}。",
+    "拱起的背脊與散落的長髮，{action}讓{feeling}如潮水般緩慢湧來，{touch}令人沉醉。"
+];
+
+const cleanLines = [
+    "月光落在鎖骨上，涼涼的，像一片薄霜。",
+    "指尖輕輕劃過小腹，不是挑逗，只是確認自己還在。",
+    "我讓自己保持在將睡未睡的邊緣，像走在雲上。",
+    "溫熱的油塗在皮膚上，滑膩的感覺像另一層溫柔的衣。",
+    "我試著想像一雙最懂我力道的手，輕柔覆蓋。",
+    "今夜不追求任何答案，只享受漫長安靜的等待。",
+    "薄衫下鎖骨的線條，我隔著布料輕輕描繪。",
+    "觸摸不是為了填補誰，而是確認這具身體還活著。",
+    "指尖沿著鎖骨來回游移，我要把夜晚拉長。",
+    "我翻身趴著，把臉埋進枕頭裡，輕輕磨蹭。",
+    "我用羽毛輕輕掃過手臂和脖子，那種癢讓人想笑又想哭。",
+    "今夜想像自己是一隻月下的鹿，安靜地喝水。",
+    "我故意只撫摸大腿外側，讓溫柔自己漲滿。",
+    "我學會了用呼吸控制情緒：吸氣時收緊，吐氣時鬆開。",
+    "今夜不開燈，黑暗中手比眼睛更誠實。",
+    "心尖在手掌下像一顆過熟的杏子，輕輕一碰就顫抖。",
+    "在{light}下，我讓{body}自然展開，{touch}帶來{emotion}。",
+    "{env}裡，{action}過{body}，{feeling}與{emotion}交織成最私密的語言。"
+];
+
+const allLines = [...cleanLines, ...specialLines1, ...specialLines2, ...specialLines3];
+
+// ====================== 圖片換圖（corImgs 永遠從對應子資料夾取；普通圖隨機普通圖庫） ======================
+// 子資料夾各含 001.jpg ~ 021.jpg
+function getRandomFromSub(folder) {
+    const num = Math.floor(Math.random() * 21) + 1;
+    return `./img/${folder}/${num.toString().padStart(3, '0')}.jpg`;
+}
+
+function swapImage(imgEl) {
+    let newSrc;
+    const folder = imgEl.dataset.specialFolder; // 綁定在元素上，永久有效
+
+    if (folder) {
+        // 特殊 block：永遠從對應子資料夾（q1 / w7 / w9）隨機取圖
+        let cur = imgEl.dataset.imgNum;
+        let candidate;
+        do {
+            candidate = getRandomFromSub(folder);
+        } while (candidate.split('/').pop().replace('.jpg','') === cur);
+        newSrc = candidate;
+        imgEl.dataset.imgNum = newSrc.split('/').pop().replace('.jpg','');
+    } else {
+        // 普通 block：從普通圖庫隨機取，避免重複
+        let n;
+        do {
+            n = (Math.floor(Math.random() * 158) + 1).toString().padStart(3, '0');
+        } while (n === imgEl.dataset.imgNum);
+        newSrc = `./img/${n}.jpg`;
+        imgEl.dataset.imgNum = n;
+    }
+
+    imgEl.classList.remove('img-changing');
+    void imgEl.offsetWidth;
+    imgEl.classList.add('img-changing');
+    imgEl.src = newSrc;
+}
+
+function bindImgSwap(wrap, imgEl) {
+    wrap.addEventListener('click', () => swapImage(imgEl));
+    let tx = null, ty = null;
+    wrap.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive: true});
+    wrap.addEventListener('touchend', e => {
+        if (tx === null) return;
+        const dx = e.changedTouches[0].clientX - tx;
+        const dy = e.changedTouches[0].clientY - ty;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) swapImage(imgEl);
+        tx = ty = null;
+    }, {passive: true});
+}
+
+// ====================== 其餘功能（巡航、R鍵、字體、渲染等）保持不變 ======================
+const SPEEDS = [0.35, 0.75, 1.4, 2.5, 4.2];
+const SPEED_NAMES = ['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+let speedLv = 1, cruising = false, rafId = null;
+let userTaking = false, userTakeTimer = null;
+
+function yieldToCruise() {
+    clearTimeout(userTakeTimer);
+    userTakeTimer = setTimeout(() => { userTaking = false; }, 1400);
+}
+window.addEventListener('wheel', () => { userTaking = true; yieldToCruise(); }, {passive: true});
+window.addEventListener('touchstart', () => { userTaking = true; clearTimeout(userTakeTimer); }, {passive: true});
+window.addEventListener('touchend', yieldToCruise, {passive: true});
+
+function cruiseFrame() {
+    if (!cruising) return;
+    if (!userTaking) {
+        const maxY = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY >= maxY - 1) { stopCruise(); startCycle(); return; }
+        window.scrollBy(0, SPEEDS[speedLv]);
+    }
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function startCruise() {
+    cruising = true;
+    document.getElementById('pauseBtn').textContent = '⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    document.getElementById('statusLabel').textContent = '[ 巡航中 ]';
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function stopCruise() {
+    cruising = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    document.getElementById('pauseBtn').textContent = '▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+    document.getElementById('statusLabel').textContent = '[ 暫停 ]';
+}
+function toggleCruise() { cruising ? stopCruise() : startCruise(); }
+
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('speedToast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
+}
+function updateSpeedUI() {
+    document.querySelectorAll('#speedDots .dot').forEach((d,i) => d.classList.toggle('on', i <= speedLv));
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster() { if(speedLv < SPEEDS.length-1){ speedLv++; updateSpeedUI(); } }
+function slower() { if(speedLv > 0){ speedLv--; updateSpeedUI(); } }
+document.getElementById('fastBtn').onclick = faster;
+document.getElementById('slowBtn').onclick = slower;
+updateSpeedUI();
+
+const TXT_SIZES = ['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+let txtIdx = 3;
+function applyTxt() { document.documentElement.style.setProperty('--txt-size', TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick = () => { if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } };
+document.getElementById('sizeDownBtn').onclick = () => { if(txtIdx > 0){ txtIdx--; applyTxt(); } };
+
+const PALETTES = [['#c0546a','#d4885a','#b86040'],['#a0385a','#7a4a8a','#5a6aaa'],['#c8922a','#d4a84a','#a06030'],['#8aabcc','#6a8aaa','#4a6a9a'],['#d48aaa','#aa6a9a','#7a4a80'],['#4a9a88','#3a7a90','#2a5a78']];
+function randPalette(){ return PALETTES[Math.floor(Math.random()*PALETTES.length)]; }
+
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length-1; i > 0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+const fadeObserver = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+        if (en.isIntersecting) {
+            en.target.classList.add('visible');
+            fadeObserver.unobserve(en.target);
+        }
+    });
+}, { threshold: 0.04 });
+
+function renderAll(container) {
+    container.innerHTML = '';
+    const shuffledLines = shuffle(allLines);
+    const images = [...Array(106)].map((_,i) => (i+1).toString().padStart(3,'0') + '.jpg');
+
+    // 建立特殊文字→子資料夾的對應 Map（在 shuffle 之前先建好）
+    const specialFolderMap = new Map();
+    specialLines1.forEach(l => specialFolderMap.set(l, 'q1'));
+    specialLines2.forEach(l => specialFolderMap.set(l, 'w7'));
+    specialLines3.forEach(l => specialFolderMap.set(l, 'w9'));
+
+    shuffledLines.forEach((baseText, i) => {
+        const text = replaceDynamic(baseText);
+        const pal = randPalette();
+
+        // 查詢此行是否屬於特殊子資料夾
+        const folder = specialFolderMap.get(baseText) || null;
+
+        // 初始圖：special block → 對應子資料夾隨機圖；普通 → 普通圖庫
+        let initSrc, initNum;
+        if (folder) {
+            const rn = Math.floor(Math.random() * 21) + 1;
+            initNum = rn.toString().padStart(3, '0');
+            initSrc = `./img/${folder}/${initNum}.jpg`;
+        } else {
+            const imgName = images[i % images.length];
+            initNum = imgName.replace('.jpg','');
+            initSrc = `./img/${imgName}`;
+        }
+
+        const block = document.createElement('div');
+        block.className = 'story-block';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'story-text';
+        const span = document.createElement('span');
+        span.className = 'txt';
+        span.style.setProperty('--g1', pal[0]);
+        span.style.setProperty('--g2', pal[1]);
+        span.style.setProperty('--g3', pal[2]);
+        span.textContent = '🌸 ' + text;
+        textDiv.appendChild(span);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
+        const img = document.createElement('img');
+        img.className = 'story-img';
+        img.src = initSrc;
+        img.alt = '杏夜';
+        img.loading = 'lazy';
+        img.dataset.imgNum = initNum;
+        if (folder) img.dataset.specialFolder = folder; // 永久綁定，換圖時永遠從此子資料夾取
+
+        const hint = document.createElement('span');
+        hint.className = 'img-hint';
+        hint.textContent = '← 滑動 / 點擊換圖 →';
+        wrap.appendChild(img); wrap.appendChild(hint);
+        bindImgSwap(wrap, img);
+
+        block.appendChild(textDiv);
+        block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+    });
+
+    const fin = document.createElement('div');
+    fin.className = 'bottom-trigger';
+    fin.textContent = '🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ====================== 鍵盤快捷鍵 ======================
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch(e.key) {
+        case ' ': e.preventDefault(); toggleCruise(); break;
+        case 'ArrowUp': case '+': case '=': e.preventDefault(); faster(); break;
+        case 'ArrowDown': case '-': case '_': e.preventDefault(); slower(); break;
+        case ']': if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } break;
+        case '[': if(txtIdx > 0){ txtIdx--; applyTxt(); } break;
+        case 'r': case 'R': {
+            const vp = window.innerHeight;
+            const imgs = [...document.querySelectorAll('.story-img')].filter(img => {
+                const r = img.getBoundingClientRect();
+                return r.bottom > 0 && r.top < vp;
+            });
+            if (imgs.length) swapImage(imgs[Math.floor(Math.random()*imgs.length)]);
+            break;
+        }
+        case '?': case '/': toggleHelp(); break;
+        case 'Escape': hideHelp(); break;
+    }
+});
+
+function showHelp(){ document.getElementById('helpOverlay').classList.add('show'); stopCruise(); }
+function hideHelp(){ document.getElementById('helpOverlay').classList.remove('show'); }
+function toggleHelp(){ document.getElementById('helpOverlay').classList.contains('show') ? hideHelp() : showHelp(); }
+
+document.getElementById('helpBtn').onclick = toggleHelp;
+document.getElementById('helpClose').onclick = hideHelp;
+document.getElementById('helpOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('helpOverlay')) hideHelp();
+});
+
+document.getElementById('pauseBtn').onclick = toggleCruise;
+document.getElementById('restartBtn').onclick = startCycle;
+
+// ====================== 啟動 ======================
+function startCycle() {
+    stopCruise();
+    document.getElementById('statusLabel').textContent = '[ 載入中 ]';
+    renderAll(document.getElementById('storyContainer'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(startCruise, 600);
+}
+
+startCycle();
+</script>
+</body>
+</html>
