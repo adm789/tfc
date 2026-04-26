@@ -1,393 +1,415 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>杏夜堕花 · 随机叙事机 | 20节点版</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 完全雅化版 | 131圖文隨機輪迴</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
 
-        body {
-            background: #0a0a0a;
-            color: #e0d6c0;
-            font-family: 'Georgia', 'Times New Roman', '宋体', serif;
-            padding: 20px;
-        }
+body {
+    background: #1a0e0a;
+    font-family: 'Georgia','Times New Roman','Microsoft JhengHei',serif;
+    line-height: 1.88;
+    overflow-x: hidden;
+    color: #3a2a22;
+}
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #1e1612;
-            border-radius: 24px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid #5e3a2e;
-        }
+/* ═══ 頂欄 ═══ */
+.header {
+    position: fixed; top:0; left:0; width:100%;
+    background: rgba(26,14,10,0.95);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #bc7a5e;
+    display: flex; justify-content:space-between; align-items:center;
+    z-index: 1000;
+    padding: 7px 16px; gap:8px; flex-wrap:wrap;
+}
+.title { color:#e8c4b0; font-size:0.82rem; letter-spacing:2px; flex:1 1 auto; white-space:nowrap; }
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
 
-        h1 {
-            text-align: center;
-            font-size: 1.8rem;
-            letter-spacing: 4px;
-            color: #e07a5f;
-            margin-bottom: 8px;
-        }
+.ctrl-btn {
+    background:#5e2e22; border:none; color:#f0ddcf;
+    padding:5px 11px; border-radius:40px; cursor:pointer;
+    font-size:0.80rem; font-weight:bold; letter-spacing:1px;
+    transition: background .18s, transform .1s;
+    user-select:none; white-space:nowrap;
+}
+.ctrl-btn:hover  { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
 
-        .sub {
-            text-align: center;
-            font-size: 0.8rem;
-            color: #b87a5a;
-            margin-bottom: 24px;
-            border-bottom: 1px dashed #5e3a2e;
-            padding-bottom: 12px;
-        }
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
 
-        /* 节点网格预览（小窗展示当前库的摘要） */
-        .node-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 6px;
-            margin-bottom: 24px;
-            background: #0f0b09;
-            padding: 12px;
-            border-radius: 16px;
-            max-height: 280px;
-            overflow-y: auto;
-        }
+.status-label { color:#c0906a; font-size:0.70rem; letter-spacing:1px; padding:0 2px; white-space:nowrap; min-width:56px; text-align:center; }
 
-        .node-card {
-            background: #2a201b;
-            border-left: 4px solid #c2472c;
-            padding: 6px 8px;
-            font-size: 11px;
-            color: #ccb9a8;
-            border-radius: 6px;
-        }
+/* ═══ 主容器 ═══ */
+#storyContainer {
+    padding-top:58px;
+    width:100%; max-width:800px; margin:0 auto;
+    background:#fef7ef; 
+    min-height:100vh;
+    box-shadow:0 0 30px rgba(0,0,0,.22);
+}
 
-        .node-card strong {
-            color: #e07a5f;
-            font-size: 10px;
-        }
+.story-block {
+    padding: 20px 16px;                    /* 緊湊舒適 */
+    border-bottom:1px solid #ecd9c8;
+    display:flex; 
+    flex-direction:column; 
+    gap: 10px;                             /* 文字與圖片貼近 */
+    opacity:0; 
+    transform:translateY(18px);
+    transition: opacity .65s ease, transform .65s ease;
+}
+.story-block.visible { opacity:1; transform:translateY(0); }
 
-        /* 输出故事区 */
-        .story-area {
-            background: #fef7e8;
-            color: #2c1a12;
-            padding: 20px;
-            border-radius: 20px;
-            margin: 20px 0;
-            box-shadow: inset 0 0 0 1px #fff8, 0 8px 20px rgba(0,0,0,0.3);
-            display: none;
-        }
+/* ==================== 彩色文字核心修復 ==================== */
+.story-text {
+    position: relative;
+    font-size: var(--txt-size, 1.18rem);
+    font-weight: 500;
+    line-height: 1.88;
+    padding: 14px 20px 14px 24px;
+    border-left: 5px solid #bc7a5e;
+    border-radius: 0 18px 18px 0;
+    background: rgba(255,245,235,0.55);        /* 柔和統一底色 */
+    overflow: hidden;
+}
 
-        .story-line {
-            display: block;
-            padding: 8px 12px;
-            border-bottom: 1px solid #e2cfb5;
-            font-size: 1.05rem;
-            line-height: 1.5;
-            font-weight: 500;
-        }
+/* 底色偽元素（不干擾文字） */
+.story-text::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,245,235,0.55);
+    z-index: -1;
+    border-radius: 0 18px 18px 0;
+}
 
-        .story-line:last-child {
-            border-bottom: none;
-        }
+/* 漸層彩色文字 - 真正套在內層 span */
+.story-text .txt {
+    background: linear-gradient(135deg, var(--g1), var(--g2), var(--g3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    width: 100%;
+}
 
-        /* 按钮区 */
-        .button-area {
-            text-align: center;
-            margin-top: 16px;
-        }
+/* 漸層色票（柔和優雅） */
+.story-text.color1 .txt { --g1:#c0546a; --g2:#d4885a; --g3:#b86040; }
+.story-text.color2 .txt { --g1:#a0385a; --g2:#7a4a8a; --g3:#5a6aaa; }
+.story-text.color3 .txt { --g1:#c8922a; --g2:#d4a84a; --g3:#a06030; }
+.story-text.color4 .txt { --g1:#8aabcc; --g2:#6a8aaa; --g3:#4a6a9a; }
+.story-text.color5 .txt { --g1:#d48aaa; --g2:#aa6a9a; --g3:#7a4a80; }
+.story-text.color6 .txt { --g1:#4a9a88; --g2:#3a7a90; --g3:#2a5a78; }
 
-        #goBtn {
-            background: #b53b1c;
-            border: none;
-            color: white;
-            font-size: 1.4rem;
-            font-weight: bold;
-            padding: 12px 40px;
-            border-radius: 60px;
-            cursor: pointer;
-            font-family: inherit;
-            letter-spacing: 6px;
-            transition: 0.2s;
-            box-shadow: 0 3px 0 0 #5e1e0a;
-        }
+.img-wrap {
+    position:relative; 
+    border-radius:18px; 
+    overflow:hidden;
+    cursor:pointer; 
+    user-select:none;
+}
+.story-img {
+    width:100%; 
+    max-height:620px; 
+    object-fit:contain;
+    background:#2a1a14; 
+    display:block; 
+    border-radius:18px;
+    box-shadow:0 8px 20px rgba(0,0,0,.2); 
+    border:1px solid #ecd9c8;
+}
+.img-hint {
+    position:absolute; bottom:10px; right:14px;
+    background:rgba(26,14,10,.68); 
+    color:#e8c4b0;
+    font-size:0.68rem; 
+    letter-spacing:1px;
+    padding:3px 10px; 
+    border-radius:20px;
+    pointer-events:none; 
+    opacity:0; 
+    transition:opacity .4s;
+}
+.img-wrap:hover .img-hint { opacity:1; }
 
-        #goBtn:hover {
-            background: #d65c3a;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 0 0 #5e1e0a;
-        }
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
 
-        footer {
-            text-align: center;
-            font-size: 11px;
-            margin-top: 20px;
-            color: #7e5a48;
-        }
-    </style>
+.bottom-trigger { 
+    text-align:center; 
+    padding:32px; 
+    color:#b08a74; 
+    font-size:.82rem; 
+}
+
+#speedToast {
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
+    background:rgba(26,14,10,.88); color:#e8c4b0;
+    padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px;
+    pointer-events:none; opacity:0; transition:opacity .3s; z-index:999;
+}
+#speedToast.show { opacity:1; }
+</style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🌙 杏夜堕花 · 随机叙事机 🌸</h1>
-    <div class="sub">20 个情欲节点 · 每节点 5 种可能 · 每次点击生成全新篇章</div>
-
-    <!-- 节点预览 (仅展示结构) -->
-    <div class="node-grid" id="nodePreview"></div>
-
-    <!-- 随机故事输出区 -->
-    <div class="story-area" id="storyArea">
-        <div id="storyContent"></div>
+<div class="header">
+    <div class="title">🌙 杏夜絮語 · 雅化版</div>
+    <div class="ctrl-group">
+        <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體  ]">A+</button>
+        <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體  [">A−</button>
+        <button class="ctrl-btn" id="slowBtn" title="減速  − ↓">−</button>
+        <div class="speed-dots" id="speedDots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+        </div>
+        <button class="ctrl-btn" id="fastBtn" title="加速  + ↑">+</button>
+        <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+        <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航  Space">⏯ 巡航</button>
+        <button class="ctrl-btn"        id="restartBtn" title="重讀  ⟳">⟳</button>
     </div>
-
-    <div class="button-area">
-        <button id="goBtn">🌸 再写一次 · 随机缘法 🌸</button>
-    </div>
-    <footer>※ 每次点击，从20个节点中各随机取一句，组成一篇完整的侠女堕花记</footer>
 </div>
 
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
 <script>
-// ========================
-// 20个节点 · 每个节点5条文本 (基于原文意境扩展)
-// ========================
-const storyNodes = {};
+// ==================== 加強詞庫（融入黃蓉性史風格靈感） ====================
+const envPool = ["月光如水灑落","杏花林深處","深夜燭光搖曳的臥室","鏡前幽暗燈光","薄霧繚繞的窗邊","被窩溫熱餘溫","浴室水氣瀰漫","喜袍半解的燭影","雨夜窗前","月下浴池"];
 
-// N0  前缘 · 暗香浮动
-storyNodes.N0 = [
-    "春夜杏花微醺，黃絨獨行林間，衣襟下雙乳脹得發疼，乳汁已滲出薄衫。",
-    "悠八隱在樹後，盯住她豐腴身段，喉頭滾動：「這娘子，像是熟透的水蜜桃。」",
-    "「借力春風杏花雨」——他低吟一句市井豔詞，黃絨聽得耳根發燙。",
-    "胸口的濕意越來越重，她咬唇暗罵自己不爭氣，怎就被這莽漢撩動了心弦。",
-    "月色下，兩道影子一高一低，慾望如藤蔓悄然纏繞上理智的圍牆。"
-];
+const feelingPool = ["身體潮熱酥麻","心跳劇烈如鼓","全身輕顫不止","慾火在小腹緩緩燃燒","既甜蜜又疼痛的快感","柔軟無力卻渴望更多","隱秘的濕熱顫慄","靈魂被輕輕撕扯","強烈的空虛飢渴","被快感徹底淹沒"];
 
-// N1  樹梢自解 · 玉山傾頹
-storyNodes.N1 = [
-    "她攀上高枝，顫抖著解開衣襟，那對雪膩豪乳猛然彈出，在月光下晃動。",
-    "乳汁順著乳尖滴落，滴滴答答落在樹葉上，空氣中漫開甜腥的奶香。",
-    "「嗯……好脹……」她雙手揉捏自己的雙峰，白線劃破夜空，濺濕了樹下泥土。",
-    "悠八在樹下仰頭張嘴，幾滴乳汁落入口中，他貪婪舔唇：「好甜……」。",
-    "黃絨半瞇著眼，一邊擠奶一邊生出奇異的快感——反正無人看見這羞態。"
-];
+const actionPool = ["指尖緩慢用力游移揉捏","輕輕按壓最敏感處","腰肢如水蛇般扭動","雙腿緊緊交纏摩擦","掌心用力貼緊肌膚","舌尖輕舔乾燥唇瓣","緩慢深入探索","輕咬肩頭壓抑呻吟","在鏡中凝視自己羞紅的臉","豐滿胸脯用力摩擦"];
 
-// N2  跌落 · 入虎口
-storyNodes.N2 = [
-    "腳下一滑，她如斷翅白鶴直墜而下，還未站穩便被一雙粗臂抵在樹幹。",
-    "「嘶啦——」褻褲在暴力下碎成片片，夜風灌入濕透的腿間，她羞恥得幾乎昏厥。",
-    "悠八一口含住她乳尖猛力吸吮，乳汁咕滋咕滋被吞下，像飢餓的野獸。",
-    "粗糙手掌揉捏她肥碩的臀瓣，指尖順著股溝滑向那片泥濘花園。",
-    "一根滾燙硬物抵在腿根，龜頭撐開陰唇邊緣——她渾身繃緊，驚呼未出。"
-];
+const bodyPool = ["豐盈顫抖的胸脯","圓潤緊致的臀瓣","大腿內側細膩濕熱肌膚","早已濕潤的花徑","挺立敏感的乳尖","柔軟滾燙的小腹","修長優美的頸項","泛紅發燙的耳垂","鎖骨下方薄薄皮膚","乳肉從指縫間溢出"];
 
-// N3  點穴 · 反製為觀
-storyNodes.N3 = [
-    "千鈞一髮，她指尖凝聚真氣，精準點中悠八「膻中穴」，他悶聲倒地。",
-    "黃絨背靠樹幹滑坐在地，大口喘息，胸前乳汁仍不斷滲出，濕透衣襟。",
-    "「好險……再差一寸便……」她不敢再想，卻發現自己下身依然濕得厲害。",
-    "林中復歸死寂，只有遠處蟲鳴和她的心跳交織成曖昧的節奏。",
-    "她低頭看向昏睡的男子，目光竟無法從他敞開的褲襠移開。"
-];
+const desirePool = ["想被粗暴占有與征服","渴望在疼痛中徹底融化","想被更深力道狠狠懲罰","期待被徹底填滿到極致","想讓自己完全敞開任由擺布","渴望感受到無法抗拒的狂野撞擊","想在高潮邊緣不斷徘徊","想把所有羞恥與快感獻出去","渴望被用力壓制疼愛","想讓這具身體永遠記住激烈溫柔"];
 
-// N4  窺探 · 觸碰禁忌
-storyNodes.N4 = [
-    "那團軟塌塌的肉垂在胯間，毛髮濃密狂亂，透著一股未經開化的野性。",
-    "她鬼使神差伸出指尖，輕輕觸碰那軟物：「男子的東西，竟能縮得這般小？」",
-    "入手溫熱、沉甸甸，與丈夫郭靜的乾淨規整截然不同，她心跳如鼓。",
-    "指尖沾上些許黏膩，她竟不覺噁心，反而更深空虛從下腹升起。",
-    "她縮回手，又忍不住再探，像偷嘗禁果的少女，羞恥又興奮。"
-];
-
-// N5  解穴 · 目睹勃起
-storyNodes.N5 = [
-    "她解開他部分經脈，只留昏睡穴。悠八呼吸粗重，那團軟肉開始突突跳動。",
-    "「小娘子……好白……讓哥哥吃一口……」夢中粗語鑽入耳中，她耳根燙如火燒。",
-    "那物在她掌心迅速膨大、變硬、上翹，青筋畢露，比丈夫的更加驚人。",
-    "龜頭雞蛋般大小，前端微彎，散發著濃烈的雄性腥氣，她口乾舌燥。",
-    "她握著那滾燙肉杵，感覺它在手中脈動，理智正在一寸寸崩坍。"
-];
-
-// N6  品簫撫琴 · 孤獨自瀆
-storyNodes.N6 = [
-    "黃絨一手握住陽具輕輕套弄，一手探入自己濕透的腿間。",
-    "指尖撥開層層疊疊的花瓣，觸及那顆紅腫的蕊珠，一陣酥麻竄遍全身。",
-    "月下林間，一代俠女衣衫半解，一手品簫、一手撫琴，畫面淫靡至極。",
-    "「嗯……不夠……這樣不夠……」越是撫弄，體內那口深井越是乾渴。",
-    "淫水順著大腿流下，她一邊嚕動肉棍，一邊揉搓陰唇，幾近瘋狂。"
-];
-
-// N7  跨坐 · 邊緣磨蹭
-storyNodes.N7 = [
-    "她翻身跨上悠八粗壯的腰腹，肥臀貼上他粗糙的肚皮，毛茬扎著嫩肉。",
-    "那根怒龍嵌在臀溝中，龜頭沿著濕滑裂縫來回滑動，每次都擦過洞口。",
-    "陰唇緊貼棍身摩擦，快感如電流般湧遍全身，淫水簌簌而落。",
-    "「就磨一磨……不算真的……」她喃喃自語，腰肢卻越扭越急。",
-    "龜頭撐開陰唇邊緣，只差最後一沉——身體已徹底不聽使喚。"
-];
-
-// N8  沈淪 · 全根沒入
-storyNodes.N8 = [
-    "「便只一次……權當春夢……」肥臀一沉，粗物連根沒入，她仰頭泣叫。",
-    "「噗滋——」淫水四濺，撕裂與充實同時炸開，淚水與淫水一齊湧出。",
-    "體內被蠻橫撐開，久違的充實感讓她幾乎暈厥，那是丈夫從未給過的深度。",
-    "她在他身上瘋狂起伏，雙乳甩出乳白弧線，奶水噴了他滿臉。",
-    "「啊……太深了……要壞了……」她悲鳴著，卻怎樣也停不下來。"
-];
-
-// N9  高潮 · 上下雙洩
-storyNodes.N9 = [
-    "「不行了……要洩了……噢——」陰精如潮噴出，乳汁同時激射，上下雙洩。",
-    "悠八在夢中低吼，腰身猛地挺動，滾燙陽精狠狠灌入花心深處。",
-    "「別……不能射在裡面……」她驚叫著要起身，卻被那一波波熱流燙得渾身痙攣。",
-    "那股熱力彷彿要將她融化，她癱軟在他身上，大腦一片空白。",
-    "良久，她趴在他胸口，感受體內那根東西慢慢變軟，心中說不清是悔還是饜足。"
-];
-
-// N10 餘韻 · 狼藉月光
-storyNodes.N10 = [
-    "風止花落。她側臥在狼藉的白濁與奶漬中，月光照著赤裸胴體。",
-    "腿間那一片泥濘在月色下反光，陽精與淫水混合，順著大腿根流下。",
-    "她看著依然昏睡的悠八，嘴角竟不自覺勾起一絲苦笑：「荒唐……」",
-    "心中羞恥難當，卻又隱隱覺得某種壓抑多年的東西被釋放了。",
-    "「碎了一地……卻又像重生一般……」她閉上眼睛，不願再想。"
-];
-
-// N11 拂曉 · 暗痕
-storyNodes.N11 = [
-    "天色微明，黃絨穿好衣衫，將殘破的褻褲塞入袖中。",
-    "她回頭看了悠八最後一眼，那醜陋的臉上還掛著滿足的笑意。",
-    "腿間的酸軟和黏膩提醒她昨夜的一切不是夢，是真實的墮落。",
-    "她咬咬牙，提氣躍上枝頭，身影消失在晨霧之中。",
-    "杏花落了滿地，像極了她碎了一地的貞節牌坊。"
-];
-
-// N12 歸途 · 暗湧
-storyNodes.N12 = [
-    "回到客棧，丈夫郭靜仍在酣睡。她悄悄褪下衣衫，看見身上青紫的指痕。",
-    "胸前乳尖還微微發燙，乳汁又漲了出來，浸濕了中衣。",
-    "她坐在鏡前，看著鏡中那張仍帶潮紅的臉，覺得既熟悉又陌生。",
-    "「只此一次……再不會了……」她對自己說，卻連自己都不信。",
-    "窗外晨光刺眼，她閉上眼，腦中浮現的竟是悠八那根青筋暴起的陽物。"
-];
-
-// N13 白日 · 回想
-storyNodes.N13 = [
-    "白日裡與郭靜對弈，她屢屢走神，棋子落錯了七八次。",
-    "郭靜笑問：「夫人昨夜沒睡好？」她心虛低頭，耳根泛紅。",
-    "手指捏著棋子，卻想起昨夜自己握著那根粗物套弄的觸感。",
-    "腿間又不自覺濕了，她趕緊夾緊雙腿，生怕被看出異樣。",
-    "那種禁忌的刺激在白日裡回想起來，竟比昨夜更加撩人。"
-];
-
-// N14 再遇 · 心魔
-storyNodes.N14 = [
-    "傍晚她獨自去集市買胭脂，卻在巷口撞見那個熟悉的身影。",
-    "悠八笑嘻嘻湊過來：「小娘子，昨夜睡得可好？」",
-    "她心跳如雷，想轉身離去，腳卻像釘在地上。",
-    "他低聲道：「哥哥那裡還有些新鮮玩意兒，娘子若有空……」",
-    "她咬唇不語，最終竟鬼使神差跟著他走進了巷子深處。"
-];
-
-// N15 第二次 · 熟門熟路
-storyNodes.N15 = [
-    "柴房裡乾草散落一地，還未站穩，悠八已從背後摟住她的腰。",
-    "這一次沒有點穴，沒有掙扎。她甚至配合地翹起臀部。",
-    "裙子被撩起，褻褲扯到膝彎，那根滾燙的肉杵直接頂了進來。",
-    "「啊……輕些……」她扶著牆壁，承受著背後猛烈的撞擊。",
-    "乳汁隨著每一下撞擊噴出，濺在乾草上，空氣中全是甜腥。"
-];
-
-// N16 沈溺 · 不再抗拒
-storyNodes.N16 = [
-    "「你不是有丈夫嗎？怎的還這般飢渴？」悠八一邊抽送一邊調笑。",
-    "她已經說不出完整的話，只能發出破碎的呻吟：「閉……閉嘴……嗯……」",
-    "他故意拔出來，她竟慌張地伸手去抓那根濕淋淋的肉棍塞回體內。",
-    "「騷娘子，還說不想要？」他大笑，把她翻過來壓在草堆上。",
-    "她雙腿纏上他的腰，主動迎合，什麼俠女風範全丟到了九霄雲外。"
-];
-
-// N17 墮落 · 認命
-storyNodes.N17 = [
-    "事後她躺在草堆上，任由白濁從腿間流出，眼神空洞。",
-    "「我是不是……壞掉了？」她喃喃自語。",
-    "悠八點了一根煙桿，吐著煙圈：「壞什麼壞，這才叫快活。」",
-    "她忽然笑出聲，笑得眼淚都出來了：「是啊……快活……」",
-    "那一夜她沒有回客棧，在柴房裡與那個無賴纏綿了整整一夜。"
-];
-
-// N18 偷情 · 慣犯
-storyNodes.N18 = [
-    "從此每隔三五日，她便藉口採藥、賞花，去那間柴房赴約。",
-    "悠八總能想出各種新鮮花樣，讓她欲仙欲死。",
-    "她甚至學會了主動騎在他臉上，讓他用舌頭伺候自己。",
-    "奶水依然豐沛，每次都被他吸得一滴不剩，脹痛再也沒有了。",
-    "她愛上了這種背德的快感，甚至開始期待每一次幽會。"
-];
-
-// N19 終章 · 杏花落盡
-storyNodes.N19 = [
-    "那年秋天，郭靜偶然發現了她袖中的男人汗巾，沉默良久。",
-    "他沒有揭穿，只是從此夜不歸宿。黃絨也不追問。",
-    "杏花林中的那間柴房，成了她真正的歸宿。",
-    "江湖傳聞，黃幫主日漸豐腴風騷，卻再也不問武林事。",
-    "有人說曾在杏花林見過她，衣衫半解，靠著一個粗漢子喝酒。"
-];
-
-// 將所有節點收集成陣列 (N0 ~ N19)
-const nodeKeys = [];
-for (let i = 0; i <= 19; i++) {
-    const key = 'N' + i;
-    nodeKeys.push(key);
+// 防重複替換
+function replaceDynamic(text) {
+    let result = text;
+    const used = new Set();
+    const replaceWith = (pool, threshold = 0.35) => {
+        let word = pool[Math.floor(Math.random()*pool.length)];
+        while(used.has(word) && Math.random() > threshold) word = pool[Math.floor(Math.random()*pool.length)];
+        used.add(word);
+        return word;
+    };
+    result = result.replace(/{env}/g, () => replaceWith(envPool, 0.4));
+    result = result.replace(/{feeling}/g, () => replaceWith(feelingPool));
+    result = result.replace(/{action}/g, () => replaceWith(actionPool, 0.3));
+    result = result.replace(/{body}/g, () => replaceWith(bodyPool));
+    result = result.replace(/{desire}/g, () => replaceWith(desirePool));
+    return result;
 }
 
-// 預覽節點 (顯示每個節點的第一句)
-function buildPreview() {
-    const previewDiv = document.getElementById('nodePreview');
-    previewDiv.innerHTML = '';
-    for (let i = 0; i <= 19; i++) {
-        const key = 'N' + i;
-        const firstLine = storyNodes[key][0];
-        const card = document.createElement('div');
-        card.className = 'node-card';
-        card.innerHTML = `<strong>${key}</strong><br>${firstLine.substring(0, 38)}…`;
-        previewDiv.appendChild(card);
+const baseLines = [
+    "在{env}，我閉上眼，讓{feeling}的自己慢慢沉浸，{action}過{body}，心底湧起強烈的{desire}。",
+    "{env}下，我輕輕撫過{body}，{feeling}如潮水般襲來，{action}時忍不住低吟，那股{desire}讓我全身發燙。",
+    "鏡子裡的我滿臉潮紅，在{env}中{action}著{body}，{feeling}交織成最隱秘的語言，我強烈渴望{desire}。",
+    "我把枕頭墊在腰下，讓{body}微微上翹，{env}裡{feeling}地等待，{action}的同時心裡只想{desire}。",
+    "{env}中，我用指尖用力{action}過{body}，{feeling}讓呼吸急促，那無法壓抑的{desire}在體內翻騰。",
+    "想像杏花瓣落在{body}上，{env}裡冰涼與溫熱激烈交錯，{action}時我{feeling}到極致，只想被{desire}。",
+    "薄衫下{body}的曲線在{env}中若隱若現，我{action}著它，{feeling}讓我停不下來，深深沉浸在{desire}之中。",
+    "我讓自己跪趴在床上，從鏡子裡看見{body}誘人的弧度，{env}裡{action}時{feeling}如電流竄過，強烈想要{desire}。",
+    "溫熱的油塗滿{body}，滑膩觸感讓我顫抖，{env}中我緩慢{action}自己，{feeling}讓我徹底敞開{desire}。",
+    "{env}裡我咬住枕角壓抑聲音，{action}著滾燙的{body}，{feeling}如浪潮一波波襲來，深深沉醉在{desire}裡。",
+    "豐滿的{body}在{env}中輕輕晃動，{action}時乳肉從指縫溢出，{feeling}讓我強烈渴望{desire}。",
+    "在{env}燭光下，我故意將{body}貼得更緊，{action}帶來陣陣酥麻，{feeling}中充滿{desire}。"
+];
+
+const cleanLines = baseLines;
+
+// ==================== 其他功能（不變） ====================
+const TXT_SIZES = ['0.92rem','1.02rem','1.12rem','1.22rem','1.35rem','1.48rem','1.65rem'];
+let txtIdx = 3;
+function applyTxt() { document.documentElement.style.setProperty('--txt-size',TXT_SIZES[txtIdx]); }
+applyTxt();
+
+document.getElementById('sizeUpBtn').onclick = () => { if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } };
+document.getElementById('sizeDownBtn').onclick = () => { if(txtIdx > 0){ txtIdx--; applyTxt(); } };
+
+function swapImage(imgEl) {
+    let n;
+    do { n = (Math.floor(Math.random()*131)+1).toString().padStart(3,'0'); } 
+    while(n === imgEl.dataset.imgNum);
+    imgEl.dataset.imgNum = n;
+    imgEl.classList.remove('img-changing'); 
+    void imgEl.offsetWidth; 
+    imgEl.classList.add('img-changing');
+    imgEl.src = `./img/${n}.jpg`;
+}
+
+function bindImgSwap(wrap, imgEl) {
+    wrap.addEventListener('click', () => swapImage(imgEl));
+    let tx=null, ty=null;
+    wrap.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+    wrap.addEventListener('touchend', e=>{
+        if(tx===null) return;
+        const dx = e.changedTouches[0].clientX - tx;
+        const dy = e.changedTouches[0].clientY - ty;
+        if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.5) swapImage(imgEl);
+        tx=ty=null;
+    }, {passive:true});
+}
+
+// 巡航引擎（保持原樣）
+const SPEEDS=[0.35,0.75,1.4,2.5,4.2];
+const SPEED_NAMES=['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+let speedLv=1, cruising=false, rafId=null;
+let userTaking=false, userTakeTimer=null;
+
+function yieldToCruise(){ clearTimeout(userTakeTimer); userTakeTimer=setTimeout(()=>{userTaking=false;},1400); }
+window.addEventListener('wheel',()=>{userTaking=true;yieldToCruise();},{passive:true});
+window.addEventListener('touchstart',()=>{userTaking=true;clearTimeout(userTakeTimer);},{passive:true});
+window.addEventListener('touchend',yieldToCruise,{passive:true});
+
+function cruiseFrame(){
+    if(!cruising) return;
+    if(!userTaking){
+        const maxY = document.documentElement.scrollHeight - window.innerHeight;
+        if(window.scrollY >= maxY-1){ stopCruise(); startCycle(); return; }
+        window.scrollBy(0, SPEEDS[speedLv]);
     }
+    rafId = requestAnimationFrame(cruiseFrame);
 }
+function startCruise(){
+    cruising=true;
+    document.getElementById('pauseBtn').textContent='⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    document.getElementById('statusLabel').textContent='[ 巡航中 ]';
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function stopCruise(){
+    cruising=false;
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    document.getElementById('pauseBtn').textContent='▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+    document.getElementById('statusLabel').textContent='[ 暫停 ]';
+}
+function toggleCruise(){ cruising ? stopCruise() : startCruise(); }
 
-// 核心：隨機生成一篇完整故事
-function generateRandomStory() {
-    let storyLines = [];
-    for (let i = 0; i <= 19; i++) {
-        const key = 'N' + i;
-        const texts = storyNodes[key];
-        const randomIndex = Math.floor(Math.random() * texts.length);
-        storyLines.push(texts[randomIndex]);
+let toastTimer=null;
+function showToast(msg){
+    const t = document.getElementById('speedToast');
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'),1300);
+}
+function updateSpeedUI(){
+    document.querySelectorAll('#speedDots .dot').forEach((d,i)=> d.classList.toggle('on', i<=speedLv));
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster(){ if(speedLv < SPEEDS.length-1){ speedLv++; updateSpeedUI(); } }
+function slower(){ if(speedLv > 0){ speedLv--; updateSpeedUI(); } }
+document.getElementById('fastBtn').onclick = faster;
+document.getElementById('slowBtn').onclick = slower;
+updateSpeedUI();
+
+const fadeObserver = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+        if(en.isIntersecting){ 
+            en.target.classList.add('visible'); 
+            fadeObserver.unobserve(en.target);
+        }
+    });
+}, {threshold:0.05});
+
+function shuffle(arr){
+    const a = [...arr];
+    for(let i=a.length-1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i], a[j]] = [a[j], a[i]];
     }
-    return storyLines;
+    return a;
+}
+function imgList(n=131){
+    return shuffle([...Array(n)].map((_,i) => (i+1).toString().padStart(3,'0')));
 }
 
-// 渲染故事到畫面
-function renderStory() {
-    const storyLines = generateRandomStory();
-    const storyContent = document.getElementById('storyContent');
-    const storyArea = document.getElementById('storyArea');
+// 渲染函數 - 使用 <span class="txt"> 包住文字
+function renderAll(container, lines, images){
+    container.innerHTML = '';
+    const shuffledLines = shuffle(lines);
     
-    storyContent.innerHTML = storyLines.map(line => `<span class="story-line">🌸 ${line}</span>`).join('');
-    storyArea.style.display = 'block';
-    storyArea.scrollIntoView({ behavior: 'smooth' });
+    shuffledLines.forEach((baseText, i) => {
+        const text = replaceDynamic(baseText);
+        const imgNum = images[i % images.length];
+        const colorClass = `color${Math.floor(Math.random()*6) + 1}`;
+
+        const block = document.createElement('div');
+        block.className = 'story-block';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = `story-text ${colorClass}`;
+        
+        const span = document.createElement('span');
+        span.className = 'txt';
+        span.textContent = '🌸 ' + text;
+        textDiv.appendChild(span);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
+        const img = document.createElement('img');
+        img.className = 'story-img';
+        img.src = `./img/${imgNum}.jpg`;
+        img.alt = '杏夜';
+        img.loading = 'lazy';
+        img.dataset.imgNum = imgNum;
+
+        const hint = document.createElement('span');
+        hint.className = 'img-hint';
+        hint.textContent = '← 滑動 / 點擊換圖 →';
+
+        wrap.appendChild(img);
+        wrap.appendChild(hint);
+        bindImgSwap(wrap, img);
+
+        block.appendChild(textDiv);
+        block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+    });
+
+    const fin = document.createElement('div');
+    fin.className = 'bottom-trigger';
+    fin.textContent = '🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
 }
 
-// 初始化
-buildPreview();
+function startCycle(){
+    stopCruise();
+    document.getElementById('statusLabel').textContent = '[ 載入中 ]';
+    renderAll(document.getElementById('storyContainer'), cleanLines, imgList(131));
+    window.scrollTo({top:0, behavior:'smooth'});
+    setTimeout(startCruise, 600);
+}
 
-// 綁定按鈕
-document.getElementById('goBtn').addEventListener('click', renderStory);
+document.addEventListener('keydown', e => {
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch(e.key){
+        case ' ': e.preventDefault(); toggleCruise(); break;
+        case 'ArrowUp': case '+': case '=': e.preventDefault(); faster(); break;
+        case 'ArrowDown': case '-': case '_': e.preventDefault(); slower(); break;
+        case ']': if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } break;
+        case '[': if(txtIdx > 0){ txtIdx--; applyTxt(); } break;
+        case 'r': case 'R':
+            const imgs = [...document.querySelectorAll('.story-block.visible .story-img')];
+            if(imgs.length) swapImage(imgs[Math.floor(Math.random()*imgs.length)]);
+            break;
+    }
+});
 
-// 初次加載時自動生成一篇
-renderStory();
+document.getElementById('pauseBtn').onclick = toggleCruise;
+document.getElementById('restartBtn').onclick = startCycle;
+
+startCycle();
 </script>
 </body>
 </html>
