@@ -1,134 +1,408 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>杏夜堕花 · 九节点情欲迷宫</title>
-    <style>
-        body { background: #1a0e0b; color: #f0e6d0; font-family: 'Georgia', 'Microsoft JhengHei', serif; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: #2e1e18; padding: 25px; border-radius: 28px; box-shadow: 0 0 25px #aa6f5e; }
-        h1 { text-align: center; color: #ff8a5c; border-bottom: 2px solid #c2472c; padding-bottom: 12px; }
-        .node-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 25px 0; justify-content: center; }
-        .node-btn { background: #5e2e2a; color: #ffdab9; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .node-btn.active { background: #c2472c; box-shadow: 0 0 10px #ff8a5c; }
-        .text-panel { background: #0f0705; padding: 25px; border-radius: 28px; min-height: 220px; font-size: 1.15rem; line-height: 1.6; border-left: 8px solid #c2472c; margin: 20px 0; font-style: italic; }
-        .go-btn { background: #c2472c; color: white; font-size: 1.3rem; border: none; padding: 14px 28px; border-radius: 60px; cursor: pointer; width: 100%; font-weight: bold; letter-spacing: 3px; transition: 0.2s; }
-        .go-btn:hover { background: #e06b4a; transform: scale(1.01); }
-        .footer { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #aa8877; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 完全雅化版 | 131圖文隨機輪迴</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    background: #1a0e0a;
+    font-family: 'Georgia','Times New Roman','Microsoft JhengHei',serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+}
+
+/* ═══ 頂欄 ═══ */
+.header {
+    position: fixed; top:0; left:0; width:100%;
+    background: rgba(26,14,10,0.93);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #bc7a5e;
+    display: flex; justify-content:space-between; align-items:center;
+    z-index: 1000;
+    padding: 7px 16px; gap:8px; flex-wrap:wrap;
+}
+.title {
+    color:#e8c4b0; font-size:0.80rem; letter-spacing:2px;
+    flex:1 1 auto; white-space:nowrap;
+}
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+
+.ctrl-btn {
+    background:#5e2e22; border:none; color:#f0ddcf;
+    padding:5px 11px; border-radius:40px; cursor:pointer;
+    font-size:0.80rem; font-weight:bold; letter-spacing:1px;
+    transition: background .18s, transform .1s;
+    user-select:none; -webkit-user-select:none;
+    white-space:nowrap;
+}
+.ctrl-btn:hover  { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
+
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
+
+.status-label {
+    color:#c0906a; font-size:0.70rem; letter-spacing:1px;
+    padding:0 2px; white-space:nowrap; min-width:56px; text-align:center;
+}
+
+/* ═══ 主容器 ═══ */
+#storyContainer {
+    padding-top:58px;
+    width:100%; max-width:800px; margin:0 auto;
+    background:#fef7ef; min-height:100vh;
+    box-shadow:0 0 30px rgba(0,0,0,.22);
+}
+
+.story-block {
+    padding:16px 12px; border-bottom:1px solid #ecd9c8;
+    display:flex; flex-direction:column; gap:4px;
+    opacity:0; transform:translateY(18px);
+    transition: opacity .65s ease, transform .65s ease;
+}
+.story-block.visible { opacity:1; transform:translateY(0); }
+
+/* 漸層彩色文字 */
+.story-text {
+    position: relative;
+    font-size: var(--txt-size,1.15rem);
+    font-weight:500;
+    border-left:4px solid #bc7a5e;
+    padding:10px 16px 10px 20px;
+    border-radius:0 16px 16px 0;
+    line-height:1.88;
+    background: rgba(255,245,235,0.50);
+}
+.story-text span.txt {
+    background: linear-gradient(135deg, var(--g1), var(--g2), var(--g3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* 圖片換圖 */
+.img-wrap {
+    position:relative; border-radius:20px; overflow:hidden;
+    cursor:pointer; user-select:none; -webkit-user-select:none;
+}
+.story-img {
+    width:100%; max-height:600px; object-fit:contain;
+    background:#2a1a14; display:block; border-radius:20px;
+    box-shadow:0 8px 20px rgba(0,0,0,.2); border:1px solid #ecd9c8;
+}
+.img-hint {
+    position:absolute; bottom:10px; right:14px;
+    background:rgba(26,14,10,.62); color:#e8c4b0;
+    font-size:0.68rem; letter-spacing:1px;
+    padding:3px 10px; border-radius:20px;
+    pointer-events:none; opacity:0; transition:opacity .4s;
+}
+.img-wrap:hover .img-hint { opacity:1; }
+
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
+
+.bottom-trigger { text-align:center; padding:40px; color:#b08a74; font-size:.8rem; }
+
+#speedToast {
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
+    background:rgba(26,14,10,.88); color:#e8c4b0;
+    padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px;
+    pointer-events:none; opacity:0; transition:opacity .3s; z-index:999;
+}
+#speedToast.show { opacity:1; }
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>🌸 杏夜堕花 · 九节点迷宫 🌸</h1>
-    <div class="node-grid" id="nodeButtons"></div>
-    <div class="text-panel" id="displayText">🌙 选择一个节点，点击下方「杏夜·堕花」随机演绎一句 🌙</div>
-    <button class="go-btn" id="goBtn">🌸 杏夜·堕花 (随机一句) 🌸</button>
-    <div class="footer">基于《悠风怂力容花开》第22-23章 · 9节点 × 5+随机文本</div>
+
+<div class="header">
+    <div class="title">🌙 杏夜絮語 · 雅化版</div>
+    <div class="ctrl-group">
+        <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體  ]">A+</button>
+        <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體  [">A−</button>
+
+        <button class="ctrl-btn" id="slowBtn" title="減速  − ↓">−</button>
+        <div class="speed-dots" id="speedDots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+        </div>
+        <button class="ctrl-btn" id="fastBtn" title="加速  + ↑">+</button>
+
+        <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+
+        <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航  Space">⏯ 巡航</button>
+        <button class="ctrl-btn"        id="restartBtn" title="重讀  ⟳">⟳</button>
+    </div>
 </div>
 
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
 <script>
-    const nodes = {
-        N0: { name: "🌿 日间撩拨", texts: [
-            "悠八凑近她耳畔，低声道：“小娘子身段丰腴，定是久未承欢，哥哥擅伏凤十八式，包你满意。”",
-            "黄绒心中冷笑：“这等登徒子，也配撩拨本帮主？”可身子却莫名燥热起来。",
-            "他言语粗俗露骨，她却听得耳根发烫，竟没有立刻斥退他。",
-            "“借力春风杏花雨”——这句双关语在她脑中盘旋，越想越觉得心慌。",
-            "她故意假意应承，欲擒故纵，不料自己倒先动了情。"
-        ]},
-        N1: { name: "🌿 树梢解衣", texts: [
-            "衣襟扯开，那对白生生的硕大奶子猛然弹跳而出，乳尖挂着晶莹水珠。",
-            "她双手揉搓，奶水汩汩流出，滴滴答答坠落树下，空气中弥漫着甜腥。",
-            "悠八在树下仰头张嘴接着乳汁，喉咙里发出“咕滋咕滋”的吞咽声。",
-            "“姑奶奶便馋死你！”她心中想着，手上越发用力，乳白弧线划破月色。",
-            "奶水泄出的轻松感让她心猿意马，甚至故意将乳汁朝他脸上喷去。"
-        ]},
-        N2: { name: "🌿 坠地入怀", texts: [
-            "脚下一滑，她整个人从树上跌落，还未站稳便被一双粗臂死死抵在树干上。",
-            "悠八一口叼住她的奶头，狂吮不已，乳汁源源不断被吸走，她脑中一片空白。",
-            "“哧——”褻裤被大手撕碎，夜风灌入赤裸的下体，她羞耻地发现早已湿透。",
-            "粗糙的手掌揉捏着她肥满的屁股，手指探入股沟，触到一片毛茸茸的湿滑。",
-            "一根滚烫硬物抵住她的腿根，龟头已经撑开阴唇边缘——只差一寸。"
-        ]},
-        N3: { name: "🌿 反制点穴", texts: [
-            "千钧一发之际，她指尖吐出一缕真气，精准点中悠八“膻中穴”。",
-            "“嗯……”悠八闷哼一声，仰面翻倒，直挺挺昏睡过去。",
-            "黄绒靠着树干滑坐在地，赤裸的下身狼藉一片，双乳还在急促起伏。",
-            "她大口喘着气，心中后怕：“好险……再迟片刻，清白就毁了。”",
-            "月下林间重归死寂，唯有她自己的心跳声和远处虫鸣交织。"
-        ]},
-        N4: { name: "🌿 窥探阳物", texts: [
-            "她低头看见悠八敞开的裤裆中那团软塌塌的肉，竟鬼使神差地伸出手指轻触。",
-            "入手毛茸茸、沉甸甸，与丈夫郭静的干净规整截然不同。",
-            "“男子的这东西……竟能缩得这般小？”她好奇地撩拨那软垂的肉条。",
-            "指尖沾上黏腻的液体，她竟不觉得恶心，反而心头那股空虚感更加强烈。",
-            "她缩回手，又忍不住再探，一颗心快跳了出来。"
-        ]},
-        N5: { name: "🌿 解穴观变", texts: [
-            "她解开他被封的经脉，只留睡穴。悠八呼吸渐重，那团软肉开始突突跳动。",
-            "“小娘子……好白……让哥哥吃一口……”梦中粗语钻入耳中，她耳根烫如火烧。",
-            "那物在她掌心迅速膨大、变硬、上翘，青筋暴起，比她夫君的还要惊人。",
-            "龟头鸡蛋般大小，前端微微上弯，散发着浓烈的雄性腥气。",
-            "她握住那滚烫的肉杵，感觉它在手中跳动，不由口干舌燥。"
-        ]},
-        N6: { name: "🌿 品簫抚琴", texts: [
-            "黄绒一手握住悠八坚硬的阳具轻轻套弄，一手探入自己湿透的腿间。",
-            "指尖拨开层层叠叠的花瓣，触及那颗敏感的蕊珠，一阵酥麻传遍全身。",
-            "月下林间，一代侠女衣衫半解，一手品簫、一手抚琴，画面淫靡而荒诞。",
-            "“嗯……不够……这样不够……”越是抚弄，体内那口深井越是干渴。",
-            "她一边撸动那根粗大的肉棍，一边揉搓自己的阴唇，淫水顺着大腿流下。"
-        ]},
-        N7: { name: "🌿 跨坐磨蹭", texts: [
-            "她翻身跨上悠八粗壮的腰腹，赤裸的肥臀贴上他粗糙的肚皮。",
-            "那根怒龙嵌在她的臀沟中，龟头沿着湿滑的裂缝来回滑动，每次都擦过洞口却不进入。",
-            "阴唇紧贴滚烫的棍身摩擦，快感如电流般涌遍全身，淫水簌簌而落。",
-            "“就磨一磨……不算真的……”她喃喃自语，腰肢却越扭越急。",
-            "龟头已撑开阴唇边缘，只差最后一沉——她脑中闪过郭静的脸，身体却已不是自己的了。"
-        ]},
-        N8: { name: "🌿 破防插入", texts: [
-            "“便只一次……权当春梦……”肥臀一沉，那根粗物连根没入，她仰头泣叫。",
-            "“噗滋——”淫水四溅，久违的撕裂与充实同时炸开，泪水与淫水一齐涌出。",
-            "她在他身上疯狂起伏，双乳甩出乳白弧线，奶水喷了他满脸。",
-            "“啊……要泄了……噢……”阴精如潮喷出，同时乳汁激射，上下双泄。",
-            "“别……不能射在里面……”她惊叫着要起身，却被一股滚烫的阳精狠狠灌入花心。"
-        ]},
-        N9: { name: "🌿 事后余韵", texts: [
-            "良久，风止花落。她侧卧在狼藉的爱液与白浊中，大口喘着气。",
-            "月光照着她赤裸的胴体，奶渍、汗水和阳精混在一起，在雪白肌肤上反光。",
-            "她低头看见自己腿间那一片泥泞，心中羞耻难当，却又隐隐觉得畅快。",
-            "“碎了一地……却又像重生了一般……”她闭上眼睛，不愿再想。",
-            "身旁的悠八依然昏睡，嘴角挂着满足的笑意，仿佛做了一场极美的春梦。"
-        ]}
-    };
+const cleanLines = [
+    "月光落在鎖骨上，涼涼的，像一片薄霜。",
+    "我閉上眼，讓自己回到那片杏花林裡，風從耳邊經過。",
+    "指尖輕輕劃過小腹，不是挑逗，只是確認自己還在。",
+    "鏡子裡的女人滿臉潮紅，那是活著的證明。",
+    "我讓自己保持在一種將睡未睡的邊緣，像走在雲上。",
+    "學會了在情緒最濃的時候停下來，讓它在身體裡自己發酵。",
+    "溫熱的油塗在皮膚上，滑膩的感覺像另一層溫柔的衣。",
+    "手指在腰側慢慢游移，像在讀一本很久沒翻的書。",
+    "有時只是撫摸自己的頭髮和臉頰，也能感到一種奇異的安心。",
+    "我試著想像一雙手，不是任何人的，只是最懂我力道的手。",
+    "我把留聲機放得很小聲，讓音樂和呼吸重疊。",
+    "我不再急著天亮，而是讓夜一寸一寸經過我。",
+    "我把手心貼在胸口，感覺心跳從混亂慢慢變回規律。",
+    "我把枕頭墊在腰下，讓身體微微上翹，像一片柔軟的沙丘。",
+    "難過的時候不是哭，是把被子拉到鼻尖，只露出一雙眼睛。",
+    "想像杏花瓣落在我赤裸的小腹上，冰涼與溫熱交錯。",
+    "我把枕頭夾在腿間，側躺著，像回到母親的子宮。",
+    "我對著語音備忘錄說話，錄下自己的聲音，第二天又刪掉。",
+    "今夜不追求任何答案，只享受那種漫長的、安靜的等待。",
+    "薄衫下鎖骨的線條，我隔著布料輕輕描繪，像在畫一幅畫。",
+    "有時只是把手放在心口，不加任何動作，光是體溫就夠了。",
+    "我用兩面鏡子，看見自己身體的曲線——像一幅安靜的畫。",
+    "觸摸不是為了填補誰，而是確認這具身體還活著、還會感受。",
+    "指尖沿著鎖骨來回游移，卻遲遲不肯往下——我要把夜晚拉長。",
+    "將睡未睡的懸崖最磨人，我停下所有思緒，大口喘氣。",
+    "我翻身趴著，把臉埋進枕頭裡，輕輕磨蹭。",
+    "我用羽毛輕輕掃過手臂和脖子，那種癢讓人想笑又想哭。",
+    "我從來不知道，自己可以把自己哄得這麼安靜。",
+    "今夜想像自己是一隻月下的鹿，安靜地喝水。",
+    "自處結束後，我拉好被子，翻身，一夜無夢。",
+    "高潮會有的，只是不是身體的那種——是心突然鬆開的那種。",
+    "過後我蜷縮著，像一隻被雨淋濕的貓，但雨已經停了。",
+    "我故意只撫摸大腿外側，不碰最敏感的地方，讓溫柔自己漲滿。",
+    "我用冰塊輕點手腕內側，涼意順著血管往上爬。",
+    "我學會了用呼吸控制情緒：吸氣時收緊，吐氣時鬆開。",
+    "我學會了在自處後好好清洗自己，像一場溫柔的告別。",
+    "過後我躺在床上發呆，月光照著地板上那灘我的影子。",
+    "我讓自己跪趴在床上，回頭從鏡子裡看見那副安靜的身體。",
+    "我讓自己緩慢地放鬆，像潮水一寸一寸漲起來，再慢慢退去。",
+    "把溫熱的油塗滿整個身體，滑溜溜的，像一條剛出生的魚。",
+    "我用另一隻手輕掐手臂內側，微微的痛讓呼吸更沉。",
+    "沒有羞恥，也沒有觀眾。今夜我只是我自己的訪客。",
+    "今夜夢見一片無人的杏花林，花瓣落了我滿身。",
+    "今夜又無睡意，我躺在那張寬大的床上，聽自己的呼吸。",
+    "鎖骨下方的皮膚特別薄，我能看見藍色的血管。",
+    "我學著用最輕的力道撫摸自己的前臂，一圈、兩圈……呼吸變慢了。",
+    "自處是我和自己的秘密約會，不需要打扮，不需要說話。",
+    "我咬住枕角，怕自己笑出聲。其實整間屋子只有我一人。",
+    "今夜沒有盡頭，只有漫長的、濕潤的、不求解脫的夜。",
+    "兩根手指輕輕按壓太陽穴，疲憊像潮水一樣湧上來又退去。",
+    "過後的最安靜那幾分鐘，我聽著自己的心跳，像雨後屋簷滴水。",
+    "自處讓我記住：這副身體首先是自己的，然後才是世界的。",
+    "小腹深處有一團溫熱，我用手心去暖它，不著急。",
+    "過後我癱在床上，四肢打開，像一個大字，不想動。",
+    "今夜不開燈，黑暗中手比眼睛更誠實。",
+    "我把腿彎起來，膝蓋向兩邊倒，讓整個身體打開。",
+    "今夜試著只用呼吸達到平靜，試了很久，終於成功了一次。",
+    "那片皮膚已經泛紅，我用指尖繞著圈，不碰中心。",
+    "我用唾液沾濕指尖，模仿某種溫熱濕滑的觸感。",
+    "平靜時我弓起背，腳趾蜷縮，像一個回到海洋的嬰兒。",
+    "心尖在手掌下像一顆過熟的杏子，輕輕一碰就顫抖。"
+];
 
-    let currentNode = "N0";
+// 漸層色票
+const PALETTES = [
+    ['#c0546a','#d4885a','#b86040'],
+    ['#a0385a','#7a4a8a','#5a6aaa'],
+    ['#c8922a','#d4a84a','#a06030'],
+    ['#8aabcc','#6a8aaa','#4a6a9a'],
+    ['#d48aaa','#aa6a9a','#7a4a80'],
+    ['#4a9a88','#3a7a90','#2a5a78'],
+    ['#c04050','#c86040','#a04830'],
+    ['#8a6ab0','#a080c0','#7a5a98'],
+    ['#b03060','#803080','#603070'],
+    ['#5a9aaa','#4a8a9a','#3a6a88'],
+    ['#d06080','#c07060','#b05040'],
+    ['#8a5040','#704030','#a07050'],
+];
+function randPalette() { return PALETTES[Math.floor(Math.random()*PALETTES.length)]; }
 
-    // 渲染节点按钮
-    const btnContainer = document.getElementById("nodeButtons");
-    for (let [key, val] of Object.entries(nodes)) {
-        const btn = document.createElement("button");
-        btn.innerText = val.name;
-        btn.classList.add("node-btn");
-        if (key === currentNode) btn.classList.add("active");
-        btn.onclick = () => {
-            currentNode = key;
-            document.querySelectorAll(".node-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            document.getElementById("displayText").innerHTML = `✨ 已切换至「${val.name}」 ✨<br>点击下方按钮随机演绎。`;
-        };
-        btnContainer.appendChild(btn);
+// 字體大小
+const TXT_SIZES = ['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+let txtIdx = 3;
+function applyTxt() { document.documentElement.style.setProperty('--txt-size',TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick   = () => { if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} };
+document.getElementById('sizeDownBtn').onclick = () => { if(txtIdx>0){txtIdx--;applyTxt();} };
+
+// 換圖
+function swapImage(imgEl) {
+    let n;
+    do { n=(Math.floor(Math.random()*131)+1).toString().padStart(3,'0'); } while(n===imgEl.dataset.imgNum);
+    imgEl.dataset.imgNum = n;
+    imgEl.classList.remove('img-changing'); void imgEl.offsetWidth; imgEl.classList.add('img-changing');
+    imgEl.src = `./img/${n}.jpg`;
+}
+function bindImgSwap(wrap, imgEl) {
+    wrap.addEventListener('click', () => swapImage(imgEl));
+    let tx=null,ty=null;
+    wrap.addEventListener('touchstart', e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+    wrap.addEventListener('touchend', e=>{
+        if(tx===null)return;
+        const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+        if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5) swapImage(imgEl);
+        tx=ty=null;
+    },{passive:true});
+}
+
+// ═══ 巡航引擎 (RAF) ═══
+const SPEEDS=[0.35,0.75,1.4,2.5,4.2];
+const SPEED_NAMES=['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+let speedLv=1, cruising=false, rafId=null;
+let userTaking=false, userTakeTimer=null;
+
+function yieldToCruise(){
+    clearTimeout(userTakeTimer);
+    userTakeTimer=setTimeout(()=>{userTaking=false;},1400);
+}
+window.addEventListener('wheel',()=>{userTaking=true;yieldToCruise();},{passive:true});
+window.addEventListener('touchstart',()=>{userTaking=true;clearTimeout(userTakeTimer);},{passive:true});
+window.addEventListener('touchend',yieldToCruise,{passive:true});
+
+function cruiseFrame(){
+    if(!cruising)return;
+    if(!userTaking){
+        const maxY=document.documentElement.scrollHeight-window.innerHeight;
+        if(window.scrollY>=maxY-1){ stopCruise(); startCycle(); return; }
+        window.scrollBy(0,SPEEDS[speedLv]);
     }
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function startCruise(){
+    cruising=true;
+    document.getElementById('pauseBtn').textContent='⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    document.getElementById('statusLabel').textContent='[ 巡航中 ]';
+    if(rafId)cancelAnimationFrame(rafId);
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function stopCruise(){
+    cruising=false;
+    if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+    document.getElementById('pauseBtn').textContent='▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+    document.getElementById('statusLabel').textContent='[ 暫停 ]';
+}
+function toggleCruise(){ cruising?stopCruise():startCruise(); }
 
-    const goBtn = document.getElementById("goBtn");
-    const displayDiv = document.getElementById("displayText");
+// 速度 UI
+let toastTimer=null;
+function showToast(msg){
+    const t=document.getElementById('speedToast');
+    t.textContent=msg;t.classList.add('show');
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1300);
+}
+function updateSpeedUI(){
+    document.querySelectorAll('#speedDots .dot').forEach((d,i)=>d.classList.toggle('on',i<=speedLv));
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster(){if(speedLv<SPEEDS.length-1){speedLv++;updateSpeedUI();}}
+function slower(){if(speedLv>0){speedLv--;updateSpeedUI();}}
+document.getElementById('fastBtn').onclick=faster;
+document.getElementById('slowBtn').onclick=slower;
+updateSpeedUI();
 
-    function getRandomText(nodeId) {
-        const arr = nodes[nodeId].texts;
-        return arr[Math.floor(Math.random() * arr.length)];
-    }
-
-    goBtn.addEventListener("click", () => {
-        const line = getRandomText(currentNode);
-        displayDiv.innerHTML = `🌙 【${nodes[currentNode].name}】 🌙<br><br>“${line}”`;
+// IntersectionObserver 淡入
+const fadeObserver=new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+        if(en.isIntersecting){en.target.classList.add('visible');fadeObserver.unobserve(en.target);}
     });
+},{threshold:0.04});
+
+// 工具
+function shuffle(arr){
+    const a=[...arr];
+    for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+    return a;
+}
+function imgList(n=131){
+    return shuffle([...Array(n)].map((_,i)=>(i+1).toString().padStart(3,'0')));
+}
+
+// ═══ 渲染：全部一次插入 DOM ═══
+function renderAll(container,lines,images){
+    container.innerHTML='';
+    lines.forEach((text,i)=>{
+        const imgNum=images[i%images.length];
+        const pal=randPalette();
+
+        const block=document.createElement('div');
+        block.className='story-block';
+
+        const textDiv=document.createElement('div');
+        textDiv.className='story-text';
+
+        const span=document.createElement('span');
+        span.className='txt';
+        span.style.setProperty('--g1',pal[0]);
+        span.style.setProperty('--g2',pal[1]);
+        span.style.setProperty('--g3',pal[2]);
+        span.textContent='🌸 '+text;
+        textDiv.appendChild(span);
+
+        const wrap=document.createElement('div');
+        wrap.className='img-wrap';
+        const img=document.createElement('img');
+        img.className='story-img';
+        img.src=`./img/${imgNum}.jpg`;
+        img.alt='杏夜'; img.loading='lazy';
+        img.dataset.imgNum=imgNum;
+        const hint=document.createElement('span');
+        hint.className='img-hint';
+        hint.textContent='← 滑動 / 點擊換圖 →';
+        wrap.appendChild(img); wrap.appendChild(hint);
+        bindImgSwap(wrap,img);
+
+        block.appendChild(textDiv); block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+    });
+    const fin=document.createElement('div');
+    fin.className='bottom-trigger';
+    fin.textContent='🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ═══ 啟動一輪 ═══
+function startCycle(){
+    stopCruise();
+    document.getElementById('statusLabel').textContent='[ 載入中 ]';
+    renderAll(document.getElementById('storyContainer'),shuffle(cleanLines),imgList(131));
+    window.scrollTo({top:0,behavior:'smooth'});
+    setTimeout(startCruise,500);
+}
+
+// 鍵盤
+document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    switch(e.key){
+        case ' ': e.preventDefault();toggleCruise();break;
+        case 'ArrowUp':case '+':case '=': e.preventDefault();faster();break;
+        case 'ArrowDown':case '-':case '_': e.preventDefault();slower();break;
+        case ']': if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();}break;
+        case '[': if(txtIdx>0){txtIdx--;applyTxt();}break;
+        case 'r':case 'R':{
+            // R：換一張隨機可見圖
+            const imgs=[...document.querySelectorAll('.story-block.visible .story-img')];
+            if(imgs.length)swapImage(imgs[Math.floor(Math.random()*imgs.length)]);
+            break;
+        }
+    }
+});
+
+document.getElementById('pauseBtn').onclick  =toggleCruise;
+document.getElementById('restartBtn').onclick=startCycle;
+
+startCycle();
 </script>
 </body>
 </html>
