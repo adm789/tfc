@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 完全雅化版 | 131圖文隨機輪迴</title>
+<script src="lines.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    background: #1a0e0a;
+    font-family: 'Georgia','Times New Roman','Microsoft JhengHei',serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+}
+
+/* ══ 頂欄 ══ */
+.header {
+    position: fixed; top:0; left:0; width:100%;
+    background: rgba(26,14,10,0.93);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #bc7a5e;
+    display: flex; justify-content:space-between; align-items:center;
+    z-index: 1000;
+    padding: 7px 16px; gap:8px; flex-wrap:wrap;
+}
+.title {
+    color:#e8c4b0; font-size:0.80rem; letter-spacing:2px;
+    flex:1 1 auto; white-space:nowrap;
+}
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+
+.ctrl-btn {
+    background:#5e2e22; border:none; color:#f0ddcf;
+    padding:5px 11px; border-radius:40px; cursor:pointer;
+    font-size:0.80rem; font-weight:bold; letter-spacing:1px;
+    transition: background .18s, transform .1s;
+    user-select:none; -webkit-user-select:none; white-space:nowrap;
+}
+.ctrl-btn:hover  { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
+
+/* 速度指示點 */
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
+
+.status-label {
+    color:#c0906a; font-size:0.70rem; letter-spacing:1px;
+    padding:0 2px; white-space:nowrap; min-width:56px; text-align:center;
+}
+
+/* ══ 主容器 ══ */
+#storyContainer {
+    padding-top:58px;
+    width:100%; max-width:800px; margin:0 auto;
+    background:#fef7ef; min-height:100vh;
+    box-shadow:0 0 30px rgba(0,0,0,.22);
+}
+
+/* 故事塊：IntersectionObserver 淡入，不強制滾動 */
+.story-block {
+    padding:36px 28px; border-bottom:1px solid #ecd9c8;
+    display:flex; flex-direction:column; gap:24px;
+    opacity:0; transform:translateY(18px);
+    transition: opacity .65s ease, transform .65s ease;
+}
+.story-block.visible { opacity:1; transform:translateY(0); }
+
+/* 漸層彩色文字 — 底色在 div，漸層在 span.txt */
+.story-text {
+    font-size: var(--txt-size,1.15rem);
+    font-weight:500;
+    border-left:4px solid #bc7a5e;
+    padding:10px 16px 10px 20px;
+    border-radius:0 16px 16px 0;
+    line-height:1.88;
+    background: rgba(255,245,235,0.50);
+}
+.story-text span.txt {
+    background: linear-gradient(135deg, var(--g1), var(--g2), var(--g3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* 圖片：點擊/滑動換圖 */
+.img-wrap {
+    position:relative; border-radius:20px; overflow:hidden;
+    cursor:pointer; user-select:none; -webkit-user-select:none;
+}
+.story-img {
+    width:100%; max-height:600px; object-fit:contain;
+    background:#2a1a14; display:block; border-radius:20px;
+    box-shadow:0 8px 20px rgba(0,0,0,.2); border:1px solid #ecd9c8;
+}
+.img-hint {
+    position:absolute; bottom:10px; right:14px;
+    background:rgba(26,14,10,.62); color:#e8c4b0;
+    font-size:0.68rem; letter-spacing:1px;
+    padding:3px 10px; border-radius:20px;
+    pointer-events:none; opacity:0; transition:opacity .4s;
+}
+.img-wrap:hover .img-hint { opacity:1; }
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
+
+.bottom-trigger { text-align:center; padding:40px; color:#b08a74; font-size:.8rem; }
+
+/* 速度浮層 */
+#speedToast {
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
+    background:rgba(26,14,10,.88); color:#e8c4b0;
+    padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px;
+    pointer-events:none; opacity:0; transition:opacity .3s; z-index:999;
+}
+#speedToast.show { opacity:1; }
+
+/* 快捷鍵說明浮層 */
+#helpOverlay {
+    display:none; position:fixed; inset:0; z-index:2000;
+    background:rgba(10,5,3,0.82); backdrop-filter:blur(4px);
+    justify-content:center; align-items:center;
+}
+#helpOverlay.show { display:flex; }
+#helpBox {
+    background:#2a160e; border:1px solid #bc7a5e; border-radius:18px;
+    padding:28px 32px 24px; max-width:360px; width:90%;
+    box-shadow:0 8px 40px rgba(0,0,0,.5); color:#e8c4b0;
+    font-family:'Georgia','Microsoft JhengHei',serif;
+}
+#helpBox h2 {
+    font-size:1rem; letter-spacing:3px; color:#e8a060;
+    margin-bottom:18px; text-align:center;
+    border-bottom:1px solid #5e2e22; padding-bottom:10px;
+}
+.help-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 0; border-bottom:1px solid rgba(188,122,94,0.15);
+    font-size:0.82rem; gap:12px;
+}
+.help-row:last-child { border-bottom:none; }
+.help-key {
+    background:#3e1e14; color:#e8a060; padding:2px 10px;
+    border-radius:6px; font-weight:bold; white-space:nowrap; font-size:.78rem;
+}
+.help-desc { color:#c8a890; text-align:right; }
+#helpClose {
+    display:block; margin:18px auto 0; background:#5e2e22; border:none;
+    color:#f0ddcf; padding:6px 28px; border-radius:40px; cursor:pointer;
+    font-size:.82rem; transition:background .18s;
+}
+#helpClose:hover { background:#8e5a4a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌙 杏夜絮語 · 完全雅化版 (無性描寫)</div>
+    <div class="ctrl-group">
+        <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體  ]">A+</button>
+        <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體  [">A−</button>
+
+        <button class="ctrl-btn" id="slowBtn"  title="減速  − / ↓">−</button>
+        <div class="speed-dots" id="speedDots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+        </div>
+        <button class="ctrl-btn" id="fastBtn"  title="加速  + / ↑">+</button>
+
+        <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+
+        <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航  Space">⏯ 巡航</button>
+        <button class="ctrl-btn"        id="restartBtn" title="重讀一夜  ⟳">✧ 再讀一夜 ✧</button>
+        <button class="ctrl-btn"        id="helpBtn"    title="快捷鍵說明  ?">？</button>
+    </div>
+</div>
+
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
+<!-- 快捷鍵說明浮層 -->
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵說明</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">]&nbsp;&nbsp;/ A+</span><span class="help-desc">放大字體</span></div>
+    <div class="help-row"><span class="help-key">[&nbsp;&nbsp;/ A−</span><span class="help-desc">縮小字體</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換一張螢幕內隨機圖</span></div>
+    <div class="help-row"><span class="help-key">點擊圖片</span><span class="help-desc">換圖（滑鼠 / 觸控）</span></div>
+    <div class="help-row"><span class="help-key">左右滑圖片</span><span class="help-desc">換圖（iPad / 手機）</span></div>
+    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關此說明</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ══ 文字庫從外部 lines.js 載入 ══
+// 若 lines.js 未載入則顯示提示
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML =
+        '<p style="color:#bc7a5e;padding:80px 32px;text-align:center">⚠️ 找不到 lines.js，請確認與本頁放在同一資料夾。</p>';
+    throw new Error('lines.js not loaded');
+}
+
+// ══ 漸層色票 ══
+const PALETTES = [
+    ['#c0546a','#d4885a','#b86040'],
+    ['#a0385a','#7a4a8a','#5a6aaa'],
+    ['#c8922a','#d4a84a','#a06030'],
+    ['#8aabcc','#6a8aaa','#4a6a9a'],
+    ['#d48aaa','#aa6a9a','#7a4a80'],
+    ['#4a9a88','#3a7a90','#2a5a78'],
+    ['#c04050','#c86040','#a04830'],
+    ['#8a6ab0','#a080c0','#7a5a98'],
+    ['#b03060','#803080','#603070'],
+    ['#5a9aaa','#4a8a9a','#3a6a88'],
+    ['#d06080','#c07060','#b05040'],
+    ['#8a5040','#704030','#a07050'],
+];
+function randPalette(){ return PALETTES[Math.floor(Math.random()*PALETTES.length)]; }
+
+// ══ 字體大小 ══
+const TXT_SIZES=['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+let txtIdx=3;
+function applyTxt(){ document.documentElement.style.setProperty('--txt-size',TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick  =()=>{ if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} };
+document.getElementById('sizeDownBtn').onclick=()=>{ if(txtIdx>0){txtIdx--;applyTxt();} };
+
+// ══ 換圖 ══
+function swapImage(imgEl){
+    let n;
+    do{ n=(Math.floor(Math.random()*131)+1).toString().padStart(3,'0'); }while(n===imgEl.dataset.imgNum);
+    imgEl.dataset.imgNum=n;
+    imgEl.classList.remove('img-changing'); void imgEl.offsetWidth; imgEl.classList.add('img-changing');
+    imgEl.src=`./img/${n}.jpg`;
+}
+function bindImgSwap(wrap,imgEl){
+    wrap.addEventListener('click',()=>swapImage(imgEl));
+    let tx=null,ty=null;
+    wrap.addEventListener('touchstart',e=>{ tx=e.touches[0].clientX; ty=e.touches[0].clientY; },{passive:true});
+    wrap.addEventListener('touchend',e=>{
+        if(tx===null)return;
+        const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+        if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5) swapImage(imgEl);
+        tx=ty=null;
+    },{passive:true});
+}
+
+// ══ 巡航引擎 (RAF) ══
+const SPEEDS     =[0.35,0.75,1.4,2.5,4.2];
+const SPEED_NAMES=['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+let speedLv=1, cruising=false, rafId=null;
+let userTaking=false, userTakeTimer=null;
+
+function yieldToCruise(){
+    clearTimeout(userTakeTimer);
+    userTakeTimer=setTimeout(()=>{ userTaking=false; },1400);
+}
+window.addEventListener('wheel',      ()=>{ userTaking=true; yieldToCruise(); },{passive:true});
+window.addEventListener('touchstart', ()=>{ userTaking=true; clearTimeout(userTakeTimer); },{passive:true});
+window.addEventListener('touchend',   yieldToCruise,{passive:true});
+
+function cruiseFrame(){
+    if(!cruising)return;
+    if(!userTaking){
+        const maxY=document.documentElement.scrollHeight-window.innerHeight;
+        if(window.scrollY>=maxY-1){ stopCruise(); startCycle(); return; }
+        window.scrollBy(0,SPEEDS[speedLv]);
+    }
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function startCruise(){
+    cruising=true;
+    document.getElementById('pauseBtn').textContent='⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    document.getElementById('statusLabel').textContent='[ 巡航中 ]';
+    if(rafId)cancelAnimationFrame(rafId);
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function stopCruise(){
+    cruising=false;
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+    document.getElementById('pauseBtn').textContent='▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+    document.getElementById('statusLabel').textContent='[ 暫停 ]';
+}
+function toggleCruise(){ cruising?stopCruise():startCruise(); }
+
+// ══ 速度 UI ══
+let toastTimer=null;
+function showToast(msg){
+    const t=document.getElementById('speedToast');
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1300);
+}
+function updateSpeedUI(){
+    document.querySelectorAll('#speedDots .dot').forEach((d,i)=>d.classList.toggle('on',i<=speedLv));
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster(){ if(speedLv<SPEEDS.length-1){ speedLv++; updateSpeedUI(); } }
+function slower(){ if(speedLv>0){ speedLv--; updateSpeedUI(); } }
+document.getElementById('fastBtn').onclick=faster;
+document.getElementById('slowBtn').onclick=slower;
+updateSpeedUI();
+
+// ══ IntersectionObserver 淡入（取代 scrollIntoView 跳動）══
+const fadeObserver=new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+        if(en.isIntersecting){ en.target.classList.add('visible'); fadeObserver.unobserve(en.target); }
+    });
+},{threshold:0.04});
+
+// ══ 工具 ══
+function shuffle(arr){
+    const a=[...arr];
+    for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+}
+function imgList(n=131){
+    return shuffle([...Array(n)].map((_,i)=>(i+1).toString().padStart(3,'0')));
+}
+
+// ══ 渲染：全部一次插入 DOM，loading=lazy 自然延遲載圖 ══
+// lineObjs：[{ text, imgNum }]，imgNum 非 null 時用指定圖，否則隨機
+function renderAll(container, lineObjs, randImages) {
+    container.innerHTML = '';
+    let randIdx = 0;
+    lineObjs.forEach(({ text, imgNum }) => {
+        // 決定圖號：特殊綁定圖 or 隨機池
+        const useImg = imgNum ? imgNum : randImages[randIdx++ % randImages.length];
+        const pal = randPalette();
+
+        const block = document.createElement('div');
+        block.className = 'story-block';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'story-text';
+        const span = document.createElement('span');
+        span.className = 'txt';
+        span.style.setProperty('--g1', pal[0]);
+        span.style.setProperty('--g2', pal[1]);
+        span.style.setProperty('--g3', pal[2]);
+        span.textContent = '🌸 ' + text;
+        textDiv.appendChild(span);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
+        const img = document.createElement('img');
+        img.className = 'story-img'; img.alt = '杏夜'; img.loading = 'lazy';
+        img.src = `./img/${useImg}.jpg`; img.dataset.imgNum = useImg;
+        const hint = document.createElement('span');
+        hint.className = 'img-hint'; hint.textContent = '← 滑動 / 點擊換圖 →';
+        wrap.appendChild(img); wrap.appendChild(hint);
+        bindImgSwap(wrap, img);
+
+        block.appendChild(textDiv); block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+    });
+
+    const fin = document.createElement('div');
+    fin.className = 'bottom-trigger'; fin.textContent = '🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ══ 啟動一輪 ══
+function startCycle() {
+    stopCruise();
+    document.getElementById('statusLabel').textContent = '[ 載入中 ]';
+    const allLines   = shuffle(LinesLib.getAll());   // 從 lines.js 取得並洗牌
+    const randImages = imgList(131);                  // 隨機圖號池
+    renderAll(document.getElementById('storyContainer'), allLines, randImages);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(startCruise, 500);
+}
+
+// ══ 鍵盤 ══
+document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    switch(e.key){
+        case ' ':         e.preventDefault(); toggleCruise(); break;
+        case 'ArrowUp':   case '+': case '=': e.preventDefault(); faster(); break;
+        case 'ArrowDown': case '-': case '_': e.preventDefault(); slower(); break;
+        case ']': if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} break;
+        case '[': if(txtIdx>0){txtIdx--;applyTxt();} break;
+        case 'r': case 'R': {
+            // 只換當前螢幕視窗內可見的圖片
+            const vp=window.innerHeight;
+            const imgs=[...document.querySelectorAll('.story-img')].filter(img=>{
+                const r=img.getBoundingClientRect(); return r.bottom>0&&r.top<vp;
+            });
+            if(imgs.length) swapImage(imgs[Math.floor(Math.random()*imgs.length)]);
+            break;
+        }
+        case '?': case '/': toggleHelp(); break;
+        case 'Escape': hideHelp(); break;
+    }
+});
+
+// ══ 說明浮層 ══
+function showHelp(){ document.getElementById('helpOverlay').classList.add('show'); stopCruise(); }
+function hideHelp(){ document.getElementById('helpOverlay').classList.remove('show'); }
+function toggleHelp(){ document.getElementById('helpOverlay').classList.contains('show')?hideHelp():showHelp(); }
+document.getElementById('helpBtn').onclick  =toggleHelp;
+document.getElementById('helpClose').onclick=hideHelp;
+document.getElementById('helpOverlay').addEventListener('click',e=>{
+    if(e.target===document.getElementById('helpOverlay')) hideHelp();
+});
+
+// ══ 按鈕綁定 ══
+document.getElementById('pauseBtn').onclick  =toggleCruise;
+document.getElementById('restartBtn').onclick=startCycle;
+
+// ══ 啟動 ══
+startCycle();
+</script>
+</body>
+</html>
