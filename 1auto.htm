@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 紅樓雅化版 | 自動匹配版</title>
+<script src="lines.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a0e0a; font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif; line-height:1.88; overflow-x:hidden; }
+.header { position:fixed; top:0; left:0; width:100%; background:rgba(26,14,10,0.93); backdrop-filter:blur(6px); border-bottom:1px solid #bc7a5e; display:flex; justify-content:space-between; align-items:center; z-index:1000; padding:7px 16px; gap:8px; flex-wrap:wrap; }
+.title { color:#e8c4b0; font-size:0.82rem; letter-spacing:2px; flex:1 1 auto; white-space:nowrap; }
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.ctrl-btn { background:#5e2e22; border:none; color:#f0ddcf; padding:5px 11px; border-radius:40px; cursor:pointer; font-size:0.80rem; font-weight:bold; letter-spacing:1px; transition:background .18s, transform .1s; user-select:none; }
+.ctrl-btn:hover { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
+.status-label { color:#c0906a; font-size:0.70rem; letter-spacing:1px; padding:0 2px; white-space:nowrap; min-width:56px; text-align:center; }
+#storyContainer { padding-top:58px; width:100%; max-width:800px; margin:0 auto; background:#fef7ef; min-height:100vh; box-shadow:0 0 30px rgba(0,0,0,.22); }
+.story-block { padding:36px 28px; border-bottom:1px solid #ecd9c8; display:flex; flex-direction:column; gap:24px; opacity:0; transform:translateY(18px); transition:opacity .65s ease, transform .65s ease; }
+.story-block.visible { opacity:1; transform:translateY(0); }
+
+/* ── 文字區塊：加粗、純色、高對比 ── */
+.story-text {
+    font-size: var(--txt-size, 1.18rem);
+    font-weight: 700;                        /* 加粗 */
+    border-left: 4px solid #bc7a5e;
+    padding: 14px 20px 14px 24px;
+    background: rgba(255,245,235,.65);
+    border-radius: 0 18px 18px 0;
+    line-height: 1.95;
+}
+.story-text .txt {
+    color: var(--txt-color, #6b1a2a);        /* 純色，不用 gradient clip（易讀）*/
+    font-weight: 700;
+    text-shadow: 0 1px 0 rgba(255,255,255,.5); /* 輕微底光提升清晰度 */
+}
+
+.img-wrap { position:relative; border-radius:20px; overflow:hidden; cursor:pointer; user-select:none; }
+.story-img { width:100%; max-height:620px; object-fit:contain; background:#2a1a14; display:block; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,.2); border:1px solid #ecd9c8; }
+.img-hint { position:absolute; bottom:10px; right:14px; background:rgba(26,14,10,.68); color:#e8c4b0; font-size:0.68rem; letter-spacing:1px; padding:3px 10px; border-radius:20px; pointer-events:none; opacity:0; transition:opacity .35s; }
+.img-wrap:hover .img-hint { opacity:1; }
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
+
+#helpOverlay { display:none; position:fixed; inset:0; z-index:2000; background:rgba(10,5,3,0.82); backdrop-filter:blur(4px); justify-content:center; align-items:center; }
+#helpOverlay.show { display:flex; }
+#helpBox { background:#2a160e; border:1px solid #bc7a5e; border-radius:18px; padding:28px 32px 24px; max-width:380px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,.5); color:#e8c4b0; }
+#helpBox h2 { font-size:1rem; letter-spacing:3px; color:#e8a060; margin-bottom:18px; text-align:center; border-bottom:1px solid #5e2e22; padding-bottom:10px; }
+.help-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(188,122,94,0.15); font-size:0.82rem; gap:12px; }
+.help-row:last-child { border-bottom:none; }
+.help-key { background:#3a1a10; color:#e8a060; border-radius:6px; padding:2px 8px; font-family:monospace; font-size:0.78rem; white-space:nowrap; flex-shrink:0; }
+.help-desc { color:#d4b09a; }
+#helpClose { display:block; margin:18px auto 0; background:#5e2e22; border:none; color:#f0ddcf; padding:6px 24px; border-radius:40px; cursor:pointer; font-size:0.82rem; }
+#helpClose:hover { background:#8e5a4a; }
+#speedToast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:rgba(26,14,10,.88); color:#e8c4b0; padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px; pointer-events:none; opacity:0; transition:opacity .3s; z-index:999; }
+#speedToast.show { opacity:1; }
+.bottom-trigger { text-align:center; padding:40px; color:#b08a74; font-size:.8rem; }
+#loadingMsg { text-align:center; padding:80px 32px; color:#bc7a5e; font-size:1rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
+    <div class="ctrl-group">
+        <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體 ]">A+</button>
+        <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體 [">A−</button>
+        <button class="ctrl-btn" id="slowBtn"     title="減速 − ↓">−</button>
+        <div class="speed-dots" id="speedDots">
+            <div class="dot on"></div><div class="dot on"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <button class="ctrl-btn" id="fastBtn"   title="加速 + ↑">+</button>
+        <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+        <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航 Space">⏯ 巡航</button>
+        <button class="ctrl-btn"        id="restartBtn" title="重讀 ⟳">⟳</button>
+        <button class="ctrl-btn"        id="helpBtn"    title="快捷鍵 ?">？</button>
+    </div>
+</div>
+
+<div id="storyContainer"><div id="loadingMsg">🌸 圖片掃描中…</div></div>
+<div id="speedToast"></div>
+
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵說明</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">]</span><span class="help-desc">放大字體</span></div>
+    <div class="help-row"><span class="help-key">[</span><span class="help-desc">縮小字體</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換目前可見圖片（同資料夾）</span></div>
+    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關說明</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ── lines.js 載入檢查 ──────────────────────────────────────
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML =
+        '<p style="color:#bc7a5e;padding:100px 32px;text-align:center;font-size:1.1rem;">' +
+        '⚠️ 無法載入 lines.js，請確認與本頁在同一資料夾，並重新整理頁面。</p>';
+    throw new Error('lines.js not loaded');
+}
+
+// ── 從 URL 參數讀取 ?dir= ──────────────────────────────────
+// 範例：1auto.htm?dir=img/q2   → 只掃 img/q2/ 下的圖片
+// 範例：1auto.htm              → 掃預設 img/ 下所有子目錄
+const urlDir = new URLSearchParams(location.search).get('dir') || '';
+
+// ── 字體 ───────────────────────────────────────────────────
+const TXT_SIZES = ['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+let txtIdx = 3;
+function applyTxt() { document.documentElement.style.setProperty('--txt-size', TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick   = () => { if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } };
+document.getElementById('sizeDownBtn').onclick = () => { if(txtIdx > 0){ txtIdx--; applyTxt(); } };
+
+// ── 文字顏色（純色，輪換易讀色板）────────────────────────
+const TEXT_COLORS = [
+    '#7a1a2e','#5a2060','#1a4a7a','#1a5a40',
+    '#7a3a10','#4a2a70','#1a3a6a','#6a1a50',
+];
+let colorIdx = 0;
+function nextColor() { return TEXT_COLORS[colorIdx++ % TEXT_COLORS.length]; }
+
+// ── 圖片資料（由 scan.php 提供）──────────────────────────
+// imageMap: { "img/q1/": ["001.jpg","002.jpg",...], ... }
+// allImages: ["img/q1/001.jpg", ...]  (flat list for fallback)
+let imageMap  = {};   // byFolder
+let allImages = [];   // flat
+let scanDone  = false;
+
+async function loadImageList() {
+    try {
+        const scanUrl = 'scan.php' + (urlDir ? '?dir=' + encodeURIComponent(urlDir) : '');
+        const res  = await fetch(scanUrl);
+        if (!res.ok) throw new Error('scan.php HTTP ' + res.status);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        imageMap  = data.byFolder  || {};
+        allImages = data.images    || [];
+        scanDone  = true;
+    } catch(e) {
+        console.warn('[1auto] scan.php 失敗，退回 lines.js 圖片模式。', e);
+        // 降級：仍可運作，只是圖片要靠 lines.js 原本機制
+        scanDone = false;
+    }
+}
+
+// ── 取得圖片（優先用 scan.php 清單）──────────────────────
+function getFolderImages(folder) {
+    // folder 形如 "img/q1/"
+    if (imageMap[folder] && imageMap[folder].length) return imageMap[folder];
+    // 前綴匹配（folder 是父層）
+    for (const k of Object.keys(imageMap)) {
+        if (k.startsWith(folder)) return imageMap[k];
+    }
+    return null;
+}
+
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function getImgSrc(folder) {
+    // 1. 有 scan 資料
+    if (scanDone && imageMap) {
+        const imgs = getFolderImages(folder);
+        if (imgs && imgs.length) {
+            const name = pickRandom(imgs);
+            return folder + name;
+        }
+        // folder 不匹配 → 從全部圖片隨機
+        if (allImages.length) return pickRandom(allImages);
+    }
+    // 2. 降級：用 lines.js
+    try {
+        const fn = LinesLib.getImage(folder);
+        return LinesLib.imgSrc(folder, fn);
+    } catch(e) {
+        return '';
+    }
+}
+
+function swapImageSrc(imgEl) {
+    const folder = imgEl.dataset.folder || '';
+    if (scanDone && allImages.length) {
+        const imgs = getFolderImages(folder);
+        const pool = (imgs && imgs.length) ? imgs.map(n => folder+n) : allImages;
+        // 換一張不同的
+        let newSrc, tries = 0;
+        do { newSrc = pickRandom(pool); tries++; } while(newSrc === imgEl.src.replace(location.origin+'/','') && tries < 8);
+        imgEl.classList.remove('img-changing');
+        void imgEl.offsetWidth;
+        imgEl.classList.add('img-changing');
+        imgEl.src = newSrc;
+    } else {
+        // 降級
+        const fn  = LinesLib.getImage(folder);
+        const src = LinesLib.imgSrc(folder, fn);
+        imgEl.classList.remove('img-changing');
+        void imgEl.offsetWidth;
+        imgEl.classList.add('img-changing');
+        imgEl.src = src;
+    }
+}
+
+// ── IntersectionObserver 淡入 ──────────────────────────────
+const fadeObserver = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add('visible'); fadeObserver.unobserve(en.target); }
+    });
+}, { threshold: 0.05 });
+
+function bindImgSwap(wrap, imgEl) {
+    wrap.addEventListener('click', () => swapImageSrc(imgEl));
+    let tx = null, ty = null;
+    wrap.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+    wrap.addEventListener('touchend', e => {
+        if (!tx) return;
+        const dx = e.changedTouches[0].clientX - tx;
+        const dy = e.changedTouches[0].clientY - ty;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)*1.5) swapImageSrc(imgEl);
+        tx = ty = null;
+    }, {passive:true});
+}
+
+// ── 渲染 ───────────────────────────────────────────────────
+function renderAll(container) {
+    container.innerHTML = '';
+    const lineObjs = shuffle(LinesLib.getAll());
+
+    lineObjs.forEach(({ text, folder: predefined }) => {
+        const folder  = predefined || LinesLib.autoDetectFolder(text);
+        const src     = getImgSrc(folder);
+        const color   = nextColor();
+
+        const block = document.createElement('div');
+        block.className = 'story-block';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'story-text';
+        const span = document.createElement('span');
+        span.className = 'txt';
+        span.style.setProperty('--txt-color', color);
+        span.textContent = '🌸 ' + text;
+        textDiv.appendChild(span);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
+        const img = document.createElement('img');
+        img.className = 'story-img';
+        img.alt = '杏夜'; img.loading = 'lazy';
+        img.dataset.folder = folder;
+        if (src) img.src = src;
+        const hint = document.createElement('span');
+        hint.className = 'img-hint';
+        hint.textContent = '← 滑動 / 點擊換圖 →';
+        wrap.appendChild(img); wrap.appendChild(hint);
+        bindImgSwap(wrap, img);
+
+        block.appendChild(textDiv); block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+    });
+
+    const fin = document.createElement('div');
+    fin.className = 'bottom-trigger';
+    fin.textContent = '🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ── 工具 ───────────────────────────────────────────────────
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length-1; i > 0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+}
+
+// ── 巡航引擎 ───────────────────────────────────────────────
+const SPEEDS      = [0.35, 0.75, 1.4, 2.5, 4.2];
+const SPEED_NAMES = ['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+let speedLv = 1, cruising = false, rafId = null;
+let userTaking = false, userTakeTimer = null;
+
+function yieldToCruise() {
+    clearTimeout(userTakeTimer);
+    userTakeTimer = setTimeout(() => { userTaking = false; }, 1400);
+}
+window.addEventListener('wheel',      () => { userTaking = true; yieldToCruise(); }, {passive:true});
+window.addEventListener('touchstart', () => { userTaking = true; clearTimeout(userTakeTimer); }, {passive:true});
+window.addEventListener('touchend',   yieldToCruise, {passive:true});
+
+function cruiseFrame() {
+    if (!cruising) return;
+    if (!userTaking) {
+        const maxY = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY >= maxY - 1) { stopCruise(); startCycle(); return; }
+        window.scrollBy(0, SPEEDS[speedLv]);
+    }
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function startCruise() {
+    cruising = true;
+    document.getElementById('pauseBtn').textContent = '⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    document.getElementById('statusLabel').textContent = '[ 巡航中 ]';
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function stopCruise() {
+    cruising = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    document.getElementById('pauseBtn').textContent = '▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+    document.getElementById('statusLabel').textContent = '[ 暫停 ]';
+}
+function toggleCruise() { cruising ? stopCruise() : startCruise(); }
+
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('speedToast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
+}
+function updateSpeedUI() {
+    document.querySelectorAll('#speedDots .dot').forEach((d,i) => d.classList.toggle('on', i <= speedLv));
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster() { if(speedLv < SPEEDS.length-1){ speedLv++; updateSpeedUI(); } }
+function slower() { if(speedLv > 0){ speedLv--; updateSpeedUI(); } }
+document.getElementById('fastBtn').onclick = faster;
+document.getElementById('slowBtn').onclick = slower;
+updateSpeedUI();
+
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch(e.key) {
+        case ' ':         e.preventDefault(); toggleCruise(); break;
+        case 'ArrowUp':   case '+': case '=': e.preventDefault(); faster(); break;
+        case 'ArrowDown': case '-': case '_': e.preventDefault(); slower(); break;
+        case ']': if(txtIdx < TXT_SIZES.length-1){ txtIdx++; applyTxt(); } break;
+        case '[': if(txtIdx > 0){ txtIdx--; applyTxt(); } break;
+        case 'r': case 'R': {
+            const vp = window.innerHeight;
+            const imgs = [...document.querySelectorAll('.story-img')].filter(img => {
+                const r = img.getBoundingClientRect(); return r.bottom > 0 && r.top < vp;
+            });
+            if (imgs.length) swapImageSrc(imgs[Math.floor(Math.random()*imgs.length)]);
+            break;
+        }
+        case '?': case '/': toggleHelp(); break;
+        case 'Escape': hideHelp(); break;
+    }
+});
+
+function showHelp()   { document.getElementById('helpOverlay').classList.add('show'); stopCruise(); }
+function hideHelp()   { document.getElementById('helpOverlay').classList.remove('show'); }
+function toggleHelp() { document.getElementById('helpOverlay').classList.contains('show') ? hideHelp() : showHelp(); }
+document.getElementById('helpBtn').onclick   = toggleHelp;
+document.getElementById('helpClose').onclick = hideHelp;
+document.getElementById('helpOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('helpOverlay')) hideHelp();
+});
+
+// ── 啟動：先掃圖，再渲染 ───────────────────────────────────
+async function startCycle() {
+    stopCruise();
+    document.getElementById('statusLabel').textContent = '[ 掃描中 ]';
+    document.getElementById('storyContainer').innerHTML = '<div id="loadingMsg">🌸 圖片掃描中…</div>';
+    await loadImageList();
+    document.getElementById('statusLabel').textContent = '[ 載入中 ]';
+    renderAll(document.getElementById('storyContainer'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(startCruise, 600);
+}
+
+document.getElementById('pauseBtn').onclick   = toggleCruise;
+document.getElementById('restartBtn').onclick = startCycle;
+
+startCycle();
+</script>
+</body>
+</html>
