@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 紅樓雅化版 | 自動匹配版</title>
+<script src="alines.js"></script>
+<!-- img_list.js 選用：靜態圖片清單，file:// 環境下也能用（不存在則忽略）-->
+<script>
+(function(){
+  var s = document.createElement('script');
+  s.src = 'img_list.js';
+  s.onload  = function(){ window._imgListReady = true;  };
+  s.onerror = function(){ window._imgListReady = false; };
+  document.head.appendChild(s);
+})();
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a0e0a; font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif; line-height:1.88; overflow-x:hidden; }
+.header { position:fixed; top:0; left:0; width:100%; background:rgba(26,14,10,0.93); backdrop-filter:blur(6px); border-bottom:1px solid #bc7a5e; display:flex; justify-content:space-between; align-items:center; z-index:1000; padding:7px 16px; gap:8px; flex-wrap:wrap; }
+.title { color:#e8c4b0; font-size:0.82rem; letter-spacing:2px; flex:1 1 auto; white-space:nowrap; }
+.ctrl-group { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.ctrl-btn { background:#5e2e22; border:none; color:#f0ddcf; padding:5px 11px; border-radius:40px; cursor:pointer; font-size:0.80rem; font-weight:bold; letter-spacing:1px; transition:background .18s,transform .1s; user-select:none; }
+.ctrl-btn:hover { background:#8e5a4a; color:#fff; }
+.ctrl-btn:active { transform:scale(.93); }
+.ctrl-btn.active { background:#8e4820; color:#ffe8d0; }
+.speed-dots { display:flex; gap:3px; align-items:center; padding:0 2px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#5e2e22; transition:background .25s; }
+.dot.on { background:#e8a060; }
+.status-label { color:#c0906a; font-size:0.70rem; letter-spacing:1px; padding:0 2px; white-space:nowrap; min-width:56px; text-align:center; }
+
+#storyContainer { padding-top:58px; width:100%; max-width:800px; margin:0 auto; background:#fef7ef; min-height:100vh; box-shadow:0 0 30px rgba(0,0,0,.22); }
+.story-block { padding:36px 28px; border-bottom:1px solid #ecd9c8; display:flex; flex-direction:column; gap:24px; opacity:0; transform:translateY(18px); transition:opacity .65s ease,transform .65s ease; }
+.story-block.visible { opacity:1; transform:translateY(0); }
+
+/* ── 文字：加粗純色高對比 ── */
+.story-text { font-size:var(--txt-size,1.18rem); font-weight:700; border-left:4px solid #bc7a5e; padding:14px 20px 14px 24px; background:rgba(255,245,235,.72); border-radius:0 18px 18px 0; line-height:1.95; }
+.story-text .txt { font-weight:700; color:var(--txt-color,#6b1a2a); text-shadow:0 1px 0 rgba(255,255,255,.45); }
+
+/* ── 圖片區 ── */
+.img-wrap { position:relative; border-radius:20px; overflow:hidden; cursor:pointer; user-select:none; }
+.story-img { width:100%; max-height:620px; object-fit:contain; background:#2a1a14; display:block; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,.2); border:1px solid #ecd9c8; }
+
+/* ── 圖片提示列（桌面 hover 顯示路徑）── */
+.img-hint {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(26,14,10,.72);
+    color:#e8c4b0; font-size:0.67rem; font-family:monospace;
+    letter-spacing:.5px; padding:5px 12px;
+    pointer-events:none; opacity:0; transition:opacity .28s;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    border-radius:0 0 20px 20px;
+}
+/* 只在非觸控裝置（有滑鼠）才顯示 */
+@media (hover:hover) {
+    .img-wrap:hover .img-hint { opacity:1; }
+}
+
+@keyframes imgFlash { 0%{opacity:1} 40%{opacity:0} 100%{opacity:1} }
+.img-changing { animation:imgFlash .38s ease; }
+
+/* ── 說明浮層 ── */
+#helpOverlay { display:none; position:fixed; inset:0; z-index:2000; background:rgba(10,5,3,0.82); backdrop-filter:blur(4px); justify-content:center; align-items:center; }
+#helpOverlay.show { display:flex; }
+#helpBox { background:#2a160e; border:1px solid #bc7a5e; border-radius:18px; padding:28px 32px 24px; max-width:380px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,.5); color:#e8c4b0; }
+#helpBox h2 { font-size:1rem; letter-spacing:3px; color:#e8a060; margin-bottom:18px; text-align:center; border-bottom:1px solid #5e2e22; padding-bottom:10px; }
+.help-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(188,122,94,0.15); font-size:0.82rem; gap:12px; }
+.help-row:last-child { border-bottom:none; }
+.help-key { background:#3a1a10; color:#e8a060; border-radius:6px; padding:2px 8px; font-family:monospace; font-size:0.78rem; white-space:nowrap; flex-shrink:0; }
+.help-desc { color:#d4b09a; }
+#helpClose { display:block; margin:18px auto 0; background:#5e2e22; border:none; color:#f0ddcf; padding:6px 24px; border-radius:40px; cursor:pointer; font-size:0.82rem; }
+#helpClose:hover { background:#8e5a4a; }
+
+#speedToast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:rgba(26,14,10,.88); color:#e8c4b0; padding:6px 20px; border-radius:40px; font-size:.76rem; letter-spacing:2px; pointer-events:none; opacity:0; transition:opacity .3s; z-index:999; }
+#speedToast.show { opacity:1; }
+.bottom-trigger { text-align:center; padding:40px; color:#b08a74; font-size:.8rem; }
+#scanStatus { text-align:center; padding:60px 32px 20px; color:#bc7a5e; font-size:.95rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體 ]">A+</button>
+    <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體 [">A−</button>
+    <button class="ctrl-btn" id="slowBtn"     title="減速 ↓">−</button>
+    <div class="speed-dots" id="speedDots">
+      <div class="dot on"></div><div class="dot on"></div>
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    <button class="ctrl-btn" id="fastBtn"     title="加速 ↑">+</button>
+    <span class="status-label" id="statusLabel">[ 掃描中 ]</span>
+    <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航 Space">⏯ 巡航</button>
+    <button class="ctrl-btn"        id="restartBtn" title="重新掃描並重讀 ⟳">⟳</button>
+    <button class="ctrl-btn"        id="aiBtn"      title="AI潤飾開/關">AI</button>
+    <button class="ctrl-btn"        id="helpBtn"    title="快捷鍵 ?">？</button>
+  </div>
+</div>
+
+<div id="storyContainer"><div id="scanStatus">🌸 圖片掃描中，請稍候…</div></div>
+<div id="speedToast"></div>
+
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵說明</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">]</span><span class="help-desc">放大字體</span></div>
+    <div class="help-row"><span class="help-key">[</span><span class="help-desc">縮小字體</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換目前可見圖片（同資料夾隨機）</span></div>
+    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關說明</span></div>
+    <div class="help-row"><span class="help-key">AI 鍵</span><span class="help-desc">開/關 AI逐句潤飾（需聯網）</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// lines.js 檢查
+// ════════════════════════════════════════════════════════
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML =
+        '<p style="color:#bc7a5e;padding:100px 32px;text-align:center;font-size:1.1rem;">' +
+        '⚠️ 無法載入 lines.js，請確認同資料夾並重新整理。</p>';
+    throw new Error('lines.js not loaded');
+}
+
+// ── 環境偵測 ──────────────────────────────────────────
+// isFileProto : file:// 協議下 fetch 被瀏覽器封鎖，必須降級
+// isLocal     : localhost / 127.0.0.1（http server 本機測試）
+// isNet       : 正式網路環境
+var isFileProto = (location.protocol === 'file:');
+var isLocal     = !isFileProto && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+var isNet       = !isFileProto && !isLocal;
+// file:// 下強制不掃描（fetch 無效），改用靜態清單或 lines.js
+var canFetch    = !isFileProto;
+
+// ════════════════════════════════════════════════════════
+// URL 參數
+//   ?dir=img/q2          → 只掃 img/q2/
+//   ?dir=img/q1,img/q2   → 掃多個目錄（逗號分隔）
+//   （不帶參數）          → 掃 LinesLib 知道的所有資料夾
+// ════════════════════════════════════════════════════════
+var urlParam = (location.search.match(/[?&]dir=([^&]*)/) || [])[1] || '';
+var scanDirs = urlParam
+    ? urlParam.split(',').map(function(s){ return s.trim().replace(/\/+$/,'') + '/'; })
+    : null;  // null = 用 lines.js 的資料夾清單
+
+// ════════════════════════════════════════════════════════
+// 圖片命名規則：000.jpg 001.jpg … 0xx.jpg（三位數補零）
+// 連續 3 個 HEAD 404 → 視為該資料夾結束
+// ════════════════════════════════════════════════════════
+function pad3(n) { return n < 10 ? '00'+n : n < 100 ? '0'+n : ''+n; }
+
+function checkExists(url) {
+    if (!canFetch) return Promise.resolve(false);  // file:// 下直接跳過
+    return fetch(url, {
+        method: 'GET',
+        headers: { 'Range': 'bytes=0-0' },
+        cache: 'no-cache'
+    }).then(function(r) { return r.status === 200 || r.status === 206; })
+      .catch(function()  { return false; });
+}
+
+// 掃單一目錄（無空號版：遇第 1 個 404 即停）
+// 命名規則 000.jpg 001.jpg … 連號，000 不存在代表目錄空
+async function scanDir(dp) {
+    var found = [];
+    for (var i = 0; i < 1000; i++) {
+        var url = dp + pad3(i) + '.jpg';
+        var ok  = await checkExists(url);
+        // 首張 log：讓 F12 可以確認實際請求路徑
+        if (i === 0) {
+            var full = location.origin + location.pathname.replace(/[^/]*$/, '') + url;
+            console.log('[scanDir] 000.jpg try:', full, '->', ok ? 'OK' : '404/blocked');
+        }
+        if (!ok) break;
+        found.push(url);
+        setStatus('[ ' + dp + ' ' + found.length + '張 ]');
+    }
+    if (found.length) console.log('[scanDir]', dp, 'found:', found.length);
+    return found;
+}
+
+// ════════════════════════════════════════════════════════
+// 圖片池
+//   byFolder : { "img/q1/": ["img/q1/000.jpg",...], ... }
+//   imgPool  : 全部路徑 flat 陣列
+// ════════════════════════════════════════════════════════
+var byFolder = {};
+var imgPool  = [];
+var scanReady = false;
+
+// 從 lines.js 收集已知 folder
+function getKnownFolders() {
+    try {
+        var all = LinesLib.getAll(), seen = {}, dirs = [];
+        all.forEach(function(obj) {
+            var f = (obj.folder || LinesLib.autoDetectFolder(obj.text) || '').replace(/\/+$/,'');
+            if (f && !seen[f]) { seen[f]=1; dirs.push(f); }
+        });
+        return dirs;
+    } catch(e) { return []; }
+}
+
+// 取得要掃描的目錄清單（async，因為需要探測子目錄）
+async function getDirsToScan() {
+    // ?dir=img/q1 或 ?dir=img/q1,img/w7 → 直接用，normalize 路徑
+    if (scanDirs) {
+        return scanDirs.map(function(d) {
+            return d.replace(/\/\.\//g,'/').replace(/\/\.$/,'').replace(/\/+$/,'') + '/';
+        });
+    }
+    // 無參數：lines.js 已知 folder + 自動探測常見子目錄名
+    var base = 'img';
+    var known = getKnownFolders();   // eg. ["img/q1","img/w7"]
+    var candidates = known.slice();
+    // 常見格式：q1~q9, w1~w9, e1~e9, a1~a9, p1~p9, n1~n9, 1~20
+    var pf = ['q','w','e','r','a','s','d','f','p','c','n'];
+    pf.forEach(function(p) {
+        for (var n=1; n<=9; n++) {
+            var c = base+'/'+p+n;
+            if (candidates.indexOf(c)<0) candidates.push(c);
+        }
+    });
+    for (var n=1; n<=20; n++) {
+        var c = base+'/'+n;
+        if (candidates.indexOf(c)<0) candidates.push(c);
+    }
+    // 探測：000.jpg 存在 → 目錄有效
+    setStatus('[ 探測子目錄… ]');
+    var validDirs = [];
+    var pageBase = location.origin + location.pathname.replace(/[^/]*$/, '');
+    console.log('[getDirs] pageBase:', pageBase, '| scanning under:', base);
+    // 永遠先探測 img/ 本身（regular pool）
+    var rootOk = await checkExists(base + '/000.jpg');
+    console.log('[getDirs]', base+'/000.jpg', '->', rootOk ? 'OK':'404/blocked');
+    if (rootOk) validDirs.push(base + '/');
+    // 再探測所有子目錄候選
+    for (var ci=0; ci<candidates.length; ci++) {
+        var dp = candidates[ci].replace(/\/+$/,'') + '/';
+        if (dp === base+'/') continue;
+        var ok = await checkExists(dp + '000.jpg');
+        if (ok) { console.log('[getDirs] found subdir:', dp); validDirs.push(dp); }
+    }
+    console.log('[getDirs] result:', validDirs.length ? validDirs : 'NONE - check paths above');
+    return validDirs;
+}
+
+async function runScan() {
+    byFolder = {}; imgPool = []; scanReady = false;
+
+    // ── 優先：img_list.js 已載入（任何環境皆適用）──────────
+    if (window.IMG_LIST && window.IMG_LIST.length) {
+        window.IMG_LIST.forEach(function(path) {
+            var dp = path.replace(/[^/]*$/, '');
+            if (!byFolder[dp]) byFolder[dp] = [];
+            byFolder[dp].push(path);
+            imgPool.push(path);
+        });
+        // ?dir= 過濾
+        if (scanDirs) {
+            var keep = {};
+            scanDirs.forEach(function(d) {
+                var dp = d.replace(/\/+$/,'') + '/';
+                if (byFolder[dp]) keep[dp] = byFolder[dp];
+            });
+            byFolder = keep;
+            imgPool = [];
+            Object.keys(byFolder).forEach(function(k){ imgPool = imgPool.concat(byFolder[k]); });
+        }
+        scanReady = (imgPool.length > 0);
+        var summary = Object.keys(byFolder).map(function(k){
+            var label = k === 'img/' ? 'img(root)' : k.replace(/^img\//, '').replace(/\/$/, '');
+            return label + ':' + byFolder[k].length;
+        }).join(' ');
+        setStatus('[ 靜態 ' + imgPool.length + '張 ]');
+        console.log('[scan] img_list.js mode |', summary, '| total:', imgPool.length);
+        return;
+    }
+
+    // ── 次選：http/https → fetch 即時掃描 ───────────────────
+    if (canFetch) {
+        var dirs = await getDirsToScan();
+        setStatus('[ 掃描 0/' + dirs.length + ' ]');
+        for (var di=0; di<dirs.length; di++) {
+            setStatus('[ 掃描 ' + (di+1) + '/' + dirs.length + ' ]');
+            var dp = dirs[di].replace(/\/+$/,'') + '/';
+            var imgs = await scanDir(dp);
+            if (imgs.length) { byFolder[dp] = imgs; imgPool = imgPool.concat(imgs); }
+        }
+        scanReady = (imgPool.length > 0);
+        var summary2 = Object.keys(byFolder).map(function(k){
+            var label = k === 'img/' ? 'img(root)' : k.replace(/^img\//, '').replace(/\/$/, '');
+            return label + ':' + byFolder[k].length;
+        }).join(' ');
+        setStatus(scanReady ? '[ ✓ ' + imgPool.length + '張 ]' : '[ 無圖片 ]');
+        console.log('[scan] fetch mode |', summary2, '| total:', imgPool.length);
+        return;
+    }
+
+    // ── 最後：file:// 且無 img_list.js → lines.js 模式 ─────
+    setStatus('[ lines.js 模式 ]');
+    console.log('[scan] file:// + no img_list.js -> lines.js fallback');
+}
+
+// ════════════════════════════════════════════════════════
+// 圖片選取
+// ════════════════════════════════════════════════════════
+function pickAny(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function getImgPath(folder) {
+    if (scanReady) {
+        // normalize: '' or 'img' -> 'img/'
+        var dp = (folder || 'img').replace(/\/+$/,'') + '/';
+        // exact match
+        if (byFolder[dp] && byFolder[dp].length) return pickAny(byFolder[dp]);
+        // prefix match (eg. folder='img' matches 'img/q1/')
+        var keys = Object.keys(byFolder), pool = [];
+        for (var i=0; i<keys.length; i++)
+            if (keys[i].indexOf(dp) === 0) pool = pool.concat(byFolder[keys[i]]);
+        if (pool.length) return pickAny(pool);
+        // final fallback: whole pool
+        if (imgPool.length) return pickAny(imgPool);
+    }
+    // lines.js fallback
+    try { return LinesLib.imgSrc(folder, LinesLib.getImage(folder)); } catch(e){ return ''; }
+}
+
+function swapImg(imgEl) {
+    // 取目前圖片的相對路徑，用來：1)比對避免換到同一張 2)反推所在目錄
+    var base   = location.origin + location.pathname.replace(/[^\/]*$/, '');
+    var curAbs = imgEl.src || '';
+    var curRel = curAbs.indexOf(base) === 0 ? curAbs.slice(base.length) : curAbs;
+
+    // 從 curRel 反推目錄（eg. "img/q1/005.jpg" → "img/q1/"）
+    var curDir = curRel.replace(/[^\/]*$/, '');   // 去掉檔名留目錄
+
+    // 優先用目前圖片所在目錄的 pool（鎖定同目錄）
+    // 這樣不論 folder 是否為空、是否 special text，都能正確鎖目錄
+    var pool = null;
+    if (scanReady) {
+        if (byFolder[curDir] && byFolder[curDir].length) {
+            pool = byFolder[curDir];   // 精確：同目錄
+        } else if (imgPool.length) {
+            pool = imgPool;            // fallback：全部
+        }
+    }
+
+    if (pool) {
+        var next = curRel, tries = 0;
+        while (next === curRel && tries++ < 20) next = pickAny(pool);
+        flash(imgEl, next);
+    } else {
+        var folder = imgEl.dataset.folder || '';
+        try { flash(imgEl, LinesLib.imgSrc(folder, LinesLib.getImage(folder))); } catch(e){}
+    }
+}
+
+function flash(imgEl, newSrc) {
+    imgEl.classList.remove('img-changing');
+    void imgEl.offsetWidth;
+    imgEl.classList.add('img-changing');
+    imgEl.src = newSrc;
+    // 同步更新 hint 路徑
+    var hint = imgEl.parentElement.querySelector('.img-hint');
+    if (hint) hint.textContent = newSrc;
+}
+
+// ════════════════════════════════════════════════════════
+// 文字顏色（純色輪換）
+// ════════════════════════════════════════════════════════
+var TEXT_COLORS = ['#7a1a2e','#5a2060','#1a4a7a','#1a5a40',
+                   '#7a3a10','#4a2a70','#1a3a6a','#6a1a50'];
+var colorIdx = 0;
+function nextColor() { return TEXT_COLORS[colorIdx++ % TEXT_COLORS.length]; }
+
+// ════════════════════════════════════════════════════════
+// 字體
+// ════════════════════════════════════════════════════════
+var TXT_SIZES = ['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+var txtIdx = 3;
+function applyTxt() { document.documentElement.style.setProperty('--txt-size', TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick   = function(){ if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} };
+document.getElementById('sizeDownBtn').onclick = function(){ if(txtIdx>0){txtIdx--;applyTxt();} };
+
+// ════════════════════════════════════════════════════════
+// 淡入 Observer
+// ════════════════════════════════════════════════════════
+var fadeObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(en) {
+        if (en.isIntersecting) { en.target.classList.add('visible'); fadeObserver.unobserve(en.target); }
+    });
+}, { threshold: 0.05 });
+
+// ════════════════════════════════════════════════════════
+// 綁定點擊 / 滑動換圖
+// ════════════════════════════════════════════════════════
+function bindSwap(wrap, imgEl) {
+    wrap.addEventListener('click', function(){ swapImg(imgEl); });
+    var tx=null, ty=null;
+    wrap.addEventListener('touchstart', function(e){ tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+    wrap.addEventListener('touchend', function(e) {
+        if (!tx) return;
+        var dx = e.changedTouches[0].clientX - tx;
+        var dy = e.changedTouches[0].clientY - ty;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)*1.5) swapImg(imgEl);
+        tx = ty = null;
+    }, {passive:true});
+}
+
+// ════════════════════════════════════════════════════════
+// 渲染
+// ════════════════════════════════════════════════════════
+function shuffle(arr) {
+    var a = arr.slice();
+    for (var i=a.length-1; i>0; i--) {
+        var j = Math.floor(Math.random()*(i+1));
+        var t = a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+}
+
+// ── AI 逐句潤飾 ──────────────────────────────────────────
+// 進入視野時才呼叫 API，失敗靜默保留原句
+var aiPolishEnabled = false;
+
+async function polishLine(rawText, spanEl) {
+    try {
+        var res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 200,
+                system: '你是中文文學潤飾助手，專精古典小說意境。收到一句中文，修正語病後只回傳結果句子本身，不加任何說明。修正規則：1.句首「在…中/裡」與句尾「…中/裡」不能同時出現；2.「沉浸在X裡」中X若含動詞短語需改寫為名詞性；3.連續三個以上「的」需精簡；4.「讓…時…」缺主語需補回；5.無語病則原句回傳。',
+                messages: [{ role: 'user', content: rawText }]
+            })
+        });
+        if (!res.ok) return;
+        var data = await res.json();
+        var polished = (data.content&&data.content[0]&&data.content[0].text||'').trim();
+        if (polished && polished !== rawText && polished.length < rawText.length*2) {
+            spanEl.style.transition = 'opacity 0.5s';
+            spanEl.style.opacity = '0';
+            setTimeout(function(){
+                spanEl.textContent = '🌸 ' + polished;
+                spanEl.style.opacity = '1';
+            }, 500);
+        }
+    } catch(e) {}
+}
+
+function renderAll(container) {
+    container.innerHTML = '';
+    var lineObjs = shuffle(LinesLib.getAll());
+
+    lineObjs.forEach(function(obj) {
+        var text   = obj.text;
+        var folder = obj.folder || LinesLib.autoDetectFolder(text);
+        var src    = getImgPath(folder);
+        var color  = nextColor();
+
+        var block = document.createElement('div');
+        block.className = 'story-block';
+
+        var textDiv = document.createElement('div');
+        textDiv.className = 'story-text';
+        var span = document.createElement('span');
+        span.className = 'txt';
+        span.style.setProperty('--txt-color', color);
+        span.textContent = '🌸 ' + text;
+        textDiv.appendChild(span);
+
+        var wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
+        var img = document.createElement('img');
+        img.className = 'story-img';
+        img.alt = '杏夜'; img.loading = 'lazy';
+        img.dataset.folder = folder;
+        if (src) img.src = src;
+        var hint = document.createElement('span');
+        hint.className = 'img-hint';
+        hint.textContent = src || '';
+        wrap.appendChild(img);
+        wrap.appendChild(hint);
+        bindSwap(wrap, img);
+
+        block.appendChild(textDiv);
+        block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObserver.observe(block);
+
+        // AI 潤飾：進入視野才觸發，避免一次送出所有句子
+        if (aiPolishEnabled) {
+            (function(blk, sp, tx){
+                var po = new IntersectionObserver(function(ens, obs){
+                    ens.forEach(function(en){
+                        if (en.isIntersecting){ obs.unobserve(blk); polishLine(tx, sp); }
+                    });
+                }, {threshold:0.15});
+                po.observe(blk);
+            })(block, span, text);
+        }
+    });
+
+    var fin = document.createElement('div');
+    fin.className = 'bottom-trigger';
+    fin.textContent = '🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ════════════════════════════════════════════════════════
+// 巡航引擎
+// ════════════════════════════════════════════════════════
+var SPEEDS      = [0.35, 0.75, 1.4, 2.5, 4.2];
+var SPEED_NAMES = ['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+var speedLv = 1, cruising = false, rafId = null;
+var userTaking = false, userTakeTimer = null;
+
+function yieldToCruise() {
+    clearTimeout(userTakeTimer);
+    userTakeTimer = setTimeout(function(){ userTaking=false; }, 1400);
+}
+window.addEventListener('wheel',      function(){ userTaking=true; yieldToCruise(); }, {passive:true});
+window.addEventListener('touchstart', function(){ userTaking=true; clearTimeout(userTakeTimer); }, {passive:true});
+window.addEventListener('touchend',   yieldToCruise, {passive:true});
+
+function cruiseFrame() {
+    if (!cruising) return;
+    if (!userTaking) {
+        var maxY = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY >= maxY-1) { stopCruise(); startCycle(); return; }
+        window.scrollBy(0, SPEEDS[speedLv]);
+    }
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function startCruise() {
+    cruising = true;
+    document.getElementById('pauseBtn').textContent = '⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(cruiseFrame);
+}
+function stopCruise() {
+    cruising = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId=null; }
+    document.getElementById('pauseBtn').textContent = '▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+}
+function toggleCruise() { cruising ? stopCruise() : startCruise(); }
+
+// 速度 UI
+var toastTimer = null;
+function showToast(msg) {
+    var t = document.getElementById('speedToast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1300);
+}
+function updateSpeedUI() {
+    document.querySelectorAll('#speedDots .dot').forEach(function(d,i){ d.classList.toggle('on', i<=speedLv); });
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster() { if(speedLv<SPEEDS.length-1){speedLv++;updateSpeedUI();} }
+function slower() { if(speedLv>0){speedLv--;updateSpeedUI();} }
+document.getElementById('fastBtn').onclick = faster;
+document.getElementById('slowBtn').onclick = slower;
+updateSpeedUI();
+
+// ════════════════════════════════════════════════════════
+// 鍵盤
+// ════════════════════════════════════════════════════════
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+    switch(e.key) {
+        case ' ':         e.preventDefault(); toggleCruise(); break;
+        case 'ArrowUp':   case '+': case '=': e.preventDefault(); faster(); break;
+        case 'ArrowDown': case '-': case '_': e.preventDefault(); slower(); break;
+        case ']': if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} break;
+        case '[': if(txtIdx>0){txtIdx--;applyTxt();} break;
+        case 'r': case 'R': {
+            var vp = window.innerHeight;
+            var vis = Array.from(document.querySelectorAll('.story-img')).filter(function(im){
+                var r = im.getBoundingClientRect(); return r.bottom>0 && r.top<vp;
+            });
+            if (vis.length) swapImg(vis[Math.floor(Math.random()*vis.length)]);
+            break;
+        }
+        case '?': case '/': toggleHelp(); break;
+        case 'Escape': hideHelp(); break;
+    }
+});
+
+// ════════════════════════════════════════════════════════
+// 說明浮層
+// ════════════════════════════════════════════════════════
+function showHelp()   { document.getElementById('helpOverlay').classList.add('show');    stopCruise(); }
+function hideHelp()   { document.getElementById('helpOverlay').classList.remove('show'); }
+function toggleHelp() { document.getElementById('helpOverlay').classList.contains('show') ? hideHelp() : showHelp(); }
+document.getElementById('helpBtn').onclick   = toggleHelp;
+document.getElementById('helpClose').onclick = hideHelp;
+document.getElementById('helpOverlay').addEventListener('click', function(e){
+    if (e.target===document.getElementById('helpOverlay')) hideHelp();
+});
+
+// ════════════════════════════════════════════════════════
+// 工具
+// ════════════════════════════════════════════════════════
+function setStatus(t) { document.getElementById('statusLabel').textContent = t; }
+
+// ════════════════════════════════════════════════════════
+// 啟動
+// ════════════════════════════════════════════════════════
+var cycleRunning = false;
+async function startCycle() {
+    if (cycleRunning) return;   // prevent re-entry from cruiseFrame bottom trigger
+    cycleRunning = true;
+    stopCruise();
+    document.getElementById('storyContainer').innerHTML = '<div id="scanStatus">🌸 圖片掃描中…</div>';
+    await runScan();
+    renderAll(document.getElementById('storyContainer'));
+    window.scrollTo({ top:0, behavior:'smooth' });
+    cycleRunning = false;
+    setTimeout(startCruise, 600);
+}
+
+document.getElementById('pauseBtn').onclick   = toggleCruise;
+document.getElementById('restartBtn').onclick = startCycle;
+document.getElementById('aiBtn').onclick = function() {
+    aiPolishEnabled = !aiPolishEnabled;
+    var btn = document.getElementById('aiBtn');
+    btn.classList.toggle('active', aiPolishEnabled);
+    btn.title = aiPolishEnabled ? 'AI潤飾：開（點關閉）' : 'AI潤飾：關（點開啟）';
+    showToast(aiPolishEnabled ? '✨ AI潤飾 已開啟' : 'AI潤飾 已關閉');
+    if (aiPolishEnabled) {
+        // 立即潤飾目前可見的句子
+        var vp = window.innerHeight;
+        document.querySelectorAll('.story-block').forEach(function(block) {
+            var r = block.getBoundingClientRect();
+            if (r.bottom > 0 && r.top < vp) {
+                var span = block.querySelector('.txt');
+                var raw  = span ? span.textContent.replace(/^🌸 /, '') : '';
+                if (span && raw) polishLine(raw, span);
+            }
+        });
+    }
+};
+
+// 等 img_list.js 載入完再啟動（最多等 3 秒）
+(function(){
+    var waited = 0;
+    function tryStart() {
+        if (window._imgListReady !== undefined || waited >= 3000) {
+            startCycle();
+        } else {
+            waited += 50;
+            setTimeout(tryStart, 50);
+        }
+    }
+    tryStart();
+})();
+</script>
+</body>
+</html>
