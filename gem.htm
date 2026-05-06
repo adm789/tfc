@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 紅樓雅化版 (WinPE 優化版)</title>
+<script src="lines.js"></script>
+<script src="img_list.js" onerror="window._noImgList=true"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#1a0e0a;font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif;line-height:1.88;overflow-x:hidden;}
+
+/* ── Header ── */
+.header{position:fixed;top:0;left:0;width:100%;background:rgba(26,14,10,0.93);backdrop-filter:blur(6px);border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;align-items:center;z-index:1000;padding:7px 16px;gap:8px;flex-wrap:wrap;}
+.title{color:#e8c4b0;font-size:0.82rem;letter-spacing:2px;flex:1 1 auto;white-space:nowrap;}
+.ctrl-group{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.ctrl-btn{background:#5e2e22;border:none;color:#f0ddcf;padding:5px 11px;border-radius:40px;cursor:pointer;font-size:0.80rem;font-weight:bold;letter-spacing:1px;transition:background .18s,transform .1s;user-select:none;}
+.ctrl-btn:hover{background:#8e5a4a;color:#fff;}
+.ctrl-btn:active{transform:scale(.93);}
+.ctrl-btn.active{background:#8e4820;color:#ffe8d0;}
+.speed-dots{display:flex;gap:3px;align-items:center;padding:0 2px;}
+.dot{width:7px;height:7px;border-radius:50%;background:#5e2e22;transition:background .25s;}
+.dot.on{background:#e8a060;}
+.status-label{color:#c0906a;font-size:0.70rem;letter-spacing:1px;padding:0 2px;white-space:nowrap;min-width:72px;text-align:center;}
+
+/* ── 主容器 ── */
+#storyContainer{padding-top:58px;width:100%;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;box-shadow:0 0 30px rgba(0,0,0,.22);}
+
+.story-block{
+    padding:0.6em 28px 0;
+    border-top:1px solid #ecd9c8;
+    opacity:0;transform:translateY(14px);
+    transition:opacity .6s ease,transform .6s ease;
+}
+.story-block:first-child{border-top:none;padding-top:1.2em;}
+.story-block.visible{opacity:1;transform:translateY(0);}
+
+.story-text{
+    font-size:var(--txt-size,1.18rem);font-weight:700;
+    border-left:4px solid #bc7a5e;
+    padding:10px 18px 10px 22px;
+    background:rgba(255,245,235,.72);
+    border-radius:0 14px 0 0;
+    line-height:1.92;
+    margin-bottom:0;
+}
+.story-text .txt{font-weight:700;color:var(--txt-color,#6b1a2a);text-shadow:0 1px 0 rgba(255,255,255,.4);}
+
+.img-wrap{position:relative;overflow:hidden;cursor:pointer;user-select:none;border-radius:0 0 18px 0;margin-bottom:0;min-height:200px;}
+.story-img{width:100%;max-height:600px;object-fit:contain;background:#2a1a14;display:block;border:1px solid #e0cfc0;border-top:none;}
+
+.img-hint{
+    position:absolute;bottom:0;left:0;right:0;
+    background:rgba(26,14,10,.72);color:#e8c4b0;
+    font-size:0.67rem;font-family:monospace;letter-spacing:.5px;
+    padding:4px 12px;pointer-events:none;opacity:0;transition:opacity .25s;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(hover:hover){.img-wrap:hover .img-hint{opacity:1;}}
+@keyframes imgFlash{0%{opacity:1}40%{opacity:0}100%{opacity:1}}
+.img-changing{animation:imgFlash .35s ease;}
+
+#speedToast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(26,14,10,.88);color:#e8c4b0;padding:6px 20px;border-radius:40px;font-size:.76rem;letter-spacing:2px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:999;}
+#speedToast.show{opacity:1;}
+.bottom-fin{text-align:center;padding:32px;color:#b08a74;font-size:.8rem;border-top:1px solid #ecd9c8;margin-top:.6em;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="sizeUpBtn">A+</button>
+    <button class="ctrl-btn" id="sizeDownBtn">A−</button>
+    <button class="ctrl-btn" id="slowBtn">−</button>
+    <div class="speed-dots" id="speedDots">
+      <div class="dot on"></div><div class="dot on"></div>
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    <button class="ctrl-btn" id="fastBtn">+</button>
+    <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+    <button class="ctrl-btn active" id="pauseBtn">⏯ 巡航</button>
+    <button class="ctrl-btn" id="restartBtn">⟳</button>
+  </div>
+</div>
+
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 核心邏輯
+// ══════════════════════════════════════════════════════════════
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML = '<p style="color:#bc7a5e;padding:100px;text-align:center;">⚠️ 無法載入 lines.js</p>';
+    throw new Error('lines.js missing');
+}
+
+var byFolder = {}, imgPool = [], scanReady = false;
+var MAX_LOADING = 3;  // 同時並發請求數
+var loadingSet = new Set();
+var loadQueue = [];
+var _watchdog = null;
+
+// 1. 探針功能：檢測文件是否存在
+function probe(url) {
+    return fetch(url, {method:'HEAD', cache:'no-cache'})
+        .then(r => r.ok || r.status === 206)
+        .catch(() => false);
+}
+
+// 2. 建立圖片池[cite: 2]
+async function buildPools() {
+    byFolder = {}; imgPool = [];
+    var list = window.IMG_LIST || null;
+    if (list) {
+        var tmpFolder = {}, tmpPool = [];
+        list.forEach(path => {
+            path = path.replace(/\\/g, '/');
+            var dp = path.replace(/[^/]*$/, '');
+            if (!tmpFolder[dp]) tmpFolder[dp] = [];
+            tmpFolder[dp].push(path);
+            tmpPool.push(path);
+        });
+
+        setStatus('[ 探針中… ]');
+        var reachable = tmpPool[0] ? await probe(tmpPool[0]) : false;
+
+        if (reachable) {
+            byFolder = tmpFolder; imgPool = tmpPool; scanReady = true;
+            setStatus('[ ✓ ' + imgPool.length + '張 ]');
+            rebuildImgObs('0px'); // 本地模式：滾到才載[cite: 2]
+        } else {
+            scanReady = false;
+            setStatus('[ 網路模式 ]');
+            rebuildImgObs('300px 0px 300px 0px'); // 網路模式：預載 300px[cite: 2]
+        }
+    }
+}
+
+// 3. 佇列處理系統 (防止 [載入中] 卡死)[cite: 2]
+function processQueue() {
+    while (loadingSet.size < MAX_LOADING && loadQueue.length > 0) {
+        var img = loadQueue.shift();
+        if (!img.dataset.lazySrc || loadingSet.has(img)) continue;
+
+        loadingSet.add(img);
+        img.onload = img.onerror = function() {
+            loadingSet.delete(img);
+            processQueue();
+        };
+        img.src = img.dataset.lazySrc;
+
+        if (!_watchdog) {
+            _watchdog = setTimeout(() => {
+                _watchdog = null;
+                if (loadingSet.size > 0) {
+                    loadingSet.clear(); 
+                    processQueue();
+                }
+            }, 10000); // 10秒看門狗[cite: 2]
+        }
+    }
+}
+
+// 4. 懶加載監聽器[cite: 2]
+var imgObs;
+function rebuildImgObs(margin) {
+    if (imgObs) imgObs.disconnect();
+    imgObs = new IntersectionObserver((entries) => {
+        entries.forEach(en => {
+            var img = en.target;
+            if (en.isIntersecting) {
+                if (scanReady) { img.src = img.dataset.lazySrc; } // 本地直載
+                else { if (!loadQueue.includes(img)) { loadQueue.push(img); processQueue(); } } // 網路排隊
+            } else {
+                // 自動卸載：離開視窗後清空 src 以釋放內存[cite: 2]
+                if (!scanReady && img.src) { img.src = ''; loadingSet.delete(img); }
+            }
+        });
+    }, { rootMargin: margin, threshold: 0 });
+}
+
+// 5. 渲染頁面[cite: 2]
+function renderAll() {
+    var container = document.getElementById('storyContainer');
+    container.innerHTML = '';
+    var lines = LinesLib.getAll().sort(() => Math.random() - 0.5);
+    
+    lines.forEach(obj => {
+        var folder = obj.folder || '';
+        var src = getImgPath(folder);
+        
+        var block = document.createElement('div');
+        block.className = 'story-block';
+        block.innerHTML = `
+            <div class="story-text"><span class="txt" style="--txt-color:${nextColor()}">🌸 ${obj.text}</span></div>
+            <div class="img-wrap">
+                <img class="story-img" data-lazy-src="${src}" alt="[載入中]">
+                <span class="img-hint">${src}</span>
+            </div>
+        `;
+        container.appendChild(block);
+        
+        var img = block.querySelector('.story-img');
+        imgObs.observe(img);
+        new IntersectionObserver((e) => {
+            if(e[0].isIntersecting) { block.classList.add('visible'); }
+        }).observe(block);
+    });
+}
+
+function getImgPath(f) {
+    if (!scanReady) return LinesLib.imgSrc(f, LinesLib.getImage(f));
+    var dp = f ? f.replace(/\/+$/,'')+'/' : 'img/';
+    var pool = byFolder[dp] || imgPool;
+    return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function setStatus(t){ document.getElementById('statusLabel').textContent = t; }
+var colorIdx=0; 
+function nextColor(){ return ['#7a1a2e','#5a2060','#1a4a7a','#1a5a40','#7a3a10'][colorIdx++%5]; }
+
+// 啟動[cite: 2]
+async function startCycle() {
+    await buildPools();
+    renderAll();
+}
+
+startCycle();
+</script>
+</body>
+</html>
