@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 紅樓雅化版</title>
+<script src="lines.js"></script>
+<script src="img_list.js" onerror="window._noImgList=true"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#1a0e0a;font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif;overflow-x:hidden;}
+.header{position:fixed;top:0;left:0;width:100%;background:rgba(26,14,10,0.93);backdrop-filter:blur(6px);border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;align-items:center;z-index:1000;padding:7px 16px;gap:8px;flex-wrap:wrap;}
+.title{color:#e8c4b0;font-size:0.82rem;letter-spacing:2px;flex:1 1 auto;white-space:nowrap;}
+.ctrl-group{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.ctrl-btn{background:#5e2e22;border:none;color:#f0ddcf;padding:5px 11px;border-radius:40px;cursor:pointer;font-size:0.80rem;font-weight:bold;transition:background .18s,transform .1s;user-select:none;}
+.ctrl-btn:hover{background:#8e5a4a;color:#fff;}
+.ctrl-btn:active{transform:scale(.93);}
+.ctrl-btn.active{background:#8e4820;color:#ffe8d0;}
+.speed-dots{display:flex;gap:3px;align-items:center;}
+.dot{width:7px;height:7px;border-radius:50%;background:#5e2e22;transition:background .25s;}
+.dot.on{background:#e8a060;}
+.status-label{color:#c0906a;font-size:0.70rem;letter-spacing:1px;padding:0 2px;white-space:nowrap;min-width:72px;text-align:center;}
+
+#storyContainer{padding-top:58px;width:100%;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;box-shadow:0 0 30px rgba(0,0,0,.22);}
+
+/* 段落：文字+圖片零間距，段落間細線 */
+.story-block{padding:0.6em 28px 0;border-top:1px solid #ecd9c8;opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease;}
+.story-block:first-child{border-top:none;padding-top:1.2em;}
+.story-block.visible{opacity:1;transform:translateY(0);}
+
+.story-text{font-size:var(--txt-size,1.18rem);font-weight:700;border-left:4px solid #bc7a5e;padding:10px 18px 10px 22px;background:rgba(255,245,235,.72);border-radius:0 14px 0 0;line-height:1.92;}
+.story-text .txt{font-weight:700;color:var(--txt-color,#6b1a2a);text-shadow:0 1px 0 rgba(255,255,255,.4);}
+
+.img-wrap{position:relative;overflow:hidden;cursor:pointer;user-select:none;}
+.story-img{width:100%;max-height:600px;object-fit:contain;background:#2a1a14;display:block;border:1px solid #e0cfc0;border-top:none;}
+.img-hint{position:absolute;bottom:0;left:0;right:0;background:rgba(26,14,10,.72);color:#e8c4b0;font-size:0.67rem;font-family:monospace;padding:4px 12px;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media(hover:hover){.img-wrap:hover .img-hint{opacity:1;}}
+@keyframes imgFlash{0%{opacity:1}40%{opacity:0}100%{opacity:1}}
+.img-changing{animation:imgFlash .35s ease;}
+
+#helpOverlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,5,3,0.82);backdrop-filter:blur(4px);justify-content:center;align-items:center;}
+#helpOverlay.show{display:flex;}
+#helpBox{background:#2a160e;border:1px solid #bc7a5e;border-radius:18px;padding:28px 32px 24px;max-width:380px;width:90%;color:#e8c4b0;}
+#helpBox h2{font-size:1rem;letter-spacing:3px;color:#e8a060;margin-bottom:18px;text-align:center;border-bottom:1px solid #5e2e22;padding-bottom:10px;}
+.help-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(188,122,94,0.15);font-size:0.82rem;gap:12px;}
+.help-row:last-child{border-bottom:none;}
+.help-key{background:#3a1a10;color:#e8a060;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:0.78rem;white-space:nowrap;}
+.help-desc{color:#d4b09a;}
+#helpClose{display:block;margin:18px auto 0;background:#5e2e22;border:none;color:#f0ddcf;padding:6px 24px;border-radius:40px;cursor:pointer;}
+#speedToast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(26,14,10,.88);color:#e8c4b0;padding:6px 20px;border-radius:40px;font-size:.76rem;pointer-events:none;opacity:0;transition:opacity .3s;z-index:999;}
+#speedToast.show{opacity:1;}
+.bottom-fin{text-align:center;padding:32px;color:#b08a74;font-size:.8rem;border-top:1px solid #ecd9c8;margin-top:.6em;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="sizeUpBtn"   title="] 放大">A+</button>
+    <button class="ctrl-btn" id="sizeDownBtn" title="[ 縮小">A−</button>
+    <button class="ctrl-btn" id="slowBtn"     title="↓ 減速">−</button>
+    <div class="speed-dots" id="speedDots">
+      <div class="dot on"></div><div class="dot on"></div>
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    <button class="ctrl-btn" id="fastBtn"     title="↑ 加速">+</button>
+    <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+    <button class="ctrl-btn active" id="pauseBtn"   title="Space">⏯ 巡航</button>
+    <button class="ctrl-btn"        id="restartBtn" title="⟳ 重讀">⟳</button>
+    <button class="ctrl-btn"        id="helpBtn"    title="? 說明">？</button>
+  </div>
+</div>
+
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">] / [</span><span class="help-desc">字體大 / 小</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換可見圖片</span></div>
+    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關說明</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// 0. lines.js 存在檢查
+// ══════════════════════════════════════════════════
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML =
+        '<p style="color:#bc7a5e;padding:100px 32px;text-align:center;">⚠️ 無法載入 lines.js</p>';
+    throw new Error('lines.js not loaded');
+}
+
+// ══════════════════════════════════════════════════
+// 1. URL 參數 ?dir=q1 或 ?dir=q1,w7（對應 FOLDER_IMAGES 的 key）
+// ══════════════════════════════════════════════════
+var urlParam   = (location.search.match(/[?&]dir=([^&]*)/) || [])[1] || '';
+var filterKeys = urlParam ? urlParam.split(',').map(function(s){ return s.trim(); }) : null;
+
+// ══════════════════════════════════════════════════
+// 2. 圖片模式
+//    localMode = true  → IMG_LIST 可用（本機）
+//    localMode = false → 用 LinesLib.FOLDER_IMAGES + imgSrc（網路）
+// ══════════════════════════════════════════════════
+var localMode = false;
+// byFolder 僅 localMode 用：{ "img/q1/": ["img/q1/000.jpg",...] }
+var byFolder  = {};
+var imgPool   = [];
+
+// HEAD 探針（localMode 判斷用）
+function probe(url) {
+    return fetch(url, {method:'HEAD', cache:'no-cache'})
+           .then(function(r){ return r.ok || r.status===206; })
+           .catch(function(){ return false; });
+}
+
+async function initMode() {
+    var list = (window.IMG_LIST && window.IMG_LIST.length) ? window.IMG_LIST : null;
+    if (list) {
+        var tmp = {}, pool = [];
+        list.forEach(function(p) {
+            p = p.replace(/\\/g,'/');
+            var dp = p.replace(/[^/]*$/,'');
+            if (!tmp[dp]) tmp[dp]=[];
+            tmp[dp].push(p); pool.push(p);
+        });
+        // ?dir= 過濾
+        if (filterKeys) {
+            var keep={}, kpool=[];
+            filterKeys.forEach(function(k){
+                // 支援 "q1" 或 "img/q1/" 兩種寫法
+                var dk = k.indexOf('img/')===0 ? k.replace(/\/+$/,'')+'/' : 'img/'+k+'/';
+                if (tmp[dk]){ keep[dk]=tmp[dk]; kpool=kpool.concat(tmp[dk]); }
+            });
+            tmp=keep; pool=kpool;
+        }
+        var ok = pool.length ? await probe(pool[0]) : false;
+        if (ok) {
+            localMode=true; byFolder=tmp; imgPool=pool;
+            var sum = Object.keys(byFolder).map(function(k){
+                return k.replace(/^img\//,'').replace(/\/$/,'')+':'+byFolder[k].length;
+            }).join(' ');
+            setStatus('[ 本機 '+imgPool.length+'張 ]');
+            console.log('[local]', sum);
+            return;
+        }
+    }
+    // 網路模式：用 LinesLib API
+    localMode = false;
+    setStatus('[ lines.js 模式 ]');
+    console.log('[net] FOLDER_IMAGES keys:', Object.keys(LinesLib.FOLDER_IMAGES||{}));
+}
+
+// ══════════════════════════════════════════════════
+// 3. 取圖路徑
+//    localMode  → byFolder
+//    net mode   → LinesLib.imgSrc(folder, LinesLib.getImage(folder))
+// ══════════════════════════════════════════════════
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function getImgPath(folder) {
+    if (localMode) {
+        var dp = folder ? 'img/'+folder.replace(/^img\//,'').replace(/\/+$/,'')+'/' : 'img/';
+        var pool = byFolder[dp];
+        if (!pool || !pool.length) {
+            // 前綴匹配
+            pool = [];
+            Object.keys(byFolder).forEach(function(k){ if(k.indexOf(dp)===0) pool=pool.concat(byFolder[k]); });
+        }
+        if (!pool.length && imgPool.length) pool = imgPool;
+        return pool.length ? rnd(pool) : '';
+    } else {
+        // 網路模式：直接用 LinesLib 原有 API
+        try {
+            var fi   = LinesLib.FOLDER_IMAGES || {};
+            // ?dir= 過濾 key
+            var keys = filterKeys
+                ? filterKeys.filter(function(k){ return fi[k]; })
+                : Object.keys(fi);
+            if (!keys.length) keys = Object.keys(fi);
+            var key  = folder && fi[folder] ? folder : (keys.length ? rnd(keys) : '');
+            var fn   = String(LinesLib.getImage(key)).trim();
+            return LinesLib.imgSrc(key, fn);
+        } catch(e) { console.warn('[getImgPath]', e.message); return ''; }
+    }
+}
+
+function getRandomInSameDir(currentSrc) {
+    if (localMode) {
+        var base   = location.origin + location.pathname.replace(/[^\/]*$/,'');
+        var curRel = currentSrc.indexOf(base)===0 ? currentSrc.slice(base.length) : currentSrc;
+        var curDir = curRel.replace(/[^\/]*$/,'');
+        var pool   = byFolder[curDir] || imgPool;
+        if (!pool.length) return '';
+        var next=curRel, t=0;
+        while(next===curRel && t++<30) next=rnd(pool);
+        return next;
+    } else {
+        try {
+            // 從 currentSrc 反推 folder key
+            var fi = LinesLib.FOLDER_IMAGES || {};
+            // 試著從路徑找 key（eg. "./img/q1/038.jpg" → "q1"）
+            var m = currentSrc.match(/img\/([^/]+)\//);
+            var key = (m && fi[m[1]]) ? m[1] : (Object.keys(fi)[0]||'');
+            var arr = fi[key] || fi[''] || [];
+            if (!arr.length) return '';
+            var curFile = currentSrc.replace(/.*\//,'');
+            var fn=curFile, t=0;
+            while(fn===curFile && t++<30) fn=String(rnd(arr)).trim();
+            return LinesLib.imgSrc(key, fn);
+        } catch(e){ return ''; }
+    }
+}
+
+// ══════════════════════════════════════════════════
+// 4. 限流佇列（僅網路模式用）
+// ══════════════════════════════════════════════════
+var MAX_LOAD  = 3;
+var loadSet   = new Set();
+var loadQueue = [];
+var wdSeq=0, wdMap={};
+
+function releaseSlot(img) {
+    if (!loadSet.has(img)) return;
+    loadSet.delete(img);
+    img.removeEventListener('load',  img._done);
+    img.removeEventListener('error', img._done);
+    delete img._done;
+    if (img._wd !== undefined) { clearTimeout(wdMap[img._wd]); delete wdMap[img._wd]; delete img._wd; }
+    processQ();
+}
+
+function processQ() {
+    while (loadSet.size < MAX_LOAD && loadQueue.length) {
+        var img = loadQueue.shift();
+        var src = img.dataset.lazySrc;
+        if (!src || img.src===src || loadSet.has(img)) continue;
+        loadSet.add(img);
+        img._done = function(e){ releaseSlot(e.target); };
+        img.addEventListener('load',  img._done);
+        img.addEventListener('error', img._done);
+        img.src = src;
+        var id=++wdSeq;
+        img._wd=id;
+        wdMap[id]=setTimeout((function(im,wid){
+            return function(){ delete wdMap[wid]; delete im._wd; releaseSlot(im); };
+        })(img,id), 12000);
+    }
+}
+
+function enqueueImg(img) {
+    if (!loadQueue.includes(img) && !loadSet.has(img)) loadQueue.push(img);
+    processQ();
+}
+
+function dequeueImg(img) {
+    var qi=loadQueue.indexOf(img); if(qi>=0) loadQueue.splice(qi,1);
+    if (loadSet.has(img)) releaseSlot(img);
+    if (img.src && img.src!==location.href) {
+        img.dataset.lazySrc = img.dataset.lazySrc || img.src;
+        img.src='';
+    }
+}
+
+// ══════════════════════════════════════════════════
+// 5. IntersectionObservers
+// ══════════════════════════════════════════════════
+var fadeObs = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add('visible'); fadeObs.unobserve(en.target); }
+    });
+},{ threshold:0.04 });
+
+var imgObs;   // 依模式建立
+
+function buildImgObs() {
+    if (imgObs) imgObs.disconnect();
+    loadQueue=[]; loadSet.clear();
+    Object.keys(wdMap).forEach(function(k){ clearTimeout(wdMap[k]); }); wdMap={};
+
+    if (localMode) {
+        // 本機：進視窗直接賦值，離開 unload
+        imgObs = new IntersectionObserver(function(entries){
+            entries.forEach(function(en){
+                var img=en.target;
+                if (en.isIntersecting) {
+                    if (img.dataset.lazySrc && img.src!==img.dataset.lazySrc) img.src=img.dataset.lazySrc;
+                } else {
+                    if (img.src && img.src!==location.href){ img.dataset.lazySrc=img.dataset.lazySrc||img.src; img.src=''; }
+                }
+            });
+        },{ rootMargin:'0px', threshold:0 });
+    } else {
+        // 網路：300px 預載 + 限流佇列 + watchdog + unload
+        imgObs = new IntersectionObserver(function(entries){
+            entries.forEach(function(en){
+                var img=en.target;
+                if (en.isIntersecting) {
+                    if (img.dataset.lazySrc && img.src!==img.dataset.lazySrc) enqueueImg(img);
+                } else { dequeueImg(img); }
+            });
+        },{ rootMargin:'300px 0px 300px 0px', threshold:0 });
+    }
+}
+
+// ══════════════════════════════════════════════════
+// 6. flash（手動換圖）
+// ══════════════════════════════════════════════════
+function flash(imgEl, newSrc) {
+    var qi=loadQueue.indexOf(imgEl); if(qi>=0) loadQueue.splice(qi,1);
+    if (loadSet.has(imgEl)) releaseSlot(imgEl);
+    imgEl.dataset.lazySrc=newSrc;
+    imgEl.classList.remove('img-changing'); void imgEl.offsetWidth; imgEl.classList.add('img-changing');
+    imgEl.src=newSrc;
+    var h=imgEl.parentElement.querySelector('.img-hint'); if(h) h.textContent=newSrc;
+}
+
+function swapImg(imgEl) {
+    var ns = getRandomInSameDir(imgEl.src || imgEl.dataset.lazySrc || '');
+    if (ns) flash(imgEl, ns);
+}
+
+// ══════════════════════════════════════════════════
+// 7. 文字顏色 / 字體
+// ══════════════════════════════════════════════════
+var COLORS=['#7a1a2e','#5a2060','#1a4a7a','#1a5a40','#7a3a10','#4a2a70','#1a3a6a','#6a1a50'];
+var ci=0; function nextColor(){ return COLORS[ci++%COLORS.length]; }
+
+var SIZES=['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+var ti=3;
+function applyTxt(){ document.documentElement.style.setProperty('--txt-size',SIZES[ti]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick  =function(){ if(ti<SIZES.length-1){ti++;applyTxt();} };
+document.getElementById('sizeDownBtn').onclick=function(){ if(ti>0){ti--;applyTxt();} };
+
+// ══════════════════════════════════════════════════
+// 8. 渲染
+// ══════════════════════════════════════════════════
+function shuffle(a){ var b=a.slice(); for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;} return b; }
+
+function renderAll(container) {
+    container.innerHTML='';
+    var lines = shuffle(LinesLib.getAll());
+    lines.forEach(function(obj){
+        var text  = obj.text;
+        var folder= obj.folder || (LinesLib.autoDetectFolder ? LinesLib.autoDetectFolder(text) : '') || '';
+        var src   = getImgPath(folder);
+        var color = nextColor();
+
+        var block=document.createElement('div'); block.className='story-block';
+
+        var td=document.createElement('div'); td.className='story-text';
+        var sp=document.createElement('span'); sp.className='txt';
+        sp.style.setProperty('--txt-color',color);
+        sp.textContent='🌸 '+text;
+        td.appendChild(sp);
+
+        var wrap=document.createElement('div'); wrap.className='img-wrap';
+        var img=document.createElement('img');   img.className='story-img'; img.alt='';
+        img.dataset.folder=folder;
+        if(src) img.dataset.lazySrc=src; else wrap.style.display='none';
+        var hint=document.createElement('span'); hint.className='img-hint'; hint.textContent=src||'';
+        wrap.appendChild(img); wrap.appendChild(hint);
+
+        // 換圖綁定
+        wrap.addEventListener('click',function(){ swapImg(img); });
+        var tx=null,ty=null;
+        wrap.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+        wrap.addEventListener('touchend',function(e){
+            if(tx===null)return;
+            var dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+            if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5) swapImg(img);
+            tx=ty=null;
+        },{passive:true});
+
+        block.appendChild(td); block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObs.observe(block);
+        imgObs.observe(img);
+    });
+    var fin=document.createElement('div'); fin.className='bottom-fin';
+    fin.textContent='🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ══════════════════════════════════════════════════
+// 9. 巡航
+// ══════════════════════════════════════════════════
+var SPEEDS=[0.35,0.75,1.4,2.5,4.2];
+var SNAMES=['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+var spd=1, cruising=false, raf=null, uTake=false, uTimer=null;
+function yieldBack(){ clearTimeout(uTimer); uTimer=setTimeout(function(){uTake=false;},1400); }
+window.addEventListener('wheel',     function(){uTake=true;yieldBack();},{passive:true});
+window.addEventListener('touchstart',function(){uTake=true;clearTimeout(uTimer);},{passive:true});
+window.addEventListener('touchend',  yieldBack,{passive:true});
+function cFrame(){
+    if(!cruising)return;
+    if(!uTake){ var my=document.documentElement.scrollHeight-window.innerHeight; if(window.scrollY>=my-1){stopC();startCycle();return;} window.scrollBy(0,SPEEDS[spd]); }
+    raf=requestAnimationFrame(cFrame);
+}
+function startC(){ cruising=true; document.getElementById('pauseBtn').textContent='⏯ 巡航'; document.getElementById('pauseBtn').classList.add('active'); if(raf)cancelAnimationFrame(raf); raf=requestAnimationFrame(cFrame); }
+function stopC(){  cruising=false; if(raf){cancelAnimationFrame(raf);raf=null;} document.getElementById('pauseBtn').textContent='▶ 啟航'; document.getElementById('pauseBtn').classList.remove('active'); }
+function togC(){ cruising?stopC():startC(); }
+
+var ttimer=null;
+function showToast(m){ var t=document.getElementById('speedToast'); t.textContent=m; t.classList.add('show'); clearTimeout(ttimer); ttimer=setTimeout(function(){t.classList.remove('show');},1300); }
+function updSpd(){ document.querySelectorAll('#speedDots .dot').forEach(function(d,i){d.classList.toggle('on',i<=spd);}); showToast(SNAMES[spd]); }
+function faster(){ if(spd<SPEEDS.length-1){spd++;updSpd();} }
+function slower(){ if(spd>0){spd--;updSpd();} }
+document.getElementById('fastBtn').onclick=faster;
+document.getElementById('slowBtn').onclick=slower;
+updSpd();
+
+// ══════════════════════════════════════════════════
+// 10. 鍵盤
+// ══════════════════════════════════════════════════
+document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    switch(e.key){
+        case ' ':e.preventDefault();togC();break;
+        case 'ArrowUp':case '+':case '=':e.preventDefault();faster();break;
+        case 'ArrowDown':case '-':case '_':e.preventDefault();slower();break;
+        case ']':if(ti<SIZES.length-1){ti++;applyTxt();}break;
+        case '[':if(ti>0){ti--;applyTxt();}break;
+        case 'r':case 'R':{
+            var vp=window.innerHeight;
+            var vis=Array.from(document.querySelectorAll('.story-img')).filter(function(im){ var r=im.getBoundingClientRect(); return r.bottom>0&&r.top<vp; });
+            if(vis.length) swapImg(vis[Math.floor(Math.random()*vis.length)]);
+            break;
+        }
+        case '?':case '/':togHelp();break;
+        case 'Escape':hideHelp();break;
+    }
+});
+
+// ══════════════════════════════════════════════════
+// 11. 說明浮層
+// ══════════════════════════════════════════════════
+function showHelp(){ document.getElementById('helpOverlay').classList.add('show'); stopC(); }
+function hideHelp(){ document.getElementById('helpOverlay').classList.remove('show'); }
+function togHelp(){ document.getElementById('helpOverlay').classList.contains('show')?hideHelp():showHelp(); }
+document.getElementById('helpBtn').onclick  =togHelp;
+document.getElementById('helpClose').onclick=hideHelp;
+document.getElementById('helpOverlay').addEventListener('click',function(e){ if(e.target===document.getElementById('helpOverlay'))hideHelp(); });
+
+function setStatus(t){ document.getElementById('statusLabel').textContent=t; }
+
+// ══════════════════════════════════════════════════
+// 12. 啟動
+// ══════════════════════════════════════════════════
+async function startCycle(){
+    stopC();
+    await initMode();    // 探針 → 決定 localMode
+    buildImgObs();       // 依 localMode 建立正確的 observer
+    renderAll(document.getElementById('storyContainer'));
+    window.scrollTo({top:0,behavior:'smooth'});
+    setTimeout(startC, 500);
+}
+document.getElementById('pauseBtn').onclick  =togC;
+document.getElementById('restartBtn').onclick=startCycle;
+startCycle();
+</script>
+</body>
+</html>
