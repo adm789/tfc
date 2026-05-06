@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 紅樓雅化版</title>
+<script src="lines.js"></script>
+<script src="img_list.js" onerror="window._noImgList=true"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#1a0e0a;font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif;line-height:1.88;overflow-x:hidden;}
+
+/* ── header ── */
+.header{position:fixed;top:0;left:0;width:100%;background:rgba(26,14,10,0.93);backdrop-filter:blur(6px);border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;align-items:center;z-index:1000;padding:7px 16px;gap:8px;flex-wrap:wrap;}
+.title{color:#e8c4b0;font-size:0.82rem;letter-spacing:2px;flex:1 1 auto;white-space:nowrap;}
+.ctrl-group{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.ctrl-btn{background:#5e2e22;border:none;color:#f0ddcf;padding:5px 11px;border-radius:40px;cursor:pointer;font-size:0.80rem;font-weight:bold;letter-spacing:1px;transition:background .18s,transform .1s;user-select:none;}
+.ctrl-btn:hover{background:#8e5a4a;color:#fff;}
+.ctrl-btn:active{transform:scale(.93);}
+.ctrl-btn.active{background:#8e4820;color:#ffe8d0;}
+.speed-dots{display:flex;gap:3px;align-items:center;padding:0 2px;}
+.dot{width:7px;height:7px;border-radius:50%;background:#5e2e22;transition:background .25s;}
+.dot.on{background:#e8a060;}
+.status-label{color:#c0906a;font-size:0.70rem;letter-spacing:1px;padding:0 2px;white-space:nowrap;min-width:72px;text-align:center;}
+
+/* ── 主容器 ── */
+#storyContainer{padding-top:58px;width:100%;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;box-shadow:0 0 30px rgba(0,0,0,.22);}
+
+/* ── 段落：文字+圖片零間距，段落間 0.6em 分隔線 ── */
+.story-block{
+    padding:0.6em 28px 0;          /* 上方 0.6em 是段落間距，下方留給圖片底邊 */
+    border-top:1px solid #ecd9c8;  /* 段落間細線 */
+    opacity:0;transform:translateY(14px);
+    transition:opacity .6s ease,transform .6s ease;
+}
+.story-block:first-child{border-top:none;padding-top:1.2em;}
+.story-block.visible{opacity:1;transform:translateY(0);}
+
+/* 文字區 */
+.story-text{
+    font-size:var(--txt-size,1.18rem);font-weight:700;
+    border-left:4px solid #bc7a5e;
+    padding:10px 18px 10px 22px;
+    background:rgba(255,245,235,.72);
+    border-radius:0 14px 0 0;      /* 右上圓角，下方接圖片 */
+    line-height:1.92;
+    margin-bottom:0;               /* 文字和圖片零間距 */
+}
+.story-text .txt{font-weight:700;color:var(--txt-color,#6b1a2a);text-shadow:0 1px 0 rgba(255,255,255,.4);}
+
+/* 圖片區：緊接文字 */
+.img-wrap{position:relative;overflow:hidden;cursor:pointer;user-select:none;border-radius:0 0 18px 0;margin-bottom:0;}
+.story-img{width:100%;max-height:600px;object-fit:contain;background:#2a1a14;display:block;border:1px solid #e0cfc0;border-top:none;}
+
+/* hover 路徑提示（桌面） */
+.img-hint{
+    position:absolute;bottom:0;left:0;right:0;
+    background:rgba(26,14,10,.72);color:#e8c4b0;
+    font-size:0.67rem;font-family:monospace;letter-spacing:.5px;
+    padding:4px 12px;pointer-events:none;opacity:0;transition:opacity .25s;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(hover:hover){.img-wrap:hover .img-hint{opacity:1;}}
+@keyframes imgFlash{0%{opacity:1}40%{opacity:0}100%{opacity:1}}
+.img-changing{animation:imgFlash .35s ease;}
+
+/* ── 說明浮層 ── */
+#helpOverlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,5,3,0.82);backdrop-filter:blur(4px);justify-content:center;align-items:center;}
+#helpOverlay.show{display:flex;}
+#helpBox{background:#2a160e;border:1px solid #bc7a5e;border-radius:18px;padding:28px 32px 24px;max-width:380px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.5);color:#e8c4b0;}
+#helpBox h2{font-size:1rem;letter-spacing:3px;color:#e8a060;margin-bottom:18px;text-align:center;border-bottom:1px solid #5e2e22;padding-bottom:10px;}
+.help-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(188,122,94,0.15);font-size:0.82rem;gap:12px;}
+.help-row:last-child{border-bottom:none;}
+.help-key{background:#3a1a10;color:#e8a060;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:0.78rem;white-space:nowrap;flex-shrink:0;}
+.help-desc{color:#d4b09a;}
+#helpClose{display:block;margin:18px auto 0;background:#5e2e22;border:none;color:#f0ddcf;padding:6px 24px;border-radius:40px;cursor:pointer;font-size:0.82rem;}
+#helpClose:hover{background:#8e5a4a;}
+
+#speedToast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(26,14,10,.88);color:#e8c4b0;padding:6px 20px;border-radius:40px;font-size:.76rem;letter-spacing:2px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:999;}
+#speedToast.show{opacity:1;}
+.bottom-fin{text-align:center;padding:32px;color:#b08a74;font-size:.8rem;border-top:1px solid #ecd9c8;margin-top:.6em;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體 ]">A+</button>
+    <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體 [">A−</button>
+    <button class="ctrl-btn" id="slowBtn"     title="減速 ↓">−</button>
+    <div class="speed-dots" id="speedDots">
+      <div class="dot on"></div><div class="dot on"></div>
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    <button class="ctrl-btn" id="fastBtn"     title="加速 ↑">+</button>
+    <span class="status-label" id="statusLabel">[ 載入中 ]</span>
+    <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航 Space">⏯ 巡航</button>
+    <button class="ctrl-btn"        id="restartBtn" title="重讀 ⟳">⟳</button>
+    <button class="ctrl-btn"        id="helpBtn"    title="快捷鍵 ?">？</button>
+  </div>
+</div>
+
+<div id="storyContainer"></div>
+<div id="speedToast"></div>
+
+<div id="helpOverlay">
+  <div id="helpBox">
+    <h2>🌙 快捷鍵說明</h2>
+    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
+    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
+    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
+    <div class="help-row"><span class="help-key">]</span><span class="help-desc">放大字體</span></div>
+    <div class="help-row"><span class="help-key">[</span><span class="help-desc">縮小字體</span></div>
+    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換目前可見圖片（同目錄隨機）</span></div>
+    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關說明</span></div>
+    <button id="helpClose">關閉</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// lines.js 檢查
+// ══════════════════════════════════════════════════════════════
+if (!window.LinesLib) {
+    document.getElementById('storyContainer').innerHTML =
+        '<p style="color:#bc7a5e;padding:100px 32px;text-align:center;font-size:1.1rem;">' +
+        '⚠️ 無法載入 lines.js，請確認同資料夾並重新整理。</p>';
+    throw new Error('lines.js not loaded');
+}
+
+// ══════════════════════════════════════════════════════════════
+// URL 參數 ?dir=img/q1 或 ?dir=img/q1,img/w7
+// ══════════════════════════════════════════════════════════════
+var urlParam = (location.search.match(/[?&]dir=([^&]*)/) || [])[1] || '';
+// normalize: 去掉 /. 、多餘斜線，統一加結尾 /
+function normDir(d) {
+    return d.trim().replace(/\/\.\//g,'/').replace(/\/\.$/,'')
+             .replace(/\/+$/,'') + '/';
+}
+var filterDirs = urlParam ? urlParam.split(',').map(normDir) : null;
+
+// ══════════════════════════════════════════════════════════════
+// 圖片池（由 img_list.js 提供，或 fallback 到 lines.js）
+//
+//  byFolder : { "img/":["img/000.jpg",...], "img/q1/":["img/q1/000.jpg",...] }
+//  imgPool  : 全部路徑 flat 陣列（filterDirs 過濾後）
+//  regular  : byFolder["img/"] — 通用池（無特定 folder 的 special text 用）
+// ══════════════════════════════════════════════════════════════
+var byFolder = {}, imgPool = [], scanReady = false;
+
+function buildPools() {
+    byFolder = {}; imgPool = []; scanReady = false;
+
+    var list = (window.IMG_LIST && window.IMG_LIST.length) ? window.IMG_LIST : null;
+
+    if (list) {
+        // ── img_list.js 模式 ──────────────────────────────────
+        list.forEach(function(path) {
+            // normalize 反斜線（Windows bat 可能產生 img\q1\000.jpg）
+            path = path.replace(/\\/g, '/');
+            var dp = path.replace(/[^/]*$/, '');   // "img/q1/005.jpg" → "img/q1/"
+            if (!byFolder[dp]) byFolder[dp] = [];
+            byFolder[dp].push(path);
+        });
+
+        // ?dir= 過濾
+        if (filterDirs) {
+            var keep = {};
+            filterDirs.forEach(function(d) {
+                if (byFolder[d]) keep[d] = byFolder[d];
+            });
+            byFolder = keep;
+        }
+
+        Object.keys(byFolder).forEach(function(k) {
+            imgPool = imgPool.concat(byFolder[k]);
+        });
+        scanReady = imgPool.length > 0;
+
+        var summary = Object.keys(byFolder).map(function(k){
+            var lbl = k==='img/' ? 'root' : k.replace(/^img\//,'').replace(/\/$/,'');
+            return lbl+':'+byFolder[k].length;
+        }).join(' ');
+        setStatus('[ ✓ '+imgPool.length+'張 ]');
+        console.log('[img_list]', summary, '| total:', imgPool.length);
+
+    } else {
+        // ── fallback：lines.js 內建路徑（file:// 無 img_list.js 時）──
+        setStatus('[ lines.js 模式 ]');
+        console.warn('[1auto] 無 img_list.js，使用 lines.js 內建圖片路徑');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 圖片選取（不 fetch，純 JS 陣列操作）
+// ══════════════════════════════════════════════════════════════
+function pickAny(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function getImgPath(folder) {
+    if (!scanReady) {
+        try { return LinesLib.imgSrc(folder, LinesLib.getImage(folder)); } catch(e){ return ''; }
+    }
+    var dp = folder ? folder.replace(/\/+$/,'')+'/' : '';
+    // 精確匹配
+    if (dp && byFolder[dp] && byFolder[dp].length) return pickAny(byFolder[dp]);
+    // 前綴匹配（folder 是父層）
+    if (dp) {
+        var pool = [];
+        Object.keys(byFolder).forEach(function(k){ if(k.indexOf(dp)===0) pool=pool.concat(byFolder[k]); });
+        if (pool.length) return pickAny(pool);
+    }
+    // 無 folder（special text）→ regular pool img/ 優先，否則全部
+    if (byFolder['img/'] && byFolder['img/'].length) return pickAny(byFolder['img/']);
+    return imgPool.length ? pickAny(imgPool) : '';
+}
+
+function swapImg(imgEl) {
+    // 從目前圖片的絕對 URL 反推相對路徑 → 鎖定同目錄換圖
+    var base   = location.origin + location.pathname.replace(/[^\/]*$/,'');
+    var curAbs = imgEl.src || '';
+    var curRel = curAbs.indexOf(base)===0 ? curAbs.slice(base.length) : curAbs;
+    var curDir = curRel.replace(/[^\/]*$/,'');   // "img/q1/005.jpg" → "img/q1/"
+
+    var pool = null;
+    if (scanReady) {
+        pool = (byFolder[curDir] && byFolder[curDir].length) ? byFolder[curDir] : imgPool;
+    }
+    if (pool && pool.length) {
+        var next = curRel, tries = 0;
+        while (next === curRel && tries++ < 30) next = pickAny(pool);
+        flash(imgEl, next);
+    } else {
+        var folder = imgEl.dataset.folder || '';
+        try { flash(imgEl, LinesLib.imgSrc(folder, LinesLib.getImage(folder))); } catch(e){}
+    }
+}
+
+function flash(imgEl, newSrc) {
+    imgEl.classList.remove('img-changing');
+    void imgEl.offsetWidth;
+    imgEl.classList.add('img-changing');
+    imgEl.src = newSrc;
+    var hint = imgEl.parentElement.querySelector('.img-hint');
+    if (hint) hint.textContent = newSrc;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 文字顏色輪換（純色高對比）
+// ══════════════════════════════════════════════════════════════
+var TEXT_COLORS=['#7a1a2e','#5a2060','#1a4a7a','#1a5a40','#7a3a10','#4a2a70','#1a3a6a','#6a1a50'];
+var colorIdx=0;
+function nextColor(){ return TEXT_COLORS[colorIdx++%TEXT_COLORS.length]; }
+
+// ══════════════════════════════════════════════════════════════
+// 字體大小
+// ══════════════════════════════════════════════════════════════
+var TXT_SIZES=['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
+var txtIdx=3;
+function applyTxt(){ document.documentElement.style.setProperty('--txt-size',TXT_SIZES[txtIdx]); }
+applyTxt();
+document.getElementById('sizeUpBtn').onclick  =function(){ if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} };
+document.getElementById('sizeDownBtn').onclick=function(){ if(txtIdx>0){txtIdx--;applyTxt();} };
+
+// ══════════════════════════════════════════════════════════════
+// 淡入 Observer
+// ══════════════════════════════════════════════════════════════
+var fadeObs=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+        if(en.isIntersecting){en.target.classList.add('visible');fadeObs.unobserve(en.target);}
+    });
+},{threshold:0.04});
+
+// ══════════════════════════════════════════════════════════════
+// 綁定換圖（點擊 / 滑動）
+// ══════════════════════════════════════════════════════════════
+function bindSwap(wrap,imgEl){
+    wrap.addEventListener('click',function(){ swapImg(imgEl); });
+    var tx=null,ty=null;
+    wrap.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+    wrap.addEventListener('touchend',function(e){
+        if(tx===null)return;
+        var dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+        if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5) swapImg(imgEl);
+        tx=ty=null;
+    },{passive:true});
+}
+
+// ══════════════════════════════════════════════════════════════
+// 渲染
+// ══════════════════════════════════════════════════════════════
+function shuffle(arr){
+    var a=arr.slice();
+    for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
+    return a;
+}
+
+function renderAll(container){
+    container.innerHTML='';
+    var lines=shuffle(LinesLib.getAll());
+    lines.forEach(function(obj){
+        var text  =obj.text;
+        var folder=obj.folder||LinesLib.autoDetectFolder(text)||'';
+        var src   =getImgPath(folder);
+        var color =nextColor();
+
+        var block=document.createElement('div');
+        block.className='story-block';
+
+        // 文字
+        var td=document.createElement('div');
+        td.className='story-text';
+        var sp=document.createElement('span');
+        sp.className='txt';
+        sp.style.setProperty('--txt-color',color);
+        sp.textContent='🌸 '+text;
+        td.appendChild(sp);
+
+        // 圖片（lazy loading）
+        var wrap=document.createElement('div');
+        wrap.className='img-wrap';
+        var img=document.createElement('img');
+        img.className='story-img';
+        img.alt=''; img.loading='lazy';
+        img.dataset.folder=folder;
+        if(src) img.src=src;
+        var hint=document.createElement('span');
+        hint.className='img-hint';
+        hint.textContent=src||'';
+        wrap.appendChild(img);
+        wrap.appendChild(hint);
+        bindSwap(wrap,img);
+
+        block.appendChild(td);
+        block.appendChild(wrap);
+        container.appendChild(block);
+        fadeObs.observe(block);
+    });
+
+    var fin=document.createElement('div');
+    fin.className='bottom-fin';
+    fin.textContent='🌸 杏花落盡 · 再滾將續 🌸';
+    container.appendChild(fin);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 巡航引擎
+// ══════════════════════════════════════════════════════════════
+var SPEEDS=[0.35,0.75,1.4,2.5,4.2];
+var SPEED_NAMES=['🐢 極慢','🌙 慢速','✨ 適中','🌸 快速','💨 飆速'];
+var speedLv=1,cruising=false,rafId=null;
+var userTaking=false,uTimer=null;
+function yieldBack(){ clearTimeout(uTimer); uTimer=setTimeout(function(){userTaking=false;},1400); }
+window.addEventListener('wheel',     function(){userTaking=true;yieldBack();},{passive:true});
+window.addEventListener('touchstart',function(){userTaking=true;clearTimeout(uTimer);},{passive:true});
+window.addEventListener('touchend',  yieldBack,{passive:true});
+
+function cruiseFrame(){
+    if(!cruising)return;
+    if(!userTaking){
+        var maxY=document.documentElement.scrollHeight-window.innerHeight;
+        if(window.scrollY>=maxY-1){stopCruise();startCycle();return;}
+        window.scrollBy(0,SPEEDS[speedLv]);
+    }
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function startCruise(){
+    cruising=true;
+    document.getElementById('pauseBtn').textContent='⏯ 巡航';
+    document.getElementById('pauseBtn').classList.add('active');
+    if(rafId)cancelAnimationFrame(rafId);
+    rafId=requestAnimationFrame(cruiseFrame);
+}
+function stopCruise(){
+    cruising=false;
+    if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+    document.getElementById('pauseBtn').textContent='▶ 啟航';
+    document.getElementById('pauseBtn').classList.remove('active');
+}
+function toggleCruise(){cruising?stopCruise():startCruise();}
+
+var toastT=null;
+function showToast(msg){
+    var t=document.getElementById('speedToast');
+    t.textContent=msg;t.classList.add('show');
+    clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show');},1300);
+}
+function updateSpeedUI(){
+    document.querySelectorAll('#speedDots .dot').forEach(function(d,i){d.classList.toggle('on',i<=speedLv);});
+    showToast(SPEED_NAMES[speedLv]);
+}
+function faster(){if(speedLv<SPEEDS.length-1){speedLv++;updateSpeedUI();}}
+function slower(){if(speedLv>0){speedLv--;updateSpeedUI();}}
+document.getElementById('fastBtn').onclick=faster;
+document.getElementById('slowBtn').onclick=slower;
+updateSpeedUI();
+
+// ══════════════════════════════════════════════════════════════
+// 鍵盤
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    switch(e.key){
+        case ' ':e.preventDefault();toggleCruise();break;
+        case 'ArrowUp':case '+':case '=':e.preventDefault();faster();break;
+        case 'ArrowDown':case '-':case '_':e.preventDefault();slower();break;
+        case ']':if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();}break;
+        case '[':if(txtIdx>0){txtIdx--;applyTxt();}break;
+        case 'r':case 'R':{
+            var vp=window.innerHeight;
+            var vis=Array.from(document.querySelectorAll('.story-img')).filter(function(im){
+                var r=im.getBoundingClientRect();return r.bottom>0&&r.top<vp;
+            });
+            if(vis.length) swapImg(vis[Math.floor(Math.random()*vis.length)]);
+            break;
+        }
+        case '?':case '/':toggleHelp();break;
+        case 'Escape':hideHelp();break;
+    }
+});
+
+// ══════════════════════════════════════════════════════════════
+// 說明浮層
+// ══════════════════════════════════════════════════════════════
+function showHelp(){document.getElementById('helpOverlay').classList.add('show');stopCruise();}
+function hideHelp(){document.getElementById('helpOverlay').classList.remove('show');}
+function toggleHelp(){document.getElementById('helpOverlay').classList.contains('show')?hideHelp():showHelp();}
+document.getElementById('helpBtn').onclick  =toggleHelp;
+document.getElementById('helpClose').onclick=hideHelp;
+document.getElementById('helpOverlay').addEventListener('click',function(e){
+    if(e.target===document.getElementById('helpOverlay'))hideHelp();
+});
+
+// ══════════════════════════════════════════════════════════════
+// 工具
+// ══════════════════════════════════════════════════════════════
+function setStatus(t){document.getElementById('statusLabel').textContent=t;}
+
+// ══════════════════════════════════════════════════════════════
+// 啟動（同步，不需 await，無 fetch）
+// ══════════════════════════════════════════════════════════════
+function startCycle(){
+    stopCruise();
+    buildPools();                                    // 同步讀 IMG_LIST
+    renderAll(document.getElementById('storyContainer'));
+    window.scrollTo({top:0,behavior:'smooth'});
+    setTimeout(startCruise,500);
+}
+
+document.getElementById('pauseBtn').onclick  =toggleCruise;
+document.getElementById('restartBtn').onclick=startCycle;
+
+startCycle();
+</script>
+</body>
+</html>
