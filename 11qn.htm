@@ -1,0 +1,35 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>杏夜絮語·網路相容版</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#111;color:#eee;min-height:100vh}
+#top{position:sticky;top:0;background:#1a1a2e;padding:8px 12px;display:flex;gap:8px;align-items:center;z-index:100}
+#top button{background:#333;color:#eee;border:1px solid #555;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:14px}
+#top button:hover{background:#444}#main{padding:12px;max-width:900px;margin:0 auto}
+#txt{min-height:60px;padding:12px;background:#1a1a2e;border-radius:6px;margin-bottom:12px;line-height:1.6;font-size:16px}
+#imgBox{position:relative;text-align:center;background:#000;border-radius:6px;overflow:hidden;min-height:300px;display:flex;align-items:center;justify-content:center}
+#imgBox img{max-width:100%;max-height:70vh;display:block}#hvTip{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:6px 14px;border-radius:5px;font-size:12px;z-index:9999;white-space:nowrap;opacity:0;transition:opacity .15s;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+#hvTip.show{opacity:1}#help{position:fixed;top:60px;right:12px;background:#1a1a2e;padding:10px;border-radius:6px;font-size:13px;display:none;z-index:99}#help.show{display:block}
+</style></head><body>
+<div id="top">🌙 杏夜絮語·網路相容版 <span id="stat">[偵測中]</span>
+<button id="btnReload">⟳重讀</button><button id="btnPlay">▶巡航</button><button id="btnHelp">?</button></div>
+<div id="help">Space暫停/巡航 ↑加速 ↓減速 ]放大 [縮小 R換圖 ?/Esc開關說明</div>
+<div id="main"><div id="txt"></div><div id="imgBox"><img id="pic" alt=""></div></div>
+<div id="hvTip"></div>
+<script src="1nlines.js"></script><script>
+(function(){
+var txt=document.getElementById('txt'),pic=document.getElementById('pic'),stat=document.getElementById('stat'),tip=document.getElementById('hvTip'),timer;
+var lines=[],idx=0,playing=false,speed=2000;
+function $(id){return document.getElementById(id)}
+function rnd(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function showTip(url){tip.textContent=url;tip.classList.add('show')}
+function hideTip(){tip.classList.remove('show')}
+document.addEventListener('mouseover',function(e){if(e.target.tagName==='IMG'){clearTimeout(timer);showTip(e.target.dataset.src||e.target.src)}});
+document.addEventListener('mouseout',function(e){if(e.target.tagName==='IMG')timer=setTimeout(hideTip,150)});
+function render(i){if(!lines.length)return;var item=lines[i%lines.length];txt.textContent=item.text;var folder=item.folder||'',fn=LinesLib.getImage(folder),url=LinesLib.imgSrc(folder,fn);pic.src=url;pic.dataset.src=url;pic.onload=function(){stat.textContent='✓ '+fn};pic.onerror=function(){stat.textContent='✗載入失敗';console.log('Fail:',url)}}
+function next(){idx=(idx+1)%lines.length;render(idx)}
+function load(){stat.textContent='[載入中]';LinesLib&&LinesLib.getAll?(lines=LinesLib.getAll(),stat.textContent='✓ 已載入 '+lines.length+' 句',render(idx)):setTimeout(load,100)}
+function togglePlay(){playing=!playing;$('btnPlay').textContent=playing?'⏸暫停':'▶巡航';if(playing)loop()}
+function loop(){if(!playing)return;next();setTimeout(loop,speed)}
+document.addEventListener('keydown',function(e){if(e.key===' '){e.preventDefault();togglePlay()}else if(e.key==='ArrowUp'){speed=Math.max(500,speed-200)}else if(e.key==='ArrowDown'){speed=Math.min(8000,speed+200)}else if(e.key===']'){txt.style.fontSize=parseInt(txt.style.fontSize||16)+2+'px'}else if(e.key==='['){txt.style.fontSize=Math.max(12,parseInt(txt.style.fontSize||16)-2)+'px'}else if(e.key==='r'||e.key==='R'){var cur=lines[idx],folder=cur.folder||'',list=LinesLib.FOLDER_IMAGES[folder]||LinesLib.FOLDER_IMAGES[''],fn=rnd(list),url=LinesLib.imgSrc(folder,fn);pic.src=url;pic.dataset.src=url}else if(e.key==='?'||e.key==='Escape'){$('help').classList.toggle('show')}});
+$('btnReload').onclick=function(){load();render(idx)};$('btnPlay').onclick=togglePlay;$('btnHelp').onclick=function(){$('help').classList.toggle('show')};
+window.addEventListener('load',load);
+})();
+</script></body></html><!若想改用「本機圖片路徑」，只需在 1nlines.js 的 imgSrc() 函數改為 return folder ? `./img/${folder}/${filename}` : `./img/${filename}`>
