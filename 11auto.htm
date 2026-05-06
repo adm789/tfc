@@ -113,10 +113,10 @@ var localMode = false;
 var byFolder  = {};
 var imgPool   = [];
 
-// HEAD 探針（localMode 判斷用）
+// GET Range 探針（HEAD 在 Cloudflare Pages 不可靠）
 function probe(url) {
-    return fetch(url, {method:'HEAD', cache:'no-cache'})
-           .then(function(r){ return r.ok || r.status===206; })
+    return fetch(url, {method:'GET', headers:{'Range':'bytes=0-0'}, cache:'no-cache'})
+           .then(function(r){ return r.status===200||r.status===206; })
            .catch(function(){ return false; });
 }
 
@@ -169,24 +169,23 @@ function getImgPath(folder) {
         var dp = folder ? 'img/'+folder.replace(/^img\//,'').replace(/\/+$/,'')+'/' : 'img/';
         var pool = byFolder[dp];
         if (!pool || !pool.length) {
-            // 前綴匹配
             pool = [];
             Object.keys(byFolder).forEach(function(k){ if(k.indexOf(dp)===0) pool=pool.concat(byFolder[k]); });
         }
         if (!pool.length && imgPool.length) pool = imgPool;
         return pool.length ? rnd(pool) : '';
     } else {
-        // 網路模式：直接用 LinesLib 原有 API
+        // 網路模式：用 LinesLib 原有 API（lines.js 應提供絕對 URL）
         try {
             var fi   = LinesLib.FOLDER_IMAGES || {};
-            // ?dir= 過濾 key
             var keys = filterKeys
                 ? filterKeys.filter(function(k){ return fi[k]; })
                 : Object.keys(fi);
             if (!keys.length) keys = Object.keys(fi);
-            var key  = folder && fi[folder] ? folder : (keys.length ? rnd(keys) : '');
+            var key  = (folder && fi[folder]) ? folder : rnd(keys);
             var fn   = String(LinesLib.getImage(key)).trim();
-            return LinesLib.imgSrc(key, fn);
+            var src  = LinesLib.imgSrc(key, fn);
+            return src;
         } catch(e) { console.warn('[getImgPath]', e.message); return ''; }
     }
 }
