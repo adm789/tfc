@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>杏夜絮語 · 網路相容版</title>
+<script src="1nlines.js"></script>
+<script src="img_list.js" onerror="window._noImgList=true"></script>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#1a0e0a;font-family:serif;line-height:1.88;color:#e8c4b0;}
+    .header{position:fixed;top:0;width:100%;background:rgba(26,14,10,0.95);z-index:1000;padding:8px;border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;font-size:0.8rem;}
+    #storyContainer{padding-top:55px;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,0.5);}
+    .story-block{padding:1.2em 25px;border-top:1px solid #ecd9c8;opacity:0;transition:opacity .6s;}
+    .story-block.visible{opacity:1;}
+    .story-text{font-size:1.15rem;font-weight:700;border-left:4px solid #bc7a5e;padding:12px;background:rgba(255,245,235,0.8);color:#6b1a2a;margin-bottom:0;}
+    .img-wrap{background:#2a1a14;min-height:220px;border-radius:0 0 10px 10px;overflow:hidden;}
+    .story-img{width:100%;max-height:650px;object-fit:contain;display:block;}
+    .status-label{color:#c0906a;font-weight:bold;}
+    .ctrl-btn{background:#5e2e22;color:#fff;border:none;padding:5px 10px;cursor:pointer;border-radius:20px;font-size:0.75rem;}
+</style>
+</head>
+<body>
+<div class="header">
+    <span>🌙 杏夜絮語</span>
+    <span id="statusLabel" class="status-label">[ 偵測中 ]</span>
+    <div>
+        <button class="ctrl-btn" onclick="location.reload()">⟳ 重讀</button>
+        <button class="ctrl-btn" id="pauseBtn" onclick="toggleCruise()">▶ 巡航</button>
+    </div>
+</div>
+<div id="storyContainer"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 1. 環境相容性配置 (解決 GitHub CORS 攔截)
+// ══════════════════════════════════════════════════════════════
+var scanReady = false, imgPool = [], byFolder = {};
+var loadingSet = new Set(), loadQueue = [], MAX_CONCURRENT = 2; // 網路環境降低並發
+
+async function initEnv() {
+    if (!window.LinesLib) return setStatus('❌ 缺 lines.js');
+
+    // 判斷是否為本地運行 (file://) 或是 GitHub (http/https)
+    var isLocal = window.location.protocol === 'file:';
+    
+    if (window.IMG_LIST && IMG_LIST.length > 0) {
+        // 在 GitHub 部署時，fetch 本地路徑常因 CORS 報錯，改用簡單判斷
+        if (isLocal) {
+            setStatus('[ 測試本地 ]');
+            try {
+                // 本地環境才跑探針，避免 GitHub 上 fetch 報錯導致流程中斷
+                var ok = await fetch(IMG_LIST[0], {method:'HEAD', mode:'no-cors'}).then(()=>true).catch(()=>false);
+                if (ok) scanReady = true;
+            } catch(e) { scanReady = false; }
+        } else {
+            // 在網路環境 (GitHub) 直接假設 img_list.js 有效 (除非載入失敗)[cite: 2]
+            scanReady = true; 
+        }
+    }
+
+    if (scanReady) {
+        IMG_LIST.forEach(p => {
+            p = p.replace(/\\/g, '/');
+            var d = p.replace(/[^/]*$/, '') || 'img/';
+            if(!byFolder[d]) byFolder[d] = [];
+            byFolder[d].push(p);
+            imgPool.push(p);
+        });
+        setStatus('[ ✓ ' + (isLocal?'本地':'網路') + '池 ]');
+    } else {
+        setStatus('[ 🔗 遠端 URL 模式 ]');
+    }
+    render();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 2. 核心邏輯修正：確保排隊系統不卡死[cite: 2]
+// ══════════════════════════════════════════════════════════════
+function processQueue() {
+    if (loadQueue.length === 0 || loadingSet.size >= MAX_CONCURRENT) return;
+
+    var img = loadQueue.shift();
+    if (!img || !img.dataset.src) return processQueue();
+
+    loadingSet.add(img);
+    
+    // 建立臨時映像來監測加載，避免直接修改 src 導致重複觸發[cite: 2]
+    var tempImg = new Image();
+    tempImg.onload = function() {
+        img.src = img.dataset.src;
+        loadingSet.delete(img);
+        processQueue();
+    };
+    tempImg.onerror = function() {
+        img.alt = "[載入失敗]";
+        loadingSet.delete(img);
+        processQueue();
+    };
+    tempImg.src = img.dataset.src;
+}
+
+var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(en) {
+        var img = en.target.querySelector('img');
+        if (en.isIntersecting) {
+            en.target.classList.add('visible');
+            if (!img.src || img.src.includes('data:')) {
+                loadQueue.push(img);
+                processQueue();
+            }
+        } else {
+            // 滾出視窗自動釋放記憶體，這是 WinPE 的救星[cite: 2]
+            if (img.src && !scanReady) {
+                img.removeAttribute('src');
+                loadingSet.delete(img);
+            }
+        }
+    });
+}, { rootMargin: '200px', threshold: 0.01 });
+
+function render() {
+    var cont = document.getElementById('storyContainer');
+    var lines = LinesLib.getAll().sort(() => 0.5 - Math.random());
+    
+    lines.forEach(function(obj) {
+        var src = (scanReady) ? 
+            (byFolder[obj.folder||'img/']||imgPool)[Math.floor(Math.random()*imgPool.length)] :
+            LinesLib.imgSrc(obj.folder||'', LinesLib.getImage(obj.folder||''));
+
+        var div = document.createElement('div');
+        div.className = 'story-block';
+        div.innerHTML = `<p class="story-text">🌸 ${obj.text}</p>
+                         <div class="img-wrap"><img class="story-img" data-src="${src}" alt="[載入中...]"></div>`;
+        cont.appendChild(div);
+        observer.observe(div);
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3. 巡航功能[cite: 2]
+// ══════════════════════════════════════════════════════════════
+var cruising = false, cruiseID;
+function toggleCruise() {
+    cruising = !cruising;
+    document.getElementById('pauseBtn').textContent = cruising ? '⏯ 暫停' : '▶ 巡航';
+    if (cruising) doCruise(); else cancelAnimationFrame(cruiseID);
+}
+function doCruise() {
+    window.scrollBy(0, 1);
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) window.scrollTo(0, 0);
+    if (cruising) cruiseID = requestAnimationFrame(doCruise);
+}
+
+function setStatus(t){ document.getElementById('statusLabel').textContent = t; }
+
+initEnv();
+</script>
+</body>
+</html>
