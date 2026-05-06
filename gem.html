@@ -3,400 +3,154 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>杏夜絮語 · 紅樓雅化版</title>
+<title>杏夜絮語 · 精簡穩定版</title>
 <script src="lines.js"></script>
 <script src="img_list.js" onerror="window._noImgList=true"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#1a0e0a;font-family:'Georgia','Times New Roman','Microsoft JhengHei',serif;line-height:1.88;overflow-x:hidden;}
-
-/* ── header ── */
-.header{position:fixed;top:0;left:0;width:100%;background:rgba(26,14,10,0.93);backdrop-filter:blur(6px);border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;align-items:center;z-index:1000;padding:7px 16px;gap:8px;flex-wrap:wrap;}
-.title{color:#e8c4b0;font-size:0.82rem;letter-spacing:2px;flex:1 1 auto;white-space:nowrap;}
-.ctrl-group{display:flex;align-items:center;gap:5px;flex-shrink:0;}
-.ctrl-btn{background:#5e2e22;border:none;color:#f0ddcf;padding:5px 11px;border-radius:40px;cursor:pointer;font-size:0.80rem;font-weight:bold;letter-spacing:1px;transition:background .18s,transform .1s;user-select:none;}
-.ctrl-btn:hover{background:#8e5a4a;color:#fff;}
-.ctrl-btn:active{transform:scale(.93);}
-.ctrl-btn.active{background:#8e4820;color:#ffe8d0;}
-.speed-dots{display:flex;gap:3px;align-items:center;padding:0 2px;}
-.dot{width:7px;height:7px;border-radius:50%;background:#5e2e22;transition:background .25s;}
-.dot.on{background:#e8a060;}
-.status-label{color:#c0906a;font-size:0.70rem;letter-spacing:1px;padding:0 2px;white-space:nowrap;min-width:72px;text-align:center;}
-
-/* ── 主容器 ── */
-#storyContainer{padding-top:58px;width:100%;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;box-shadow:0 0 30px rgba(0,0,0,.22);}
-
-/* ── 段落 ── */
-.story-block{
-    padding:0.6em 28px 0;
-    border-top:1px solid #ecd9c8;
-    opacity:0;transform:translateY(14px);
-    transition:opacity .6s ease,transform .6s ease;
-}
-.story-block:first-child{border-top:none;padding-top:1.2em;}
-.story-block.visible{opacity:1;transform:translateY(0);}
-
-.story-text{
-    font-size:var(--txt-size,1.18rem);font-weight:700;
-    border-left:4px solid #bc7a5e;
-    padding:10px 18px 10px 22px;
-    background:rgba(255,245,235,.72);
-    border-radius:0 14px 0 0;
-    line-height:1.92;
-    margin-bottom:0;
-}
-.story-text .txt{font-weight:700;color:var(--txt-color,#6b1a2a);text-shadow:0 1px 0 rgba(255,255,255,.4);}
-
-.img-wrap{position:relative;overflow:hidden;cursor:pointer;user-select:none;border-radius:0 0 18px 0;margin-bottom:0; min-height:100px;}
-.story-img{width:100%;max-height:600px;object-fit:contain;background:#2a1a14;display:block;border:1px solid #e0cfc0;border-top:none;}
-
-.img-hint{
-    position:absolute;bottom:0;left:0;right:0;
-    background:rgba(26,14,10,.72);color:#e8c4b0;
-    font-size:0.67rem;font-family:monospace;letter-spacing:.5px;
-    padding:4px 12px;pointer-events:none;opacity:0;transition:opacity .25s;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-@media(hover:hover){.img-wrap:hover .img-hint{opacity:1;}}
-@keyframes imgFlash{0%{opacity:1}40%{opacity:0}100%{opacity:1}}
-.img-changing{animation:imgFlash .35s ease;}
-
-/* ── 說明浮層 ── */
-#helpOverlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,5,3,0.82);backdrop-filter:blur(4px);justify-content:center;align-items:center;}
-#helpOverlay.show{display:flex;}
-#helpBox{background:#2a160e;border:1px solid #bc7a5e;border-radius:18px;padding:28px 32px 24px;max-width:380px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.5);color:#e8c4b0;}
-#helpBox h2{font-size:1rem;letter-spacing:3px;color:#e8a060;margin-bottom:18px;text-align:center;border-bottom:1px solid #5e2e22;padding-bottom:10px;}
-.help-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(188,122,94,0.15);font-size:0.82rem;gap:12px;}
-.help-row:last-child{border-bottom:none;}
-.help-key{background:#3a1a10;color:#e8a060;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:0.78rem;white-space:nowrap;flex-shrink:0;}
-.help-desc{color:#d4b09a;}
-#helpClose{display:block;margin:18px auto 0;background:#5e2e22;border:none;color:#f0ddcf;padding:6px 24px;border-radius:40px;cursor:pointer;font-size:0.82rem;}
-#helpClose:hover{background:#8e5a4a;}
-
-#speedToast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(26,14,10,.88);color:#e8c4b0;padding:6px 20px;border-radius:40px;font-size:.76rem;letter-spacing:2px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:999;}
-#speedToast.show{opacity:1;}
-.bottom-fin{text-align:center;padding:32px;color:#b08a74;font-size:.8rem;border-top:1px solid #ecd9c8;margin-top:.6em;}
+    /* 核心基礎樣式 - 保持輕量防止內存崩潰 */
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#1a0e0a;font-family:serif;line-height:1.88;color:#e8c4b0;}
+    .header{position:fixed;top:0;width:100%;background:rgba(26,14,10,0.9);z-index:1000;padding:8px;border-bottom:1px solid #bc7a5e;display:flex;justify-content:space-between;font-size:0.8rem;}
+    #storyContainer{padding-top:50px;max-width:800px;margin:0 auto;background:#fef7ef;min-height:100vh;}
+    .story-block{padding:1em 20px;border-top:1px solid #ecd9c8;opacity:0;transition:opacity .5s;}
+    .story-block.visible{opacity:1;}
+    .story-text{font-size:1.18rem;font-weight:700;border-left:4px solid #bc7a5e;padding:10px;background:rgba(255,245,235,.7);color:#6b1a2a;margin-bottom:0;}
+    .img-wrap{background:#2a1a14;min-height:150px;position:relative;}
+    .story-img{width:100%;max-height:600px;object-fit:contain;display:block;}
+    .status-label{color:#c0906a;padding:0 5px;}
+    .ctrl-btn{background:#5e2e22;color:#fff;border:none;padding:4px 8px;cursor:pointer;border-radius:4px;}
 </style>
 </head>
 <body>
-
 <div class="header">
-  <div class="title">🌙 杏夜絮語 · 紅樓雅化版</div>
-  <div class="ctrl-group">
-    <button class="ctrl-btn" id="sizeUpBtn"   title="放大字體 ]">A+</button>
-    <button class="ctrl-btn" id="sizeDownBtn" title="縮小字體 [">A−</button>
-    <button class="ctrl-btn" id="slowBtn"     title="減速 ↓">−</button>
-    <div class="speed-dots" id="speedDots">
-      <div class="dot on"></div><div class="dot on"></div>
-      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span>🌙 杏夜絮語</span>
+    <span id="statusLabel">[ 偵測中 ]</span>
+    <div>
+        <button class="ctrl-btn" onclick="location.reload()">⟳ 重讀</button>
+        <button class="ctrl-btn" id="pauseBtn" onclick="toggleCruise()">▶ 巡航</button>
     </div>
-    <button class="ctrl-btn" id="fastBtn"     title="加速 ↑">+</button>
-    <span class="status-label" id="statusLabel">[ 載入中 ]</span>
-    <button class="ctrl-btn active" id="pauseBtn"   title="暫停/巡航 Space">⏯ 巡航</button>
-    <button class="ctrl-btn"        id="restartBtn" title="重讀 ⟳">⟳</button>
-    <button class="ctrl-btn"        id="helpBtn"    title="快捷鍵 ?">？</button>
-  </div>
 </div>
-
 <div id="storyContainer"></div>
-<div id="speedToast"></div>
-
-<div id="helpOverlay">
-  <div id="helpBox">
-    <h2>🌙 快捷鍵說明</h2>
-    <div class="help-row"><span class="help-key">Space</span><span class="help-desc">暫停 / 巡航</span></div>
-    <div class="help-row"><span class="help-key">↑ / +</span><span class="help-desc">加速</span></div>
-    <div class="help-row"><span class="help-key">↓ / −</span><span class="help-desc">減速</span></div>
-    <div class="help-row"><span class="help-key">]</span><span class="help-desc">放大字體</span></div>
-    <div class="help-row"><span class="help-key">[</span><span class="help-desc">縮小字體</span></div>
-    <div class="help-row"><span class="help-key">R</span><span class="help-desc">換目前可見圖片（同目錄隨機）</span></div>
-    <div class="help-row"><span class="help-key">? / Esc</span><span class="help-desc">開關說明</span></div>
-    <button id="helpClose">關閉</button>
-  </div>
-</div>
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// 1. lines.js 檢查
+// 1. 環境偵測與變數初始化
 // ══════════════════════════════════════════════════════════════
-if (!window.LinesLib) {
-    document.getElementById('storyContainer').innerHTML =
-        '<p style="color:#bc7a5e;padding:100px 32px;text-align:center;font-size:1.1rem;">' +
-        '⚠️ 無法載入 lines.js，請確認同資料夾並重新整理。</p>';
-    throw new Error('lines.js not loaded');
-}
+var scanReady = false, imgPool = [], byFolder = {};
+var loadingSet = new Set(), loadQueue = [], MAX_CONCURRENT = 3;
 
-var urlParam = (location.search.match(/[?&]dir=([^&]*)/) || [])[1] || '';
-function normDir(d) {
-    return d.trim().replace(/\/\.\//g,'/').replace(/\/\.$/,'').replace(/\/+$/,'') + '/';
-}
-var filterDirs = urlParam ? urlParam.split(',').map(normDir) : null;
+function setStatus(t){ document.getElementById('statusLabel').textContent = t; }
 
-// ══════════════════════════════════════════════════════════════
-// 2. 圖片池與連通性探針
-// ══════════════════════════════════════════════════════════════
-var byFolder = {}, imgPool = [], scanReady = false;
-
-function probe(url) {
-    return fetch(url, {method:'HEAD', cache:'no-cache'})
-        .then(function(r){ return r.ok || r.status===206; })
-        .catch(function(){ return false; });
-}
-
-async function buildPools() {
-    byFolder = {}; imgPool = []; scanReady = false;
-    var list = (window.IMG_LIST && window.IMG_LIST.length) ? window.IMG_LIST : null;
-
-    if (list) {
-        var tmpFolder = {}, tmpPool = [];
-        list.forEach(function(path) {
-            path = path.replace(/\\/g, '/');
-            var dp = path.replace(/[^/]*$/, '');
-            if (!tmpFolder[dp]) tmpFolder[dp] = [];
-            tmpFolder[dp].push(path);
-            tmpPool.push(path);
-        });
-
-        if (filterDirs) {
-            var keep = {};
-            filterDirs.forEach(function(d){ if(tmpFolder[d]) keep[d]=tmpFolder[d]; });
-            tmpFolder = keep;
-            tmpPool = [];
-            Object.keys(tmpFolder).forEach(function(k){ tmpPool=tmpPool.concat(tmpFolder[k]); });
-        }
-
-        setStatus('[ 探針中… ]');
-        var probe1 = tmpPool[0] || '';
-        var reachable = probe1 ? await probe(probe1) : false;
-
-        if (reachable) {
-            byFolder = tmpFolder; imgPool = tmpPool; scanReady = true;
-            setStatus('[ ✓ '+imgPool.length+'張 ]');
-            rebuildImgObs('100px'); // 本機模式低預載
-        } else {
-            setStatus('[ lines.js 模式 ]');
-            rebuildImgObs('400px 0px 400px 0px'); // 網路模式高預載
-        }
-    } else {
-        setStatus('[ lines.js 模式 ]');
-        rebuildImgObs('400px 0px 400px 0px');
-    }
-}
-
-// ══════════════════════════════════════════════════════════════
-// 3. 圖片選取與換圖
-// ══════════════════════════════════════════════════════════════
-function pickAny(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
-
-function getImgPath(folder) {
-    if (!scanReady) {
-        try { return LinesLib.imgSrc(folder, LinesLib.getImage(folder)); } catch(e){ return ''; }
-    }
-    var dp = folder ? folder.replace(/\/+$/,'')+'/' : '';
-    if (dp && byFolder[dp] && byFolder[dp].length) return pickAny(byFolder[dp]);
-    if (dp) {
-        var pool = [];
-        Object.keys(byFolder).forEach(function(k){ if(k.indexOf(dp)===0) pool=pool.concat(byFolder[k]); });
-        if (pool.length) return pickAny(pool);
-    }
-    if (byFolder['img/'] && byFolder['img/'].length) return pickAny(byFolder['img/']);
-    return imgPool.length ? pickAny(imgPool) : '';
-}
-
-function swapImg(imgEl) {
-    var base = location.origin + location.pathname.replace(/[^\/]*$/,'');
-    var curAbs = imgEl.src || '';
-    var curRel = curAbs.indexOf(base)===0 ? curAbs.slice(base.length) : curAbs;
-    var curDir = curRel.replace(/[^\/]*$/,'');
-
-    var pool = scanReady ? (byFolder[curDir] || imgPool) : null;
-    if (pool && pool.length) {
-        var next = curRel, tries = 0;
-        while (next === curRel && tries++ < 30) next = pickAny(pool);
-        flash(imgEl, next);
-    } else {
-        var folder = imgEl.dataset.folder || '';
-        try { flash(imgEl, LinesLib.imgSrc(folder, LinesLib.getImage(folder))); } catch(e){}
-    }
-}
-
-function flash(imgEl, newSrc) {
-    // 強制換圖：從隊列移除並直接設 src
-    var qi = loadQueue.indexOf(imgEl);
-    if (qi >= 0) loadQueue.splice(qi, 1);
-    if (loadingSet.has(imgEl)) releaseSlot(imgEl);
+async function initEnv() {
+    if (!window.LinesLib) return setStatus('❌ 缺 lines.js');
     
-    imgEl.dataset.lazySrc = newSrc;
-    imgEl.classList.remove('img-changing');
-    void imgEl.offsetWidth;
-    imgEl.classList.add('img-changing');
-    imgEl.src = newSrc;
-    var hint = imgEl.parentElement.querySelector('.img-hint');
-    if (hint) hint.textContent = newSrc;
-}
-
-// ══════════════════════════════════════════════════════════════
-// 4. 限流佇列與 Observer[cite: 2]
-// ══════════════════════════════════════════════════════════════
-var MAX_LOADING = 3; 
-var loadingSet = new Set();
-var loadQueue = [];
-var watchdog = null;
-var imgObs = null;
-
-function releaseSlot(img) {
-    if (loadingSet.has(img)) {
-        loadingSet.delete(img);
-        img.removeEventListener('load', img._ldone);
-        img.removeEventListener('error', img._ldone);
-        delete img._ldone;
-        if (loadingSet.size === 0) { clearTimeout(watchdog); watchdog = null; }
-        processQueue();
+    // 檢查是否有 img_list.js 提供的本地清單
+    if (window.IMG_LIST && IMG_LIST.length > 0) {
+        setStatus('[ 測試路徑 ]');
+        // 探針測試第一張圖
+        var ok = await fetch(IMG_LIST[0], {method:'HEAD'}).then(r=>r.ok).catch(()=>false);
+        if (ok) {
+            scanReady = true;
+            IMG_LIST.forEach(p => {
+                p = p.replace(/\\/g, '/');
+                var d = p.replace(/[^/]*$/, '') || 'img/';
+                if(!byFolder[d]) byFolder[d] = [];
+                byFolder[d].push(p);
+                imgPool.push(p);
+            });
+            setStatus('[ ✓ 本地 ' + imgPool.length + ' ]');
+        } else {
+            setStatus('[ 🔗 網路模式 ]');
+        }
+    } else {
+        setStatus('[ 🔗 網路模式 ]');
     }
+    render();
 }
 
+// ══════════════════════════════════════════════════════════════
+// 2. 圖片路徑選擇邏輯[cite: 1, 2]
+// ══════════════════════════════════════════════════════════════
+function getSrc(folder) {
+    if (!scanReady) return LinesLib.imgSrc(folder, LinesLib.getImage(folder));
+    var d = folder ? (folder.replace(/\/+$/,'')+'/') : 'img/';
+    var p = byFolder[d] || imgPool;
+    return p[Math.floor(Math.random()*p.length)];
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3. 圖片排隊加載系統 (防止網路模式卡死)
+// ══════════════════════════════════════════════════════════════
 function processQueue() {
-    while (loadingSet.size < MAX_LOADING && loadQueue.length > 0) {
+    while (loadingSet.size < MAX_CONCURRENT && loadQueue.length > 0) {
         var img = loadQueue.shift();
-        if (!img.dataset.lazySrc || loadingSet.has(img)) continue;
-
         loadingSet.add(img);
-        function done() { releaseSlot(this); }
-        img._ldone = done;
-        img.addEventListener('load', done);
-        img.addEventListener('error', done);
-        img.src = img.dataset.lazySrc;
-
-        if (!watchdog) watchdog = setTimeout(() => {
-            console.warn('[Queue] Watchdog timeout - clearing slots');
-            loadingSet.clear(); loadQueue = []; watchdog = null;
-        }, 12000);
+        img.onload = img.onerror = function() {
+            loadingSet.delete(this);
+            processQueue();
+        };
+        img.src = img.dataset.src;
     }
 }
-
-function enqueueImg(img) {
-    if (scanReady) { // 本機模式直接加載[cite: 2]
-        if (img.dataset.lazySrc && img.src !== img.dataset.lazySrc) img.src = img.dataset.lazySrc;
-        return;
-    }
-    if (!loadQueue.includes(img) && !loadingSet.has(img)) loadQueue.push(img);
-    processQueue();
-}
-
-function dequeueImg(img) {
-    var qi = loadQueue.indexOf(img);
-    if (qi >= 0) loadQueue.splice(qi, 1);
-    if (loadingSet.has(img)) releaseSlot(img);
-    if (img.src && img.src !== window.location.href) {
-        img.dataset.lazySrc = img.dataset.lazySrc || img.src;
-        img.src = ''; // 釋放內存[cite: 2]
-    }
-}
-
-function rebuildImgObs(margin) {
-    if (imgObs) imgObs.disconnect();
-    imgObs = new IntersectionObserver(function(entries) {
-        entries.forEach(en => {
-            if (en.isIntersecting) enqueueImg(en.target);
-            else dequeueImg(en.target);
-        });
-    }, { rootMargin: margin, threshold: 0 });
-}
-
-var fadeObs = new IntersectionObserver(entries => {
-    entries.forEach(en => { if(en.isIntersecting){ en.target.classList.add('visible'); fadeObs.unobserve(en.target); }});
-}, {threshold: 0.04});
 
 // ══════════════════════════════════════════════════════════════
-// 5. 渲染與控制[cite: 2]
+// 4. 懶加載與自動釋放 (針對 Chrome 109 記憶體優化)[cite: 2]
 // ══════════════════════════════════════════════════════════════
-var TEXT_COLORS=['#7a1a2e','#5a2060','#1a4a7a','#1a5a40','#7a3a10','#4a2a70','#1a3a6a','#6a1a50'];
-var colorIdx=0, txtIdx=3;
-var TXT_SIZES=['0.88rem','0.95rem','1.05rem','1.15rem','1.28rem','1.42rem','1.58rem'];
-
-function applyTxt(){ document.documentElement.style.setProperty('--txt-size',TXT_SIZES[txtIdx]); }
-applyTxt();
-
-function renderAll(container){
-    container.innerHTML='';
-    var lines = (function(a){
-        for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
-        return a;
-    })(LinesLib.getAll());
-
-    lines.forEach(obj => {
-        var folder = obj.folder || LinesLib.autoDetectFolder(obj.text) || '';
-        var src = getImgPath(folder);
-        var block = document.createElement('div');
-        block.className = 'story-block';
-        block.innerHTML = `
-            <div class="story-text"><span class="txt" style="--txt-color:${TEXT_COLORS[colorIdx++%TEXT_COLORS.length]}">🌸 ${obj.text}</span></div>
-            <div class="img-wrap">
-                <img class="story-img" alt="[載入中]" data-folder="${folder}" data-lazy-src="${src}">
-                <span class="img-hint">${src}</span>
-            </div>
-        `;
-        var img = block.querySelector('.story-img');
-        block.querySelector('.img-wrap').onclick = () => swapImg(img);
-        container.appendChild(block);
-        fadeObs.observe(block);
-        imgObs.observe(img);
+var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(en) {
+        var img = en.target.querySelector('img');
+        if (en.isIntersecting) {
+            en.target.classList.add('visible');
+            if (scanReady) {
+                img.src = img.dataset.src; // 本地直接加載[cite: 2]
+            } else if (!img.src) {
+                loadQueue.push(img); // 網路排隊加載[cite: 2]
+                processQueue();
+            }
+        } else {
+            // 滾出視窗自動清空，節省 RAM[cite: 2]
+            if (!scanReady && img.src) { 
+                img.removeAttribute('src'); 
+                loadingSet.delete(img);
+            }
+        }
     });
-    container.insertAdjacentHTML('beforeend', '<div class="bottom-fin">🌸 杏花落盡 · 再滾將續 🌸</div>');
+}, { threshold: 0.1 });
+
+// ══════════════════════════════════════════════════════════════
+// 5. 渲染與巡航邏輯[cite: 1, 2]
+// ══════════════════════════════════════════════════════════════
+function render() {
+    var cont = document.getElementById('storyContainer');
+    var lines = LinesLib.getAll().sort(function(){return 0.5-Math.random()});
+    
+    lines.forEach(function(obj) {
+        var src = getSrc(obj.folder || '');
+        var div = document.createElement('div');
+        div.className = 'story-block';
+        div.innerHTML = '<p class="story-text">🌸 '+obj.text+'</p><div class="img-wrap"><img class="story-img" data-src="'+src+'" alt="loading..."></div>';
+        cont.appendChild(div);
+        observer.observe(div);
+    });
 }
 
-// ══════════════════════════════════════════════════════════════
-// 6. 巡航引擎[cite: 2]
-// ══════════════════════════════════════════════════════════════
-var SPEEDS=[0.35,0.75,1.4,2.5,4.2], speedLv=1, cruising=false, rafId=null;
-var userTaking=false, uTimer=null;
+var cruising = false;
+function toggleCruise() {
+    cruising = !cruising;
+    document.getElementById('pauseBtn').textContent = cruising ? '⏯ 暫停' : '▶ 巡航';
+    if (cruising) doCruise();
+}
 
-function cruiseFrame(){
-    if(!cruising)return;
-    if(!userTaking){
-        if(window.scrollY >= document.documentElement.scrollHeight-window.innerHeight-1){ startCycle(); return; }
-        window.scrollBy(0,SPEEDS[speedLv]);
+function doCruise() {
+    if (!cruising) return;
+    window.scrollBy(0, 1);
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+        window.scrollTo(0, 0); // 循環滾動[cite: 2]
     }
-    rafId = requestAnimationFrame(cruiseFrame);
-}
-function startCruise(){ cruising=true; document.getElementById('pauseBtn').classList.add('active'); cruiseFrame(); }
-function stopCruise(){ cruising=false; cancelAnimationFrame(rafId); document.getElementById('pauseBtn').classList.remove('active'); }
-function toggleCruise(){ cruising ? stopCruise() : startCruise(); }
-
-// ══════════════════════════════════════════════════════════════
-// 7. 初始化與事件[cite: 2]
-// ══════════════════════════════════════════════════════════════
-async function startCycle(){
-    stopCruise();
-    loadingSet.clear(); loadQueue = [];
-    await buildPools();
-    renderAll(document.getElementById('storyContainer'));
-    window.scrollTo({top:0, behavior:'smooth'});
-    setTimeout(startCruise, 800);
+    requestAnimationFrame(doCruise);
 }
 
-document.getElementById('sizeUpBtn').onclick = () => { if(txtIdx<TXT_SIZES.length-1){txtIdx++;applyTxt();} };
-document.getElementById('sizeDownBtn').onclick = () => { if(txtIdx>0){txtIdx--;applyTxt();} };
-document.getElementById('pauseBtn').onclick = toggleCruise;
-document.getElementById('restartBtn').onclick = startCycle;
-document.getElementById('fastBtn').onclick = () => { if(speedLv<4){speedLv++; updateSpeedUI();} };
-document.getElementById('slowBtn').onclick = () => { if(speedLv>0){speedLv--; updateSpeedUI();} };
-
-function updateSpeedUI(){
-    document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i<=speedLv));
-}
-
-document.addEventListener('keydown', e => {
-    if(e.key===' ') { e.preventDefault(); toggleCruise(); }
-    if(e.key==='r'||e.key==='R') {
-        let vis = Array.from(document.querySelectorAll('.story-img')).filter(im => {
-            let r = im.getBoundingClientRect(); return r.bottom>0 && r.top<window.innerHeight;
-        });
-        if(vis.length) swapImg(vis[Math.floor(Math.random()*vis.length)]);
-    }
-});
-
-startCycle();
+initEnv();
 </script>
 </body>
 </html>
