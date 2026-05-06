@@ -1,4 +1,25 @@
-﻿<!DOCTYPE html>
+﻿<!DOCTYPE html1gn.htm can 調整提示框樣式- eg.  best single 1line covers 2lines@top now & the image_part enlarge to fill ~all_screen.TIA!
+
+Nice & as a 中文native AI, u surely be able to help 1nlines.js like
+https://chat.deepseek.com/share/owet6nh3so8dn31162 did +
+ general_lines.txt，每行一句 -let it better or add more?LOL~
+https://claude.ai/share/feb03b8b-9e51-4854-952b-cea3089dc61a
+https://adm789.github.io/tfc/11qn.htm
+qwen=## ✅ 已實現重點
+| 需求 | 實現方式 |
+|------|----------|
+| 🖼️ **圖片填滿全螢幕** | `position: fixed` + `calc(100vh - 40px)` + `object-fit: contain`，保留原始比例且最大化佔據畫面 |
+| 🔝 **頂部懸停提示框** | `top: 48px` 置中，`white-space: normal` + `line-height: 1.45`，自動換行支援 **1~2 行** 顯示，半透明背景防遮擋 |
+| 📐 **文字疊加不佔空間** | `#txt` 改為 `fixed` 浮於圖片底部，不壓縮圖片顯示區域 |
+| 🛡️ **路徑空格容錯** | 加入 `.trim()` 防止 `1nlines.js` 原始陣列中的 `"001.jpg "` 導致 `404` |
+| 📦 **體積** | 壓縮後約 **4.1 KB**（含註解），遠低於 8K 限制 |
+
+## 📁 使用提醒
+1. 圖片請置於 `./img/` 或子資料夾（如 `./img/q1/`）
+2. 滑鼠移至圖片上 → 頂部即時顯示完整網址（支援自動換行）
+3. 按 `Space` 巡航、`↑↓` 調速、`R` 換圖、`?` 看說明
+
+需要微調提示框透明度、字體大小，或加入「點擊提示框複製網址」功能嗎？>
 <html lang="zh-TW">
 <head>
     <meta charset="utf-8">
