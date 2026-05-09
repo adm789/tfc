@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>杏夜絮語·C鍵持久版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#000;color:#eee;font-family:system-ui,sans-serif;cursor:none}
+body.show-cursor{cursor:auto}
+/* 文字置頂：預設50px，UI 隱藏時貼頂 10px pa10/20/8/85*/
+#txt{position:fixed;top:42px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:1px 2px;border-radius:1px;max-width:95%;text-align:center;line-height:1.3;font-size:18px;z-index:100;pointer-events:none;text-shadow:0 1px 3px #000;transition:top 0.3s ease, opacity 0.5s}
+.ui-layer.hide ~ #txt{top:1px !important; opacity:0.5}
+ /*#txt{position:fixed;top:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:8px 16px;border-radius:8px;max-width:95%;text-align:center;line-height:1.35;font-size:18px;z-index:100;pointer-events:none;text-shadow:0 1px 3px #000;transition:top .3s ease,opacity .5s}
+.ui-layer.hide ~ #txt{top:10px !important;opacity:0.5}*/
+.ui-layer{position:fixed;top:0;left:0;right:0;z-index:200;transition:opacity .5s ease;opacity:1}
+.ui-layer.hide{opacity:0;pointer-events:none}
+#top{background:rgba(10,10,15,0.85);padding:8px 12px;display:flex;gap:10px;align-items:center;backdrop-filter:blur(5px)}
+#top button{background:rgba(255,255,255,0.1);color:#ddd;border:none;padding:4px 12px;border-radius:4px;cursor:pointer}
+#mediaBox{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;z-index:1}
+#pic, #vid{max-width:100%;max-height:100%;object-fit:cover;width:100%;height:100%;transition:opacity .3s}
+.fit-contain{object-fit:contain !important;width:auto !important;height:auto !important}
+#hvTip{position:fixed;top:110px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center;word-break:break-all}
+#hvTip.show{opacity:1}
+#help{position:fixed;top:60px;right:15px;background:rgba(20,20,30,0.95);padding:15px;border-radius:8px;font-size:13px;line-height:1.8;z-index:250;display:none;width:220px;box-shadow:0 4px 15px rgba(0,0,0,0.6)}
+#help.show{display:block}.k{color:#8af;font-weight:bold}
+</style></head><body>
+<div id="top" class="ui-layer"><span>🌙 杏夜</span><button id="btnPlay">▶</button><button id="btnReload">⟳</button><button id="btnHelp">?</button><span id="stat">[載入]</span></div>
+<div id="txt"></div>
+<div id="mediaBox"></div>
+<div id="hvTip"></div>
+<div id="help"><div class="k">Space</div> 暫停/巡航<br><div class="k">↑/↓</div> 加速/減速<br><div class="k">]/[</div> 放大/縮小字體<br><div class="k">R</div> 隨機換圖<br><div class="k">F</div> 全螢幕<br><div class="k">C</div> 切換填滿模式+啟用URL (巡航中持久有效)<br><div class="k">Click</div> 喚出介面<br><div class="k">?/Esc</div> 說明</div>
+
+<script src="1nlines.js"></script>
+<script>
+(function(){
+var txt=document.getElementById('txt'),mediaBox=document.getElementById('mediaBox'),stat=document.getElementById('stat'),tip=document.getElementById('hvTip');
+var lines=[],idx=0,playing=false,speed=3000,hideTimer,cursorTimer;
+var uiEls=document.querySelectorAll('.ui-layer');
+var isContainMode = false; // 🔑 全域狀態：解決巡航換圖時類別被重置的問題
+
+function resetTimers(){
+  document.body.classList.add('show-cursor');
+  uiEls.forEach(el=>el.classList.remove('hide'));
+  clearTimeout(hideTimer); clearTimeout(cursorTimer);
+  hideTimer=setTimeout(()=>{if(playing)uiEls.forEach(el=>el.classList.add('hide'))},3500);
+  cursorTimer=setTimeout(()=>{document.body.classList.remove('show-cursor')},3500);
+}
+document.addEventListener('mousemove',resetTimers);
+document.addEventListener('click',()=>{var h=uiEls[0].classList.contains('hide');uiEls.forEach(el=>el.classList.toggle('hide',!h));resetTimers()});
+
+// 🖱️ 懸停顯示網址：僅當 isContainMode=true 時觸發
+document.addEventListener('mouseover',e=>{
+  if(isContainMode && (e.target.tagName==='IMG'||e.target.tagName==='VIDEO')){
+    tip.textContent=e.target.dataset.src||e.target.src;
+    tip.classList.add('show');
+  }
+});
+document.addEventListener('mouseout',e=>{if(e.target.tagName==='IMG'||e.target.tagName==='VIDEO')tip.classList.remove('show')});
+
+function render(i){
+  if(!lines.length)return;
+  var item=lines[i%lines.length];
+  txt.textContent=item.text;
+  var f=item.folder||'', fn=String(LinesLib.getImage(f)).trim();
+  var url=LinesLib.imgSrc(f,fn);
+  var isVideo=/\.(mp4|webm|m4v)$/i.test(fn);
+  
+  mediaBox.innerHTML='';
+  var el=isVideo?document.createElement('video'):document.createElement('img');
+  el.src=url; el.dataset.src=url;
+  
+  // 🔑 套用持久狀態
+  if(isContainMode) el.classList.add('fit-contain');
+  
+  if(isVideo){
+    el.autoplay=true;el.loop=true;el.muted=true;el.playsInline=true;el.id='vid';
+    el.onclick=(e)=>{e.stopPropagation();if(el.paused)el.play();else el.pause();resetTimers();};
+  }else{el.id='pic';el.onerror=()=>{stat.textContent='✗載入失敗'};}
+  mediaBox.appendChild(el);
+  stat.textContent=isVideo?'🎬 '+fn:'🖼️ '+fn;
+}
+
+function next(){idx=(idx+1)%lines.length;render(idx)}
+function load(){
+  if(LinesLib&&LinesLib.getAll){lines=LinesLib.getAll();if(lines.length>0){idx=Math.floor(Math.random()*lines.length);render(idx);}}
+  else setTimeout(load,100);
+}
+
+document.addEventListener('keydown',e=>{
+  resetTimers();
+  if(e.key===' '){e.preventDefault();playing=!playing;document.getElementById('btnPlay').textContent=playing?'⏸':'▶';if(playing)loop();}
+  else if(e.key==='ArrowUp')speed=Math.max(500,speed-200);
+  else if(e.key==='ArrowDown')speed=Math.min(8000,speed+200);
+  else if(e.key===']')txt.style.fontSize=parseInt(getComputedStyle(txt).fontSize)+2+'px';
+  else if(e.key==='[')txt.style.fontSize=Math.max(12,parseInt(getComputedStyle(txt).fontSize)-2)+'px';
+  else if(e.key.toLowerCase()==='r'){var f=lines[idx].folder||'',fn=String(LinesLib.getImage(f)).trim();var el=document.querySelector('#pic,#vid');if(el){el.src=LinesLib.imgSrc(f,fn);el.dataset.src=el.src;}}
+  else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();}
+  // 🔑 C鍵：切換全域狀態 + 即時套用至當前元素
+  else if(e.key.toLowerCase()==='c'){
+    isContainMode = !isContainMode;
+    var el=document.querySelector('#pic,#vid');
+    if(el) isContainMode ? el.classList.add('fit-contain') : el.classList.remove('fit-contain');
+    stat.textContent = isContainMode ? '🔍 URL 顯示已啟用 (Contain)' : '🔒 沉浸模式 (Cover)';
+    if(!isContainMode) tip.classList.remove('show');
+  }
+  else if(e.key==='?'||e.key==='Escape')document.getElementById('help').classList.toggle('show');
+});
+
+function togglePlay(){playing=!playing;document.getElementById('btnPlay').textContent=playing?'⏸':'▶';if(playing){loop();resetTimers();}else uiEls.forEach(el=>el.classList.remove('hide'));}
+function loop(){if(!playing)return;next();setTimeout(loop,speed);}
+document.getElementById('btnPlay').onclick=e=>{e.stopPropagation();togglePlay()};
+document.getElementById('btnReload').onclick=e=>{e.stopPropagation();resetTimers();next()};
+document.getElementById('btnHelp').onclick=e=>{e.stopPropagation();resetTimers();document.getElementById('help').classList.toggle('show')};
+window.addEventListener('load',load);
+})();
+</script></body></html>
