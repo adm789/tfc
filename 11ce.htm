@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>11ce · 雙模式播放器（已修正）</title>
+<title>11ce · 雙模式播放器 v2</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;font-family:system-ui,sans-serif}
@@ -14,10 +14,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;f
 #grid.show{display:block}
 :root{--cols:2}
 .gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:8px}
-/* 🔑 修正：.item 必須是 block-level，子圖才可見 */
-.item{aspect-ratio:3/4;background:#1a1a1a;border-radius:6px;overflow:hidden;position:relative;cursor:zoom-in;display:block}
+/* ── 網格縮圖：智慧比例，完整顯示不裁切 ── */
+.item{background:#1a1a1a;border-radius:6px;overflow:hidden;position:relative;cursor:zoom-in;display:flex;align-items:center;justify-content:center}
+/* 預設直圖；JS 偵測後會覆寫 */
+.item.ar-wide{aspect-ratio:16/9}
+.item.ar-tall{aspect-ratio:3/4}
+.item.ar-sq  {aspect-ratio:1/1}
+/* 無比例類別時的後備（圖片尚未載入） */
+.item:not(.ar-wide):not(.ar-tall):not(.ar-sq){aspect-ratio:3/4}
 .item:hover{box-shadow:0 0 0 2px #6cf}
-.item img,.item video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+/* object-fit:contain → 完整顯示，不裁切 */
+.item img,.item video{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;pointer-events:none}
 
 /* ── UI 面板 ── */
 .ui{position:fixed;bottom:10px;right:10px;background:rgba(15,15,25,0.88);padding:6px;border-radius:8px;z-index:300;backdrop-filter:blur(6px);font-size:11px;transition:opacity .3s ease,transform .3s ease}
@@ -42,11 +49,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;f
 #hoverUrl{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;z-index:9999;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s;pointer-events:none}
 #hoverUrl.show{opacity:1}
 
-/* ── 燈箱 ── */
-#lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
+/* ── 燈箱：全螢幕填滿 ── */
+#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column}
 #lightbox.show{display:flex}
-#lbMedia{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.7);transform-origin:center center}
-#lbUrl{margin-top:10px;color:#aaa;font-size:12px;max-width:95vw;word-break:break-all;text-align:center}
+/* 媒體本身：盡可能填滿視口，保持比例，不裁切 */
+#lbMedia{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain;transform-origin:center center}
+/* URL 條：懸浮在底部，不佔空間 */
+#lbUrl{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#ccc;padding:4px 12px;border-radius:5px;font-size:11px;max-width:95vw;word-break:break-all;text-align:center;pointer-events:none}
 #lbNav{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;transform:translateY(-50%)}
 #lbNav button{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px}
 #lbNav button:hover{background:rgba(255,255,255,0.3)}
@@ -185,21 +194,44 @@ function renderSingle(i){
   stat.textContent=`🔲 ${item.name} （${idx+1}/${list.length}）`;
 }
 
-/* ─────────────────────── 網格渲染 ─────────────────────── */
-// 🔑 修正：先建 .item div，加入媒體元素後，再附加 onclick
+/* ─────────────────────── 網格渲染（智慧比例 + 懸停URL） ─────────────────────── */
+function applyAspectClass(div, w, h){
+  const r=w/h;
+  div.classList.remove('ar-wide','ar-tall','ar-sq');
+  if(r>1.2)      div.classList.add('ar-wide');
+  else if(r<0.8) div.classList.add('ar-tall');
+  else           div.classList.add('ar-sq');
+}
+
 function renderGridBatch(start, count){
   const frag=document.createDocumentFragment();
   const end=Math.min(start+count, list.length);
   for(let i=start;i<end;i++){
     const item=list[i];
     const div=document.createElement('div');
-    div.className='item';                        // CSS 已確保 display:block
+    div.className='item ar-tall';                  // 預設直圖，載入後修正
+
+    // 懸停 URL → 掛在 div 上（覆蓋子元素 pointer-events:none 的盲區）
+    div.addEventListener('mouseenter',()=>{ hoverUrl.textContent=item.url; hoverUrl.classList.add('show'); });
+    div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
+
     const el=makeMediaEl(item, true);
-    div.appendChild(el);                         // ← 先插入，再加事件
-    div.onclick=e=>{
-      e.stopPropagation();
-      openLightbox(item, i);
-    };
+
+    if(item.type==='image'){
+      // 偵測自然尺寸後套用比例 class
+      const probe=new Image();
+      probe.onload=()=>applyAspectClass(div, probe.naturalWidth, probe.naturalHeight);
+      probe.src=item.url;
+    } else {
+      // 影片：用 loadedmetadata 偵測
+      el.addEventListener('loadedmetadata',()=>{
+        if(el.videoWidth && el.videoHeight)
+          applyAspectClass(div, el.videoWidth, el.videoHeight);
+      },{once:true});
+    }
+
+    div.appendChild(el);
+    div.onclick=e=>{ e.stopPropagation(); openLightbox(item, i); };
     frag.appendChild(div);
   }
   gal.appendChild(frag);
@@ -208,7 +240,10 @@ function renderGridBatch(start, count){
   stat.textContent=`🧩 ${list.length} 項 | 欄:${cols} | 自動捲:${gridAuto?'開':'關'}`;
 }
 
-/* ─────────────────────── 燈箱 ─────────────────────── */
+/* ─────────────────────── 燈箱（全螢幕填滿） ─────────────────────── */
+const LB_IMG_STYLE='display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain;transform-origin:center center';
+const LB_VID_STYLE=LB_IMG_STYLE;
+
 function openLightbox(item, fromIdx=null){
   lbIdx=fromIdx!==null ? fromIdx : list.findIndex(x=>x.url===item.url);
   const cur=$('lbMedia');
@@ -216,14 +251,14 @@ function openLightbox(item, fromIdx=null){
     if(cur.tagName!=='VIDEO'){
       const v=document.createElement('video');
       v.id='lbMedia'; v.autoplay=true; v.loop=true; v.muted=true; v.playsInline=true;
-      v.style.cssText='max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transform-origin:center center';
+      v.style.cssText=LB_VID_STYLE;
       cur.replaceWith(v);
     }
   } else {
     if(cur.tagName==='VIDEO'){
       const img=document.createElement('img');
       img.id='lbMedia'; img.alt='';
-      img.style.cssText='max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transform-origin:center center';
+      img.style.cssText=LB_IMG_STYLE;
       cur.replaceWith(img);
     }
   }
