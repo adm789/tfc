@@ -1,0 +1,372 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>11ce · 雙模式播放器（已修正）</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;font-family:system-ui,sans-serif}
+
+/* ── 單圖模式 ── */
+#single{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:1}
+#single.hide{display:none}
+#media{max-width:100%;max-height:100%;object-fit:contain;transition:transform .15s ease;transform-origin:center center}
+
+/* ── 網格模式 ── */
+#grid{position:fixed;top:0;left:0;width:100%;height:100%;overflow-y:auto;overflow-x:hidden;display:none;z-index:1;padding:8px 8px 60px;scroll-behavior:smooth}
+#grid.show{display:block}
+:root{--cols:2}
+.gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:8px}
+/* 🔑 修正：.item 必須是 block-level，子圖才可見 */
+.item{aspect-ratio:3/4;background:#1a1a1a;border-radius:6px;overflow:hidden;position:relative;cursor:zoom-in;display:block}
+.item:hover{box-shadow:0 0 0 2px #6cf}
+.item img,.item video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+
+/* ── UI 面板 ── */
+.ui{position:fixed;bottom:10px;right:10px;background:rgba(15,15,25,0.88);padding:6px;border-radius:8px;z-index:300;backdrop-filter:blur(6px);font-size:11px;transition:opacity .3s ease,transform .3s ease}
+.ui.hide{opacity:0;pointer-events:none;transform:translateY(10px)}
+.ctrl{display:grid;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(3,32px);gap:4px}
+.ctrl button{width:32px;height:32px;background:rgba(255,255,255,0.12);border:none;border-radius:5px;color:#ddd;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.ctrl button:hover{background:rgba(255,255,255,0.28)}
+
+/* ── 狀態列 ── */
+#stat{position:fixed;top:8px;left:8px;background:rgba(10,10,18,0.85);padding:5px 10px;border-radius:5px;font-size:12px;z-index:300;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis}
+
+/* ── 說明框 ── */
+#help{position:fixed;top:45px;right:10px;background:rgba(15,15,25,0.95);padding:12px;border-radius:8px;font-size:12px;line-height:1.7;z-index:400;display:none;max-width:260px;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+#help.show{display:block}
+.k{color:#8af;font-weight:bold}
+
+/* ── 暫停覆蓋 ── */
+#ov{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:none;align-items:center;justify-content:center;z-index:500;font-size:16px;color:#fff;text-align:center;pointer-events:none}
+#ov.show{display:flex}
+
+/* ── 懸停 URL 提示 ── */
+#hoverUrl{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;z-index:9999;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s;pointer-events:none}
+#hoverUrl.show{opacity:1}
+
+/* ── 燈箱 ── */
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
+#lightbox.show{display:flex}
+#lbMedia{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.7);transform-origin:center center}
+#lbUrl{margin-top:10px;color:#aaa;font-size:12px;max-width:95vw;word-break:break-all;text-align:center}
+#lbNav{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;transform:translateY(-50%)}
+#lbNav button{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px}
+#lbNav button:hover{background:rgba(255,255,255,0.3)}
+#lbClose{position:absolute;top:15px;right:20px;color:#fff;font-size:28px;cursor:pointer;background:none;border:none;line-height:1}
+
+/* ── 載入更多頁碼條 ── */
+#pager{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(20,20,30,0.9);padding:6px 12px;border-radius:6px;font-size:12px;z-index:200;display:none}
+#pager.show{display:block}
+</style></head><body>
+
+<div id="single"><img id="media" alt=""></div>
+<div id="grid"><div class="gal" id="gal"></div></div>
+<div id="stat">⏳ 解析中...</div>
+
+<div id="help">
+  <div class="k">← / →</div> 單圖：上/下頁 ｜ 網格：欄數 -/+<br>
+  <div class="k">Space</div> 單圖：停止/恢復巡航<br>
+  <div class="k">↑ / ↓</div> 單圖：放大/縮小 (0.5x～3.0x)<br>
+  <div class="k">G</div> 切換 單圖/網格<br>
+  <div class="k">F</div> 全螢幕 切換<br>
+  <div class="k">H</div> 手動 顯示/隱藏 UI<br>
+  <div class="k">L</div> 網格自動捲動 開/關<br>
+  <div class="k">[ / ]</div> 巡航速度 慢/快<br>
+  <div class="k">? / Esc</div> 說明 / 關閉燈箱<br>
+  <small style="opacity:0.7">🖱️ 懸停 → 顯示完整 URL ｜ 點擊縮圖 → 燈箱預覽</small>
+</div>
+
+<div class="ui" id="ui"><div class="ctrl">
+  <button id="bPrev">◀</button><button id="bPlay">⏸</button><button id="bNext">▶</button>
+  <button id="bZoom">1+</button><button id="bMode">🔲</button><button id="bZoomOut">-</button>
+  <button id="bCMin">C-</button><button id="bFull">⛶</button><button id="bCPlus">C+</button>
+</div></div>
+
+<div id="ov">⏹ 巡航已暫停</div>
+<div id="hoverUrl"></div>
+
+<div id="lightbox">
+  <button id="lbClose">×</button>
+  <img id="lbMedia" alt="">
+  <div id="lbUrl"></div>
+  <div id="lbNav">
+    <button id="lbPrev">◀ 上一張</button>
+    <button id="lbNext">下一張 ▶</button>
+  </div>
+</div>
+
+<div id="pager">📄 載入更多...</div>
+
+<!-- 📦 外部媒體清單（與原版相同路徑） -->
+<script src="1nlines.js"></script>
+
+<script>
+(function(){
+
+/* ─────────────────────── DOM 捷徑 ─────────────────────── */
+const $=id=>document.getElementById(id);
+const single=$('single'), grid=$('grid'), gal=$('gal');
+const stat=$('stat'), ov=$('ov'), ui=$('ui');
+const hoverUrl=$('hoverUrl'), lb=$('lightbox'), lbUrl=$('lbUrl');
+const lbPrev=$('lbPrev'), lbNext=$('lbNext'), pager=$('pager');
+// 注意：media / lbMedia 在 replaceWith 後會過期，每次用 $() 重新取得
+
+/* ─────────────────────── 狀態 ─────────────────────── */
+let list=[], idx=0, scale=1, playing=true, speed=2500, timer;
+let mode='single', cols=2;
+let gridRendered=0, gridBatch=30, gridAuto=false;
+let uiTimer, cursorTimer, uiLocked=false, lbIdx=0;
+
+/* ─────────────────────── 等待 1nlines.js ─────────────────────── */
+function waitForLib(cb){
+  if(window.LinesLib && LinesLib.FOLDER_IMAGES) return cb();
+  setTimeout(()=>waitForLib(cb), 100);
+}
+
+/* ─────────────────────── 建立媒體清單 ─────────────────────── */
+function buildFullMediaList(){
+  const res=[], folders=Object.keys(LinesLib.FOLDER_IMAGES);
+  folders.forEach(f=>{
+    let conf=LinesLib.FOLDER_IMAGES[f], files=[];
+    if(Array.isArray(conf)){
+      if(typeof conf[0]==='string'){
+        files=conf.map(s=>s.trim()).filter(Boolean);
+      } else if(conf.length===2 && typeof conf[0]==='number'){
+        let total=conf[0], start=String(conf[1]).trim();
+        let m=start.match(/\d+(?=\.)/);
+        if(m){
+          let n=parseInt(m[0]), pad=m[0].length;
+          let slash=start.lastIndexOf('/');
+          let pre=slash>=0?start.substring(0,slash+1):'';
+          let ext=start.split('.').pop();
+          for(let i=0;i<total;i++)
+            files.push(pre+String(n+i).padStart(pad,'0')+'.'+ext);
+        }
+      }
+    }
+    files.forEach(fn=>{
+      if(!fn) return;
+      let url='';
+      try{ if(LinesLib.imgSrc) url=LinesLib.imgSrc(f,fn); }catch(e){}
+      if(!url){
+        let isV=/\.(mp4|webm|m4v|mov)$/i.test(fn);
+        url=isV
+          ? (fn.includes('/')?`./img/${f}/${fn}`:`./img/m4/${fn}`)
+          : `./img/${f}/${fn}`;
+      }
+      res.push({ name:fn, url, type:/\.(mp4|webm|m4v|mov)$/i.test(fn)?'video':'image' });
+    });
+  });
+  return res;
+}
+
+/* ─────────────────────── 建立媒體元素 ─────────────────────── */
+// 🔑 修正：移除對 el.parentElement 的依賴（此時尚未插入 DOM）
+//    forGrid=true 時只傳回元素；呼叫方自行掛 click / class
+function makeMediaEl(item, forGrid=false){
+  const isV=item.type==='video';
+  const el=document.createElement(isV?'video':'img');
+  el.src=item.url; el.alt=item.name; el.loading='lazy';
+  if(isV){ el.muted=true; el.loop=true; el.playsInline=true; el.autoplay=false; }
+  el.addEventListener('mouseenter',()=>{ hoverUrl.textContent=item.url; hoverUrl.classList.add('show'); });
+  el.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
+  return el;
+}
+
+/* ─────────────────────── 單圖渲染 ─────────────────────── */
+function renderSingle(i){
+  idx=((i%list.length)+list.length)%list.length;
+  const item=list[idx];
+  const newEl=makeMediaEl(item, false);
+  newEl.id='media';
+  newEl.style.transform=`scale(${scale})`;
+  newEl.style.transformOrigin='center center';
+  const cur=$('media');
+  if(cur) cur.replaceWith(newEl);
+  else single.appendChild(newEl);
+  stat.textContent=`🔲 ${item.name} （${idx+1}/${list.length}）`;
+}
+
+/* ─────────────────────── 網格渲染 ─────────────────────── */
+// 🔑 修正：先建 .item div，加入媒體元素後，再附加 onclick
+function renderGridBatch(start, count){
+  const frag=document.createDocumentFragment();
+  const end=Math.min(start+count, list.length);
+  for(let i=start;i<end;i++){
+    const item=list[i];
+    const div=document.createElement('div');
+    div.className='item';                        // CSS 已確保 display:block
+    const el=makeMediaEl(item, true);
+    div.appendChild(el);                         // ← 先插入，再加事件
+    div.onclick=e=>{
+      e.stopPropagation();
+      openLightbox(item, i);
+    };
+    frag.appendChild(div);
+  }
+  gal.appendChild(frag);
+  gridRendered=end;
+  pager.classList.toggle('show', gridRendered<list.length);
+  stat.textContent=`🧩 ${list.length} 項 | 欄:${cols} | 自動捲:${gridAuto?'開':'關'}`;
+}
+
+/* ─────────────────────── 燈箱 ─────────────────────── */
+function openLightbox(item, fromIdx=null){
+  lbIdx=fromIdx!==null ? fromIdx : list.findIndex(x=>x.url===item.url);
+  const cur=$('lbMedia');
+  if(item.type==='video'){
+    if(cur.tagName!=='VIDEO'){
+      const v=document.createElement('video');
+      v.id='lbMedia'; v.autoplay=true; v.loop=true; v.muted=true; v.playsInline=true;
+      v.style.cssText='max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transform-origin:center center';
+      cur.replaceWith(v);
+    }
+  } else {
+    if(cur.tagName==='VIDEO'){
+      const img=document.createElement('img');
+      img.id='lbMedia'; img.alt='';
+      img.style.cssText='max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transform-origin:center center';
+      cur.replaceWith(img);
+    }
+  }
+  $('lbMedia').src=item.url;
+  lbUrl.textContent=item.url;
+  lb.classList.add('show');
+}
+function lbNavigate(dir){
+  lbIdx=((lbIdx+dir)+list.length)%list.length;
+  openLightbox(list[lbIdx], lbIdx);
+}
+
+/* ─────────────────────── 播放控制 ─────────────────────── */
+function loop(){
+  if(!playing||mode!=='single') return;
+  idx=(idx+1)%list.length;
+  renderSingle(idx);
+  timer=setTimeout(loop, speed);
+}
+function toggleStop(){
+  playing=!playing;
+  $('bPlay').textContent=playing?'⏸':'▶';
+  ov.classList.toggle('show', !playing);
+  if(playing&&mode==='single') loop(); else clearTimeout(timer);
+}
+
+/* ─────────────────────── 模式切換 ─────────────────────── */
+function toggleMode(){
+  mode=mode==='single'?'grid':'single';
+  if(mode==='single'){
+    grid.classList.remove('show'); single.classList.remove('hide');
+    renderSingle(idx); if(playing) loop(); gridAuto=false;
+  } else {
+    single.classList.add('hide'); grid.classList.add('show');
+    gal.innerHTML=''; gridRendered=0;
+    renderGridBatch(0, gridBatch);
+    clearTimeout(timer);
+  }
+}
+
+/* ─────────────────────── 欄數 ─────────────────────── */
+function setCols(d){
+  cols=Math.max(1, Math.min(6, cols+d));
+  document.documentElement.style.setProperty('--cols', cols);
+  if(mode==='grid') stat.textContent=`🧩 ${list.length} 項 | 欄:${cols} | 自動捲:${gridAuto?'開':'關'}`;
+}
+
+/* ─────────────────────── 無限捲動 ─────────────────────── */
+function onGridScroll(){
+  if(mode!=='grid'||gridRendered>=list.length||!gridAuto) return;
+  if(grid.scrollTop+grid.clientHeight>=grid.scrollHeight-50)
+    renderGridBatch(gridRendered, gridBatch);
+}
+grid.addEventListener('scroll', onGridScroll, {passive:true});
+
+/* ─────────────────────── UI 自動隱藏 ─────────────────────── */
+function resetUITimer(){
+  if(uiLocked) return;
+  ui.classList.remove('hide'); document.body.style.cursor='auto';
+  clearTimeout(uiTimer); clearTimeout(cursorTimer);
+  uiTimer=setTimeout(()=>{ if(playing) ui.classList.add('hide'); }, 3500);
+  cursorTimer=setTimeout(()=>{ document.body.style.cursor='none'; }, 3500);
+}
+document.addEventListener('mousemove', resetUITimer);
+document.addEventListener('click', resetUITimer);
+
+function toggleUI(){
+  uiLocked=!uiLocked;
+  if(uiLocked){ ui.classList.add('hide'); clearTimeout(uiTimer); clearTimeout(cursorTimer); document.body.style.cursor='none'; }
+  else resetUITimer();
+}
+
+/* ─────────────────────── 全螢幕 ─────────────────────── */
+function toggleFS(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
+}
+
+/* ─────────────────────── 鍵盤 ─────────────────────── */
+document.addEventListener('keydown', e=>{
+  // 燈箱模式
+  if(lb.classList.contains('show')){
+    if(e.key==='Escape'){ lb.classList.remove('show'); $('lbMedia').src=''; return; }
+    if(e.key==='ArrowLeft'){ lbNavigate(-1); return; }
+    if(e.key==='ArrowRight'){ lbNavigate(1); return; }
+  }
+  // 單圖 / 網格專屬
+  if(mode==='single'){
+    if(e.key==='ArrowLeft') renderSingle(idx-1);
+    else if(e.key==='ArrowRight') renderSingle(idx+1);
+    else if(e.key==='ArrowUp'){ scale=Math.min(3,scale+0.2); const m=$('media'); if(m) m.style.transform=`scale(${scale})`; }
+    else if(e.key==='ArrowDown'){ scale=Math.max(0.5,scale-0.2); const m=$('media'); if(m) m.style.transform=`scale(${scale})`; }
+  } else {
+    if(e.key==='ArrowLeft') setCols(-1);
+    else if(e.key==='ArrowRight') setCols(1);
+  }
+  // 全域
+  if(e.key===' '){ e.preventDefault(); toggleStop(); }
+  else if(e.key.toLowerCase()==='g') toggleMode();
+  else if(e.key.toLowerCase()==='f') toggleFS();
+  else if(e.key.toLowerCase()==='h') toggleUI();
+  else if(e.key.toLowerCase()==='l'){
+    gridAuto=!gridAuto;
+    stat.textContent=`🧩 ${list.length} 項 | 欄:${cols} | 自動捲:${gridAuto?'開':'關'}`;
+    if(gridAuto&&mode==='grid') onGridScroll();
+  }
+  else if(e.key==='['){ speed=Math.min(8000,speed+300); }
+  else if(e.key===']'){ speed=Math.max(500,speed-300); }
+  else if(e.key==='?'||e.key==='Escape') $('help').classList.toggle('show');
+});
+
+/* ─────────────────────── 按鈕事件 ─────────────────────── */
+$('bPrev').onclick=()=>{ if(mode==='single') renderSingle(idx-1); resetUITimer(); };
+$('bNext').onclick=()=>{ if(mode==='single') renderSingle(idx+1); resetUITimer(); };
+$('bPlay').onclick=()=>{ toggleStop(); resetUITimer(); };
+$('bZoom').onclick=()=>{ if(mode==='single'){ scale=Math.min(3,scale+0.2); const m=$('media'); if(m) m.style.transform=`scale(${scale})`; resetUITimer(); } };
+$('bZoomOut').onclick=()=>{ if(mode==='single'){ scale=Math.max(0.5,scale-0.2); const m=$('media'); if(m) m.style.transform=`scale(${scale})`; resetUITimer(); } };
+$('bMode').onclick=()=>{ toggleMode(); resetUITimer(); };
+$('bFull').onclick=()=>{ toggleFS(); resetUITimer(); };
+$('bCMin').onclick=()=>{ setCols(-1); resetUITimer(); };
+$('bCPlus').onclick=()=>{ setCols(1); resetUITimer(); };
+$('lbClose').onclick=()=>{ lb.classList.remove('show'); $('lbMedia').src=''; };
+lb.onclick=e=>{ if(e.target===lb){ lb.classList.remove('show'); $('lbMedia').src=''; } };
+lbPrev.onclick=()=>lbNavigate(-1);
+lbNext.onclick=()=>lbNavigate(1);
+
+/* ─────────────────────── 啟動 ─────────────────────── */
+waitForLib(()=>{
+  const p=new URLSearchParams(location.search);
+  if(p.get('cols')) cols=Math.max(1,Math.min(6,parseInt(p.get('cols'))));
+  if(p.get('gridAuto')==='1') gridAuto=true;
+  document.documentElement.style.setProperty('--cols', cols);
+  list=buildFullMediaList();
+  if(list.length){
+    renderSingle(0);
+    if(playing) loop();
+    stat.textContent=`✓ ${list.length} 項就緒`;
+  } else {
+    stat.textContent='⚠️ 未找到媒體（請確認 1nlines.js 已載入）';
+  }
+  resetUITimer();
+});
+
+})();
+</script>
+</body></html>
