@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>11ce · 雙模式播放器 v3</title>
+<title>11ce · 雙模式播放器 v4</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;font-family:system-ui,sans-serif}
@@ -8,7 +8,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;f
 /* ── 單圖模式 ── */
 #single{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
 #single.hide{display:none}
-#media{max-width:100%;max-height:100%;object-fit:contain;transition:transform .15s ease;transform-origin:center center}
+/* width/height 100% + object-fit:cover + position bottom → fills screen, never cuts the bottom */
+#media{width:100%;height:100%;object-fit:cover;object-position:center bottom;display:block;transition:transform .15s ease;transform-origin:center center}
 
 /* ── 網格模式 ── */
 #grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;display:none;z-index:1;padding:6px 6px 56px}
@@ -145,10 +146,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;f
 <div id="help">
   <div class="k">← / →</div> 單圖：上/下頁 ｜ 網格：欄數 ±1<br>
   <div class="k">↑ / ↓</div> 單圖：縮放 ｜ 網格：列高 ±30px<br>
-  <div class="k">Space</div> 單圖：暫停/繼續<br>
+  <div class="k">Space</div> 單圖：暫停/繼續 ｜ 網格：捲動 開/關<br>
+  <div class="k">L</div> 同 Space（網格捲動切換）<br>
+  <div class="k">[ / ]</div> 單圖：速度慢/快 ｜ 網格：捲速 -/+<br>
   <div class="k">G</div> 切換 單圖 ↔ 網格<br>
-  <div class="k">L</div> 網格自動捲動 開/關<br>
-  <div class="k">[ / ]</div> 巡航速度 慢/快<br>
   <div class="k">F</div> 全螢幕切換<br>
   <div class="k">H</div> UI 顯示/隱藏<br>
   <div class="k">? / Esc</div> 說明 / 關閉<br>
@@ -201,11 +202,17 @@ const lbPrev=$('lbPrev'),lbNext=$('lbNext');
 /* state */
 let list=[],idx=0,scale=1;
 let playing=true,speed=2500,singleTimer=null;
-let mode='single',cols=3,rowH=200;
+let mode='single',cols=3;
+/* Smart default: aim for 4 rows filling the viewport.
+   1024×768 → floor(768/4)=192  1920×1080 → 270  etc.
+   User can still adjust with ↑/↓.  Min 60, max 700. */
+let rowH=Math.max(60,Math.floor(window.innerHeight/4));
 let gridRendered=0;
 const BATCH=40;
 let gridAuto=false,scrollTick=null;
-const SCROLL_PX=1,SCROLL_MS=20;
+/* scrollSpeed: px per tick. 1=slow … 5=fast. Default 2. */
+let scrollSpeed=2;
+const SCROLL_MS=20;
 let uiTimer=null,cursorTimer=null,uiLocked=false;
 let lbIdx=0;
 
@@ -266,7 +273,8 @@ function renderSingle(i){
   const item=list[idx];
   const nel=makeEl(item);
   nel.id='media';
-  nel.style.cssText=`max-width:100%;max-height:100%;object-fit:contain;
+  /* fill screen: width/height 100%, object-fit:cover; scale on top */
+  nel.style.cssText=`width:100%;height:100%;display:block;object-fit:cover;object-position:center bottom;
     transform:scale(${scale});transform-origin:center center;transition:transform .15s ease`;
   const cur=$('media');
   if(cur) cur.replaceWith(nel); else single.appendChild(nel);
@@ -288,7 +296,8 @@ function togglePlay(){
 
 /* ══ GRID — render batch ══ */
 function statGrid(){
-  stat.textContent=`⊞ ${list.length}項 | 欄:${cols} | 高:${rowH}px | ${gridAuto?'▶自動捲':'⏹停'}`;
+  const scrollLabel=gridAuto?`▶ ${scrollSpeed}px/tick`:'⏹停';
+  stat.textContent=`⊞ ${list.length}項 | 欄:${cols} | 高:${rowH}px | ${scrollLabel}`;
 }
 function renderBatch(start,count){
   const end=Math.min(start+count,list.length);
@@ -312,9 +321,9 @@ function renderBatch(start,count){
 }
 
 /* ══ GRID — auto-scroll ══
-   Pure pixel ticker. Completely independent of lazy-load logic.
-   Scrolls 1px every 20ms (~50fps).
-   At bottom: load next batch OR jump to top.
+   scrollSpeed px every SCROLL_MS ms.
+   [ / ] slow/fast — same keys as single-mode, context-aware.
+   Space in grid mode = toggle gridAuto (same as L).
 */
 function startScroll(){
   if(scrollTick) return;
@@ -323,12 +332,12 @@ function startScroll(){
     const bot=grid.scrollTop+grid.clientHeight>=grid.scrollHeight-2;
     if(bot){
       if(gridRendered<list.length){
-        renderBatch(gridRendered,BATCH); /* load more, ticker keeps running */
+        renderBatch(gridRendered,BATCH);
       } else {
-        grid.scrollTop=0;               /* loop back to top */
+        grid.scrollTop=0;
       }
     } else {
-      grid.scrollTop+=SCROLL_PX;
+      grid.scrollTop+=scrollSpeed;
     }
   },SCROLL_MS);
 }
@@ -443,7 +452,16 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowUp'){e.preventDefault();setRowH(+30);}
     if(e.key==='ArrowDown'){e.preventDefault();setRowH(-30);}
   }
-  if(e.key===' '){e.preventDefault();togglePlay();}
+  /* Space: single=pause/play, grid=auto-scroll toggle */
+  if(e.key===' '){
+    e.preventDefault();
+    if(mode==='single') togglePlay();
+    else {
+      gridAuto=!gridAuto;
+      gridAuto?startScroll():stopScroll();
+      statGrid();
+    }
+  }
   if(e.key.toLowerCase()==='g') toggleMode();
   if(e.key.toLowerCase()==='f') toggleFS();
   if(e.key.toLowerCase()==='h') toggleUI();
@@ -452,8 +470,15 @@ document.addEventListener('keydown',e=>{
     if(mode==='grid'){gridAuto?startScroll():stopScroll();}
     if(mode==='grid') statGrid();
   }
-  if(e.key==='[') speed=Math.min(9000,speed+300);
-  if(e.key===']') speed=Math.max(400,speed-300);
+  /* [ / ] : single → adjust slideshow interval; grid → adjust scroll speed */
+  if(e.key==='['){
+    if(mode==='single') speed=Math.min(9000,speed+300);
+    else { scrollSpeed=Math.max(1,scrollSpeed-1); statGrid(); }
+  }
+  if(e.key===']'){
+    if(mode==='single') speed=Math.max(400,speed-300);
+    else { scrollSpeed=Math.min(20,scrollSpeed+1); statGrid(); }
+  }
   if(e.key==='?') $('help').classList.toggle('show');
   if(e.key==='Escape') $('help').classList.remove('show');
 });
