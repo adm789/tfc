@@ -1,5 +1,8 @@
-<!DOCTYPE X:/x/3/11ce_fixed.htm?30,https://lkk-2eo.pages.dev/go/img/q2/>
-<html lang="zh"><head><meta charset="utf-8">
+<!DOCTYPE html林超提出的12層AI產業鏈框架：
+第1層能源、第2層芯片、第3層基礎設施、第4層大模型、第5-6層上下文與長期記憶、第7層工具集成、第8層編排、第9層Agent、第10層AI原生部門、第11層AI原生公司、第12層AI原生經濟生態。
+美國優勢集中在第2層（芯片）到第9層（Agent），優勢連貫且深厚。但中國在第1層（能源）、第3層（基礎設施），以及第10至第12層（AI原生組織與經濟生態）具備縱深。
+當AI產業重心從“賣算力”（第2層）向“賣場景與整體能力”（第10-12層）遷徙，單點壟斷的殺傷力就被多層耦合稀釋。
+><html lang="zh"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 雙模式播放器 v5</title>
 <style>
@@ -86,7 +89,7 @@ body.show-cursor{cursor:auto}
 #pager.show{opacity:1}
 
 /* ── lightbox ── */
-#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;cursor:default}
+#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;cursor:default;touch-action:none}
 #lightbox.show{display:block}
 #lbMedia{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 #lbUrl{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);
@@ -117,7 +120,7 @@ body.show-cursor{cursor:auto}
 <div id="help">
   <div><span class="k">← / →</span> 單圖：上/下頁 ｜ 網格：欄數 ±1</div>
   <div><span class="k">↑ / ↓</span> 單圖：縮放 ｜ 網格：列高 ±30px</div>
-  <div><span class="k">, / .</span> 單圖：焦點上/下移 5%（目前 <span id="objPosHint">5</span>%）</div>
+  <div><span class="k">, / .</span> 單圖：焦點上/下移 5%（方/直圖有效，目前 <span id="objPosHint">5</span>%；橫圖自動略過）</div>
   <div><span class="k">Space</span> 單圖：暫停/繼續 ｜ 網格：捲動 開/關</div>
   <div><span class="k">S</span> 播放 / 暫停（同 Space）</div>
   <div><span class="k">L</span> 網格捲動 開/關（同 Space）</div>
@@ -130,16 +133,18 @@ body.show-cursor{cursor:auto}
   <div><span class="k">F</span> 全螢幕切換</div>
   <div><span class="k">H</span> UI 顯示/隱藏</div>
   <div><span class="k">? / Esc</span> 說明 / 關閉</div>
-  <small style="opacity:.65">🖱 懸停縮圖→URL ｜ 點擊→燈箱全螢幕</small>
+  <small style="opacity:.65">🖱 懸停縮圖→URL ｜ 點擊→燈箱全螢幕</small><br>
+  <small style="opacity:.65">👆 單圖：左右滑換圖，上下滑切換UI</small><br>
+  <small style="opacity:.65">👆 燈箱：左右滑換圖，下滑或點一下關閉，雙指縮放</small>
 </div>
 
 <div class="ui" id="ui"><div class="ctrl">
   <button id="bPrev"    title="上一張">◀</button>
   <button id="bPlay"    title="暫停/播放">⏸</button>
   <button id="bNext"    title="下一張">▶</button>
-  <button id="bZoom"    title="放大">+</button>
+  <button id="bZoom"    title="單圖放大 / 網格高+">+</button>
   <button id="bMode"    title="切換模式">⊞</button>
-  <button id="bZoomOut" title="縮小">−</button>
+  <button id="bZoomOut" title="單圖縮小 / 網格高−">−</button>
   <button id="bCMin"    title="欄−">C−</button>
   <button id="bFull"    title="全螢幕">⛶</button>
   <button id="bCPlus"   title="欄+">C+</button>
@@ -147,7 +152,7 @@ body.show-cursor{cursor:auto}
 
 <div id="ov"><div>⏹ 已暫停</div><small>按 Space 或 S 恢復</small></div>
 <div id="hoverUrl"></div>
-<div id="pager">⏳ 載入中…</div>
+<div id="pager"></div>
 
 <div id="lightbox">
   <img id="lbMedia" alt="">
@@ -192,7 +197,7 @@ let gridAuto=false,scrollTick=null;
 let scrollSpeed=2;                      // px / tick（網格捲速）
 const SCROLL_MS=20;
 let uiTimer=null,cursorTimer=null,uiLocked=false;
-let lbIdx=0;
+let lbIdx=0, lbScale=1;
 
 /* ✅ missome: 字幕文字池 */
 const textPool=[
@@ -203,11 +208,10 @@ const textPool=[
   "白蕾絲輕覆身體，感受細膩的溫熱。"
 ];
 
-/* ══════════════════════════════════════
+/* ═══
    MEDIA LIST：雙軌路由
    ① 若 1nlines.js 成功載入 → buildFromLib()
-   ② 否則 → buildFromUrl()（URL 參數 fallback）
-══════════════════════════════════════ */
+   ② 否則 → buildFromUrl()（URL 參數 fallback）═══ */
 
 /* ── ① 1nlines.js 路徑 ── */
 function buildFromLib(){
@@ -320,20 +324,18 @@ function makeEl(item){
 
 /* ══ SINGLE MODE ══ */
 function applyObjPos(el,item){
+  /* 橫圖（w>h）：cover 無垂直裁切，固定 center center
+     直圖 / 方圖：有垂直裁切，套用 objPos%              */
+  function apply(w,h){
+    el.style.objectPosition=(w>h)?'center center':`center ${objPos}%`;
+  }
   if(item.type==='video'){
-    /* 影片：loadedmetadata 後判斷 */
-    el.addEventListener('loadedmetadata',()=>{
-      const pos=(el.videoHeight>el.videoWidth)?`center ${objPos}%`:'center center';
-      el.style.objectPosition=pos;
-    },{once:true});
-    el.style.objectPosition='center center'; // 預設
+    el.addEventListener('loadedmetadata',()=>apply(el.videoWidth,el.videoHeight),{once:true});
+    el.style.objectPosition='center center';
   } else {
-    if(el.naturalWidth&&el.naturalHeight){
-      el.style.objectPosition=(el.naturalHeight>el.naturalWidth)?`center ${objPos}%`:'center center';
-    } else {
-      el.addEventListener('load',()=>{
-        el.style.objectPosition=(el.naturalHeight>el.naturalWidth)?`center ${objPos}%`:'center center';
-      },{once:true});
+    if(el.naturalWidth&&el.naturalHeight) apply(el.naturalWidth,el.naturalHeight);
+    else {
+      el.addEventListener('load',()=>apply(el.naturalWidth,el.naturalHeight),{once:true});
       el.style.objectPosition='center center';
     }
   }
@@ -390,6 +392,7 @@ function renderBatch(start,count){
   }
   gal.appendChild(frag);
   gridRendered=end;
+  pager.textContent=`${gridRendered} / ${list.length}`;
   pager.classList.toggle('show',gridRendered<list.length);
   statGrid();
 }
@@ -416,7 +419,7 @@ grid.addEventListener('scroll',()=>{
     renderBatch(gridRendered,BATCH);
 },{passive:true});
 
-/* ══ MODE TOGGLE ══ */
+/* ══ MODE TOGGLE ══切換到網格模式後開始捲動. */
 function showGrid(){
   mode='grid';
   single.classList.add('hide');stopSingle();
@@ -425,6 +428,7 @@ function showGrid(){
   gal.innerHTML='';gridRendered=0;
   pager.classList.remove('show');
   modeBadge.textContent='📐 網格模式';
+  $('bPlay').textContent=gridAuto?'⏸':'▶';
   renderBatch(0,BATCH);
   if(gridAuto) startScroll();
 }
@@ -434,6 +438,7 @@ function showSingle(){
   single.classList.remove('hide');
   txt.style.opacity=showText?'1':'0';
   modeBadge.textContent='🖼 單圖模式';
+  $('bPlay').textContent=playing?'⏸':'▶';
   renderSingle(idx);
   if(playing) singleLoop();
 }
@@ -443,18 +448,19 @@ function toggleMode(){mode==='single'?showGrid():showSingle();}
 function setCols(d){cols=Math.max(1,Math.min(8,cols+d));css('--cols',cols);if(mode==='grid')statGrid();}
 function setRowH(d){rowH=Math.max(60,Math.min(768,rowH+d));css('--row-h',rowH+'px');if(mode==='grid')statGrid();}
 function setObjPos(d){
-  objPos=Math.max(0,Math.min(100,objPos+d));
-  const hint=$('objPosHint');if(hint) hint.textContent=objPos;
   const m=$('media');
   if(m){
-    const isPortrait=(m.tagName==='VIDEO')
-      ?(m.videoHeight>m.videoWidth)
-      :(m.naturalHeight>m.naturalWidth);
-    const val=isPortrait?`center ${objPos}%`:'center center';
-    m.style.objectPosition=val;
+    const isLandscape=(m.tagName==='VIDEO')
+      ?(m.videoWidth>m.videoHeight)
+      :(m.naturalWidth>m.naturalHeight);
+    if(isLandscape) return;   // 橫圖：靜默無效，不更新 stat
+  }
+  objPos=Math.max(0,Math.min(100,objPos+d));
+  const hint=$('objPosHint');if(hint) hint.textContent=objPos;
+  if(m){
+    m.style.objectPosition=`center ${objPos}%`;
     const spx=+(3000/speed).toFixed(1);
-    const note=isPortrait?`📌${objPos}%`:'📌(橫/方圖無效)';
-    stat.textContent=`▶ ${list[idx]?.name}  (${idx+1}/${list.length})  ⏱${spx}x  ${note}`;
+    stat.textContent=`▶ ${list[idx]?.name}  (${idx+1}/${list.length})  ⏱${spx}x  📌${objPos}%`;
   }
 }
 
@@ -559,17 +565,20 @@ document.addEventListener('keydown',e=>{
   if(k===' '){
     e.preventDefault();
     if(mode==='single') togglePlay();
-    else{gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();}
+    else{gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();$('bPlay').textContent=gridAuto?'⏸':'▶';}
   }
   if(k.toLowerCase()==='s'){
-    /* ✅ missome: S 鍵 = 單圖播放/暫停 */
     if(mode==='single') togglePlay();
+    else{gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();$('bPlay').textContent=gridAuto?'⏸':'▶';}
   }
-  if(k.toLowerCase()==='g') toggleMode();
+  if(k.toLowerCase()==='g'){
+    if(mode==='single'){ gridAuto=true; showGrid(); }
+    else showSingle();
+  }
   if(k.toLowerCase()==='f') toggleFS();
   if(k.toLowerCase()==='h') toggleUI();
   if(k.toLowerCase()==='l'){
-    if(mode==='grid'){gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();}
+    if(mode==='grid'){gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();$('bPlay').textContent=gridAuto?'⏸':'▶';}
   }
   if(k.toLowerCase()==='m') toggleMute();             // ✅ missome
   if(k.toLowerCase()==='r'){                           // ✅ missome: 重置縮放
@@ -599,13 +608,34 @@ document.addEventListener('keydown',e=>{
 /* ══ BUTTONS ══ */
 $('bPrev').onclick=()=>{if(mode==='single')renderSingle(idx-scrollDir);resetUITimer();};
 $('bNext').onclick=()=>{if(mode==='single')renderSingle(idx+scrollDir);resetUITimer();};
-$('bPlay').onclick=()=>{togglePlay();resetUITimer();};
-$('bZoom').onclick=()=>{scale=Math.min(3,+(scale+0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;resetUITimer();};
-$('bZoomOut').onclick=()=>{scale=Math.max(0.3,+(scale-0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;resetUITimer();};
-$('bMode').onclick=()=>{toggleMode();resetUITimer();};
+$('bPlay').onclick=()=>{
+  if(mode==='grid'){gridAuto=!gridAuto;gridAuto?startScroll():stopScroll();statGrid();$('bPlay').textContent=gridAuto?'⏸':'▶';}
+  else togglePlay();
+  resetUITimer();
+};
+$('bZoom').onclick=()=>{
+  if(mode==='grid'){setRowH(+30);}
+  else{scale=Math.min(3,+(scale+0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;}
+  resetUITimer();
+};
+$('bZoomOut').onclick=()=>{
+  if(mode==='grid'){setRowH(-30);}
+  else{scale=Math.max(0.3,+(scale-0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;}
+  resetUITimer();
+};
 $('bFull').onclick=()=>{toggleFS();resetUITimer();};
 $('bCMin').onclick=()=>{setCols(-1);resetUITimer();};
 $('bCPlus').onclick=()=>{setCols(+1);resetUITimer();};
+/* ⊞ bMode: 切換模式 + 進入網格時自動開啟捲動（同 G 鍵） */
+$('bMode').onclick=()=>{
+  if(mode==='single'){
+    gridAuto=true;          // 切到網格 → 自動開捲
+    showGrid();
+  } else {
+    showSingle();
+  }
+  resetUITimer();
+};
 $('lbClose').onclick=()=>closeLightbox();
 lb.addEventListener('click',e=>{if(e.target===lb)closeLightbox();});
 lbPrev.onclick=()=>lbNav(-1);
@@ -619,27 +649,129 @@ lb.addEventListener('mousemove',e=>{
     :`🖱 ${e.clientX},${e.clientY}`;
 },{passive:true});
 
+/* ══
+   TOUCH SUPPORT（iPad / 手機）══ */
+
+/* ── 燈箱：滑動換圖 + 雙指縮放 ── */
+(function(){
+  let t0x=0,t0y=0;
+  const lbMinScale=1,lbMaxScale=5;
+  let pinch0=0,lastScale=1;
+
+  function dist(touches){
+    return Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    );
+  }
+  function clamp(v,mn,mx){return Math.max(mn,Math.min(mx,v));}
+
+  lb.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){
+      t0x=e.touches[0].clientX;
+      t0y=e.touches[0].clientY;
+    } else if(e.touches.length===2){
+      pinch0=dist(e.touches);
+      lastScale=lbScale;
+    }
+  },{passive:true});
+
+  lb.addEventListener('touchmove',e=>{
+    if(e.touches.length===2){
+      e.preventDefault();                            // 阻止頁面縮放
+      const d=dist(e.touches);
+      lbScale=clamp(lastScale*(d/pinch0),lbMinScale,lbMaxScale);
+      const m=$('lbMedia');
+      if(m) m.style.transform=`scale(${lbScale})`;
+    }
+  },{passive:false});
+
+  lb.addEventListener('touchend',e=>{
+    if(e.changedTouches.length===1 && e.touches.length===0){
+      const dx=e.changedTouches[0].clientX-t0x;
+      const dy=e.changedTouches[0].clientY-t0y;
+      const adx=Math.abs(dx), ady=Math.abs(dy);
+
+      if(adx<10&&ady<10){
+        /* 點一下：如果已縮放就重置，否則關閉燈箱 */
+        if(lbScale>1.05){ lbScale=1; const m=$('lbMedia'); if(m)m.style.transform=''; }
+        else closeLightbox();
+        return;
+      }
+      if(adx>ady && adx>40){
+        /* 水平滑：換圖（縮放狀態下禁用，讓使用者先平移） */
+        if(lbScale<1.05) lbNav(dx<0?+1:-1);
+        return;
+      }
+      if(ady>adx && dy>80 && lbScale<1.05){
+        /* 向下滑：關閉燈箱 */
+        closeLightbox();
+      }
+    }
+    /* 雙指放開後鎖定目前縮放比例 */
+    if(e.touches.length===0) lastScale=lbScale;
+  },{passive:true});
+})();
+
+/* ── 單圖模式：左右滑換圖，上下滑顯示/隱藏 UI ── */
+(function(){
+  let sx=0,sy=0;
+  single.addEventListener('touchstart',e=>{
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY;
+  },{passive:true});
+  single.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    const adx=Math.abs(dx),ady=Math.abs(dy);
+    if(adx<10&&ady<10){ resetUITimer(); return; }   // 點一下喚醒 UI
+    if(adx>ady && adx>40){
+      renderSingle(dx<0?idx+scrollDir:idx-scrollDir);
+    } else if(ady>adx && ady>40){
+      toggleUI();
+    }
+  },{passive:true});
+})();
+
+/* ── 網格模式：點縮圖已由 click 處理（touchend→click 瀏覽器自動觸發）── */
+/* ── 燈箱開啟 hook（重置縮放） ── */
+const _origOpenLightbox=openLightbox;
+openLightbox=function(i){
+  _origOpenLightbox(i);
+  lbScale=1;
+  const m=$('lbMedia'); if(m) m.style.transform='';
+};
+// 讓 lbNav 也走新版
+function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);}
+
 /* ══ INIT ══ */
 waitForLib(builtList=>{
   const p=new URLSearchParams(location.search);
   if(p.get('cols')) cols=Math.max(1,Math.min(8,+p.get('cols')));
   if(p.get('rowH'))  rowH=Math.max(60,Math.min(768,+p.get('rowH')));
-  if(p.get('auto')==='1') gridAuto=true;
   css('--cols',cols);css('--row-h',rowH+'px');
   list=builtList;
   if(!list.length){stat.textContent='⚠️ 無媒體（確認 1nlines.js 或 URL 參數）';return;}
-  renderSingle(0);
-  if(playing) singleLoop();
+  if(p.get('auto')==='1'){
+    /* ?auto=1 → 直接進入網格 + 開始捲動 */
+    gridAuto=true;
+    showGrid();                          // renders batch + startScroll()
+  } else {
+    renderSingle(0);
+    if(playing) singleLoop();
+  }
   resetUITimer();
 });
 
-/* F鍵全螢幕後，重算列高（目標：4列填滿，最大 768px） */
+/* F鍵全螢幕後，重算列高（目標：4列填滿，最大 768px） 
 document.addEventListener('fullscreenchange',()=>{
   rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
   css('--row-h',rowH+'px');
   if(mode==='grid') statGrid();
+});*/
+/* 移除原本會自動重算 rowH 的監聽器，確保手動調整後的高度在切換全螢幕時保持不變 */
+document.addEventListener('fullscreenchange',()=>{
+  if(mode==='grid') statGrid();
 });
-
 })();
 </script>
 </body></html>
