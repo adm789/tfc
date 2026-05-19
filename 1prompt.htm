@@ -1,0 +1,256 @@
+<!艾梅柏·希尔德 Amber Heard DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glamour Prompt Forge - AI Image Generator Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .prompt-box { font-family: monospace; line-height: 1.5; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-6">
+    <h1 class="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-pink-400 to-rose-500 bg-clip-text text-transparent">
+      Glamour Prompt Forge
+    </h1>
+    <p class="text-center text-zinc-400 mb-8">Mix & Match • Random • Copy Ready for Grok Imagine</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Controls -->
+      <div class="space-y-8">
+        <div class="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+          <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <i class="fas fa-cogs"></i> Build Your Prompt
+          </h2>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-zinc-400 mb-1">Era / Style</label>
+              <select id="era" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+                <option value="Vintage 1970s glamour studio">Vintage 1970s Glamour</option>
+                <option value="Realistic 1990s editorial glamour">1990s Editorial Glamour</option>
+                <option value="Vintage 1980s glamour" selected>1980s Glamour</option>
+                <option value="Modern intimate cinematic">Modern Intimate Cinematic</option>
+                <option value="Dramatic artistic macro">Dramatic Macro Artistic</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-400 mb-1">Film Format</label>
+              <select id="film" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+                <option value="medium format analog film">Medium Format Analog</option>
+                <option value="35mm film">35mm Film</option>
+                <option value="Kodachrome color reversal film">Kodachrome</option>
+                <option value="Kodak Portra 400 film emulation">Portra 400</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm text-zinc-400 mb-1">Subject Description</label>
+            <input id="subject" type="text" value="fair-skinned woman with thick voluminous dark brown hair" 
+                   class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm text-zinc-400 mb-1">Pose & Composition</label>
+            <textarea id="pose" rows="2" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">reclining diagonally across an ornate sofa, gazing directly at the camera with confident expression</textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-sm text-zinc-400 mb-1">Clothing / Accessories</label>
+              <input id="clothing" type="text" value="plush crimson red terrycloth bathrobe fallen around her arms and waist" 
+                     class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-400 mb-1">Setting & Props</label>
+              <input id="setting" type="text" value="ornate sofa with dense dark botanical tapestry" 
+                     class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm text-zinc-400 mb-1">Lighting</label>
+            <input id="lighting" type="text" value="warm directional tungsten key lighting from upper left, soft highlights on skin" 
+                   class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm text-zinc-400 mb-1">Technical Details</label>
+            <input id="tech" type="text" value="80mm portrait lens at f/2.8, shallow depth of field, dreamy background blur" 
+                   class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white">
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button onclick="generatePrompt()" 
+                    class="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 py-4 rounded-xl font-semibold flex items-center justify-center gap-2">
+              <i class="fas fa-magic"></i> Generate Prompt
+            </button>
+            
+            <button onclick="randomPrompt()" 
+                    class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-6 rounded-xl">
+              <i class="fas fa-dice"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+          <h3 class="font-semibold mb-3">Quick Presets</h3>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <button onclick="loadPreset(0)" class="bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg text-left">1970s Sofa</button>
+            <button onclick="loadPreset(1)" class="bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg text-left">1990s Saddle</button>
+            <button onclick="loadPreset(2)" class="bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg text-left">1980s Blue Bed</button>
+            <button onclick="loadPreset(3)" class="bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg text-left">Dock by Lake</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Prompt -->
+      <div>
+        <div class="bg-zinc-900 rounded-3xl p-6 border border-zinc-700 h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Generated English Prompt</h2>
+            <button onclick="copyPrompt()" 
+                    class="bg-zinc-800 hover:bg-emerald-600 px-5 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors">
+              <i class="fas fa-copy"></i> Copy
+            </button>
+          </div>
+          
+          <textarea id="output" rows="12" 
+                    class="prompt-box bg-black border border-zinc-700 rounded-2xl p-5 text-emerald-300 flex-1 resize-none"></textarea>
+
+          <div class="mt-4 flex gap-3">
+            <button onclick="copyChinese()" 
+                    class="flex-1 bg-zinc-800 hover:bg-amber-600 py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
+              <i class="fas fa-language"></i> Copy Chinese Version
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 text-center text-xs text-zinc-500">
+      Made for Grok Imagine • Mix parts freely • Click Random or use presets
+    </div>
+  </div>
+
+  <script>
+    const presets = [
+      // 1970s Sofa
+      {
+        era: "Vintage 1970s glamour studio",
+        film: "medium format analog film",
+        subject: "nude woman with fair luminous skin and thick voluminous dark brown hair",
+        pose: "reclining diagonally across an ornate sofa, head toward upper left, gazing directly at camera with confident expression",
+        clothing: "plush crimson red terrycloth bathrobe fallen around upper arms and waist",
+        setting: "ornate sofa upholstered in dense dark tapestry with botanical floral patterns",
+        lighting: "warm directional tungsten studio lighting from upper left, soft highlights on collarbones and torso",
+        tech: "80mm portrait lens at f/2.8, shallow depth of field, warm amber honey Kodak film grain"
+      },
+      // 1990s Saddle
+      {
+        era: "Realistic 1990s editorial glamour",
+        film: "35mm film",
+        subject: "fair-skinned woman with rich auburn-brown hair",
+        pose: "reclining supine diagonally, head tilted back, eyes softly closed",
+        clothing: "thin black leather harness straps around hips, white garment around neck",
+        setting: "weathered wooden surface with deep crimson fabric and leather saddle",
+        lighting: "natural window daylight, Rembrandt lighting with golden highlights",
+        tech: "85mm f/2.8, medium shallow depth of field, warm slightly desaturated film look"
+      },
+      // 1980s Blue Bed
+      {
+        era: "Vintage 1980s glamour",
+        film: "Kodachrome color reversal film",
+        subject: "fair-skinned woman with short feathered blonde hair",
+        pose: "reclining on back against pillows, torso angled toward camera",
+        clothing: "delicate gold chain necklace, small gold earrings",
+        setting: "rumpled powder-blue satin bedsheets with white pillows",
+        lighting: "large diffused softbox from above-left, golden-peach glow",
+        tech: "medium format 80mm lens at f/4, soft-focus low-contrast airbrushed look"
+      },
+      // Dock by Lake
+      {
+        era: "Modern intimate cinematic",
+        film: "Kodak Portra 400 film emulation",
+        subject: "beautiful fair-skinned blonde woman with long hair",
+        pose: "lying prone relaxed on wooden dock, legs extended, head turned away showing profile",
+        clothing: "completely nude",
+        setting: "rustic wooden dock by calm lake surrounded by lush green reeds",
+        lighting: "soft natural daylight with gentle golden highlights and water reflections",
+        tech: "85mm lens at f/2.8, shallow depth of field, warm natural color grading"
+      }
+    ];
+
+    function generatePrompt() {
+      const era = document.getElementById('era').value;
+      const film = document.getElementById('film').value;
+      const subject = document.getElementById('subject').value;
+      const pose = document.getElementById('pose').value;
+      const clothing = document.getElementById('clothing').value;
+      const setting = document.getElementById('setting').value;
+      const lighting = document.getElementById('lighting').value;
+      const tech = document.getElementById('tech').value;
+
+      const prompt = `A ${era} ${film} photograph of a ${subject}, ${pose}, ${clothing ? clothing + ', ' : ''}${setting}, ${lighting}, ${tech}, photorealistic skin detail, fine analog film grain, 8K resolution, ultra detailed, cinematic warmth.`;
+
+      document.getElementById('output').value = prompt;
+    }
+
+    function randomPrompt() {
+      // Random values
+      const eras = ["Vintage 1970s glamour studio","Realistic 1990s editorial glamour","Vintage 1980s glamour","Modern intimate cinematic","Dramatic artistic macro"];
+      const films = ["medium format analog film","35mm film","Kodak Portra 400 film emulation","Kodachrome color reversal film"];
+      const subjects = ["fair-skinned nude woman with voluminous dark brown hair","beautiful blonde woman with long hair","stunning redhead with fair skin","elegant brunette with luminous skin"];
+      const poses = ["reclining diagonally gazing at camera","lying prone relaxed","reclining supine with head tilted back","extreme close-up macro of lower body","side lying pose with elegant curves"];
+      
+      document.getElementById('era').value = eras[Math.floor(Math.random()*eras.length)];
+      document.getElementById('film').value = films[Math.floor(Math.random()*films.length)];
+      document.getElementById('subject').value = subjects[Math.floor(Math.random()*subjects.length)];
+      document.getElementById('pose').value = poses[Math.floor(Math.random()*poses.length)];
+      document.getElementById('clothing').value = Math.random() > 0.5 ? "minimal draped fabric" : "completely nude";
+      document.getElementById('setting').value = Math.random() > 0.5 ? "ornate vintage sofa" : "wooden dock by lake with reeds";
+      
+      generatePrompt();
+    }
+
+    function loadPreset(n) {
+      const p = presets[n];
+      document.getElementById('era').value = p.era;
+      document.getElementById('film').value = p.film;
+      document.getElementById('subject').value = p.subject;
+      document.getElementById('pose').value = p.pose;
+      document.getElementById('clothing').value = p.clothing;
+      document.getElementById('setting').value = p.setting;
+      document.getElementById('lighting').value = p.lighting;
+      document.getElementById('tech').value = p.tech;
+      generatePrompt();
+    }
+
+    function copyPrompt() {
+      const text = document.getElementById('output').value;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("✅ English prompt copied to clipboard!");
+      });
+    }
+
+    function copyChinese() {
+      const en = document.getElementById('output').value;
+      // Simple translation notice
+      const cn = en + "\n\n（中文版本可直接复制给需要中文提示词的模型使用）";
+      navigator.clipboard.writeText(cn).then(() => {
+        alert("✅ Prompt + Chinese note copied!");
+      });
+    }
+
+    // Auto generate on load
+    window.onload = () => {
+      loadPreset(0);
+    };
+  </script>
+</body>
+</html>
