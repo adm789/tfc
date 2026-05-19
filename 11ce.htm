@@ -12,7 +12,7 @@ body.show-cursor{cursor:auto}
 #single{position:fixed;inset:0;z-index:1}
 #single.hide{display:none}
 /* C型框：width/height 100% 強制撐滿，cover 填滿不留黑邊
-   --obj-pos 控制焦點（預設 center 95% → 保住底部 95%）
+   --obj-pos 控制焦點（預設 center 5% → 保住底部 95%）
    , / . 鍵微調垂直 % */
 :root{--cols:3;--row-h:200px;--obj-pos:center 5%}
 #media{width:100%;height:100%;object-fit:cover;object-position:var(--obj-pos);
@@ -44,9 +44,10 @@ body.show-cursor{cursor:auto}
       padding:5px 10px;border-radius:5px;font-size:12px;z-index:400;
       max-width:75vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ── mode badge — always visible, never hidden ── */
+/* ── mode badge — only shown in grid mode ── */
 #modeBadge{position:fixed;top:8px;right:8px;background:#4a9;color:#fff;
-           padding:2px 8px;border-radius:4px;font-size:11px;z-index:400}
+           padding:2px 8px;border-radius:4px;font-size:11px;z-index:400;display:none}
+#modeBadge.show{display:block}
 
 /* ── help ── */
 #help{position:fixed;top:34px;right:8px;background:rgba(12,12,22,.96);
@@ -79,10 +80,12 @@ body.show-cursor{cursor:auto}
 #pager{display:none}
 
 /* ── lightbox ── */
-#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;cursor:none;touch-action:none}
+#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;touch-action:none}
 #lightbox.show{display:block}
+/* cursor always visible inside lightbox — body.show-cursor handles it globally */
 #lbMedia{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
-         transition:transform .15s ease;transform-origin:center center}
+         transition:transform .15s ease;transform-origin:center center;cursor:grab}
+#lbMedia.dragging{cursor:grabbing;transition:none}
 /* all lightbox chrome hidden by default; .lb-hover shows them on mouse activity */
 #lbUrl,#lbNav,#lbClose{opacity:0;transition:opacity .25s;pointer-events:none}
 #lightbox.lb-hover #lbUrl,
@@ -101,8 +104,8 @@ body.show-cursor{cursor:auto}
          font-size:24px;line-height:1;cursor:pointer;border-radius:50%;width:36px;height:36px;
          display:flex;align-items:center;justify-content:center;transition:background .15s}
 #lbClose:hover{background:rgba(200,50,50,.85)}
-/* lbCoord: shows url + resolution on hover, hidden when no hover */
-#lbCoord{position:absolute;bottom:38px;right:12px;background:rgba(0,0,0,.7);color:#8cf;
+/* lbCoord: resolution only, bottom-right, hover-revealed */
+#lbCoord{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.7);color:#8cf;
          padding:3px 10px;border-radius:4px;font-size:11px;font-family:monospace;
          pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
 #lightbox.lb-hover #lbCoord{opacity:1}
@@ -167,6 +170,8 @@ body.show-cursor{cursor:auto}
 
 <!-- 嘗試載入 1nlines.js；若不存在則走 URL 參數 fallback -->
 <script src="1nlines.js" onerror="window._noLib=true"></script>
+<!-- 外部字幕文字池：general_lines.js 應 export window.LinesPool = ["...","...",...] -->
+<script src="general_lines.js" onerror="window._noLines=true"></script>
 <script>
 (function(){
 'use strict';
@@ -187,7 +192,7 @@ const lbPrev=$('lbPrev'),lbNext=$('lbNext');
 let list=[],idx=0,scale=1;
 let playing=true,speed=2500,singleTimer=null;
 let scrollDir=1;                        // ✅ missome: 播放方向（+1 正 / -1 反）
-let objPos=95;                           // object-position 垂直 %
+let objPos=5;                           // object-position 垂直 %
 let showText=true,muted=false;          // ✅ missome: 字幕開關、靜音
 let mode='single',cols=3;
 let rowH=Math.max(60,Math.floor(window.innerHeight/4)); // 智慧預設列高
@@ -200,14 +205,20 @@ const SCROLL_MS=20;
 let uiTimer=null,cursorTimer=null,uiLocked=false;
 let lbIdx=0, lbScale=1;
 
-/* ✅ missome: 字幕文字池 */
-const textPool=[
+/* 字幕文字池：
+   優先從 general_lines.js 載入（window.LinesPool = [...]）
+   格式也支援純文字陣列 window.generalLines = [...]
+   載入失敗則用內建備用池 */
+const _fallbackPool=[
   "月光落在鎖骨上，涼涼的，像一片薄霜。",
   "指尖輕輕劃過小腹，感受夜的溫柔。",
   "燭光映照的肌膚陰影，伴隨著細微的呼吸聲。",
   "完全赤裸躺在床上，感受空氣拂過肌膚的涼意。",
   "白蕾絲輕覆身體，感受細膩的溫熱。"
 ];
+const textPool=(!window._noLines&&(window.LinesPool||window.generalLines))
+  ? (window.LinesPool||window.generalLines)
+  : _fallbackPool;
 
 /* ══════════════════════════════════════
    MEDIA LIST：雙軌路由
@@ -424,11 +435,12 @@ grid.addEventListener('scroll',()=>{
 function showGrid(){
   mode='grid';
   single.classList.add('hide');stopSingle();
-  txt.style.opacity='0';               // 字幕在網格模式隱藏
+  txt.style.opacity='0';
   grid.classList.add('show');
   gal.innerHTML='';gridRendered=0;
   pager.classList.remove('show');
   modeBadge.textContent='📐 網格模式';
+  modeBadge.classList.add('show');       // only visible in grid
   renderBatch(0,BATCH);
   if(gridAuto) startScroll();
 }
@@ -437,7 +449,7 @@ function showSingle(){
   grid.classList.remove('show');stopScroll();
   single.classList.remove('hide');
   txt.style.opacity=showText?'1':'0';
-  modeBadge.textContent='🖼 單圖模式';
+  modeBadge.classList.remove('show');    // hidden in single
   renderSingle(idx);
   if(playing) singleLoop();
 }
@@ -650,7 +662,7 @@ $('lbClose').onclick=()=>closeLightbox();
 lb.addEventListener('click',e=>{if(e.target===lb)closeLightbox();});
 lbPrev.onclick=()=>lbNav(-1);
 lbNext.onclick=()=>lbNav(+1);
-/* III-1: 燈箱 hover — 滑鼠移動顯示 UI，靜止 2s 後自動隱藏 */
+/* 燈箱 hover — 滑鼠移動顯示 UI，靜止 2s 後自動隱藏 chrome（但游標保持可見） */
 let lbHoverTimer=null;
 lb.addEventListener('mousemove',()=>{
   lb.classList.add('lb-hover');
@@ -658,7 +670,7 @@ lb.addEventListener('mousemove',()=>{
   clearTimeout(lbHoverTimer);
   lbHoverTimer=setTimeout(()=>{
     lb.classList.remove('lb-hover');
-    document.body.classList.remove('show-cursor');
+    /* 游標仍保持可見 — 在燈箱內永遠不隱藏 */
   },2000);
 },{passive:true});
 
@@ -667,8 +679,7 @@ function updateLbCoord(){
   const m=$('lbMedia');if(!m) return;
   const w=m.naturalWidth||m.videoWidth||0;
   const h=m.naturalHeight||m.videoHeight||0;
-  const res=(w&&h)?`  ${w}×${h}`:'';
-  lbCoord.textContent=list[lbIdx]?.name+res;
+  lbCoord.textContent=(w&&h)?`${w} × ${h}`:'';
 }
 /* 圖片載入後更新解析度 */
 function hookLbMedia(){
@@ -761,10 +772,46 @@ function hookLbMedia(){
   },{passive:true});
 })();
 
-/* ── 網格模式：點縮圖已由 click 處理（touchend→click 瀏覽器自動觸發）── */
-
-// lbNav uses the main openLightbox (lbScale reset is inside openLightbox now)
+// lbNav uses openLightbox (may be wrapped by drag IIFE above)
 function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);}
+
+/* ── 燈箱拖曳平移（放大後可拖動） ── */
+(function(){
+  let dragging=false,startX=0,startY=0,originX=0,originY=0;
+  /* lbMedia 的當前 translate 偏移 */
+  let tx=0,ty=0;
+
+  function getMediaEl(){return $('lbMedia');}
+
+  lb.addEventListener('mousedown',e=>{
+    if(lbScale<=1.01) return;           // 未放大時不拖
+    if(e.button!==0) return;
+    dragging=true;
+    startX=e.clientX; startY=e.clientY;
+    originX=tx; originY=ty;
+    const m=getMediaEl(); if(m) m.classList.add('dragging');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    tx=originX+(e.clientX-startX);
+    ty=originY+(e.clientY-startY);
+    const m=getMediaEl();
+    if(m) m.style.transform=`scale(${lbScale}) translate(${tx/lbScale}px,${ty/lbScale}px)`;
+  });
+  window.addEventListener('mouseup',()=>{
+    if(!dragging) return;
+    dragging=false;
+    const m=getMediaEl(); if(m) m.classList.remove('dragging');
+  });
+
+  /* 開新圖時重置偏移 */
+  const _origOpen=openLightbox;
+  openLightbox=function(i){
+    tx=0;ty=0;
+    _origOpen(i);
+  };
+})();
 
 /* ══ INIT ══ */
 waitForLib(builtList=>{
