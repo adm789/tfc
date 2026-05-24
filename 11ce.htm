@@ -528,12 +528,19 @@ function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);
 /* ══ CURSOR / UI AUTO-HIDE ══ */
 function lbOpen(){return lb.classList.contains('show');}
 
+/* ── 修改后的代码 ── */
 function resetUITimer(){
   if(uiLocked) return;
   ui.classList.remove('hide');
+  stat.style.display = 'block'; // 🔴 唤醒时显示状态栏
   document.body.classList.add('show-cursor');
   clearTimeout(uiTimer);clearTimeout(cursorTimer);
-  uiTimer=setTimeout(()=>{if(!lbOpen()) ui.classList.add('hide');},3500);
+  uiTimer=setTimeout(()=>{
+    if(!lbOpen()) {
+      ui.classList.add('hide');
+      stat.style.display = 'none'; // 🔴 超时自动隐藏时，同步隐藏状态栏
+    }
+  },3500);
   cursorTimer=setTimeout(()=>{if(!lbOpen()) document.body.classList.remove('show-cursor');},3500);
 }
 document.addEventListener('mousemove',resetUITimer,{passive:true});
@@ -543,9 +550,12 @@ function toggleUI(){
   uiLocked=!uiLocked;
   if(uiLocked){
     ui.classList.add('hide');
+    stat.style.display = 'none'; // 🔴 按 H 键锁定隐藏时，同步隐藏状态栏
     clearTimeout(uiTimer);clearTimeout(cursorTimer);
     if(!lbOpen()) document.body.classList.remove('show-cursor');
-  } else resetUITimer();
+  } else {
+    resetUITimer();
+  }
 }
 
 /* ══ FULLSCREEN ══ */
