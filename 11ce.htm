@@ -39,15 +39,14 @@ body.show-cursor{cursor:auto}
 .ctrl button:hover{background:rgba(255,255,255,.28)}
 .ctrl button.on{background:#4a9;box-shadow:0 0 0 1px #6cf}
 
-/* ── status bar — always visible, never hidden ── */
+/* ── status bar — always visible, z-index above UI ── */
 #stat{position:fixed;top:8px;left:8px;background:rgba(8,8,18,.88);
-      padding:5px 10px;border-radius:5px;font-size:12px;z-index:400;
-      max-width:75vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      padding:5px 10px;border-radius:5px;font-size:12px;z-index:500;
+      max-width:75vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      pointer-events:none}
 
-/* ── mode badge — only shown in grid mode ── */
-#modeBadge{position:fixed;top:8px;right:8px;background:#4a9;color:#fff;
-           padding:2px 8px;border-radius:4px;font-size:11px;z-index:400;display:none}
-#modeBadge.show{display:block}
+/* ── mode badge — hidden entirely ── */
+#modeBadge{display:none}
 
 /* ── help ── */
 #help{position:fixed;top:34px;right:8px;background:rgba(12,12,22,.96);
@@ -122,24 +121,26 @@ body.show-cursor{cursor:auto}
 <div id="help">
   <div><span class="k">← / →</span> 單圖：上/下頁 ｜ 網格：欄數 ±1</div>
   <div><span class="k">↑ / ↓</span> 單圖：縮放 ｜ 網格：列高 ±30px ｜ 燈箱：縮放</div>
-  <div><span class="k">Home/End</span> 網格：列高直接到 60 / 768px</div>
-  <div><span class="k">, / .</span> 單圖：焦點上/下移 5%（目前 <span id="objPosHint">5</span>%，橫圖無效）</div>
-  <div><span class="k">Space</span> 單圖：暫停/繼續 ｜ 網格：捲動 開/關</div>
-  <div><span class="k">S</span> 播放 / 暫停（同 Space）</div>
-  <div><span class="k">L</span> 網格捲動 開/關（同 Space）</div>
+  <div><span class="k">6 / 7</span> 網格：列高直接到 60 / 768px</div>
+  <div><span class="k">Home/End</span> 單圖：第一張/最後一張 ｜ 網格：捲到頂/底</div>
+  <div><span class="k">PgUp/PgDn</span> 網格：上一頁/下一頁</div>
+  <div><span class="k">, / .</span> 單圖：焦點上/下移 5%（目前 <span id="objPosHint">95</span>%，橫圖無效）</div>
+  <div><span class="k">Space / S</span> 單圖：暫停/繼續 ｜ 網格：捲動 開/關</div>
+  <div><span class="k">L</span> 網格捲動 開/關</div>
   <div><span class="k">[ / ]</span> 單圖：速度 慢/快 ｜ 網格：捲速 -/+</div>
   <div><span class="k">\</span> 單圖：反轉播放方向</div>
-  <div><span class="k">G</span> 切換 單圖 ↔ 網格</div>
+  <div><span class="k">G</span> 切換 單圖 ↔ 網格（進網格自動捲）</div>
   <div><span class="k">T</span> 顯示 / 隱藏 字幕</div>
-  <div><span class="k">M</span> 影片靜音 切換</div>
+  <div><span class="k">M</span> 影片靜音切換</div>
   <div><span class="k">R</span> 重置縮放</div>
   <div><span class="k">F</span> 全螢幕切換</div>
-  <div><span class="k">H</span> UI 顯示/隱藏</div>
+  <div><span class="k">H</span> UI 顯示/隱藏（狀態列永遠可見）</div>
   <div><span class="k">? / Esc</span> 說明 / 關閉</div>
-  <small style="opacity:.65">🖱 懸停縮圖→URL ｜ 點擊→燈箱全螢幕</small><br>
-  <small style="opacity:.65">👆 單圖：左右滑換圖，上下滑切換UI</small><br>
-  <small style="opacity:.65">👆 燈箱：左右滑換圖，下滑或點一下關閉，雙指縮放</small>
+  <small style="opacity:.65">🖱 懸停任意圖→顯示URL ｜ 點擊網格縮圖→燈箱</small><br>
+  <small style="opacity:.65">👆 單圖：左右滑換圖 ｜ 燈箱：左右滑、下滑關閉、雙指縮放</small>
 </div>
+  <div><span class="k">, / .</span> 單圖：焦點上/下移 5%（目前 <span id="objPosHint">95</span>%，橫圖無效）</div>
+
 
 <div class="ui" id="ui"><div class="ctrl">
   <button id="bPrev"    title="上一張">◀</button>
@@ -170,8 +171,6 @@ body.show-cursor{cursor:auto}
 
 <!-- 嘗試載入 1nlines.js；若不存在則走 URL 參數 fallback -->
 <script src="1nlines.js" onerror="window._noLib=true"></script>
-<!-- 外部字幕文字池：general_lines.js 應 export window.LinesPool = ["...","...",...] -->
-<script src="general_lines.js" onerror="window._noLines=true"></script>
 <script>
 (function(){
 'use strict';
@@ -192,7 +191,7 @@ const lbPrev=$('lbPrev'),lbNext=$('lbNext');
 let list=[],idx=0,scale=1;
 let playing=true,speed=2500,singleTimer=null;
 let scrollDir=1;                        // ✅ missome: 播放方向（+1 正 / -1 反）
-let objPos=5;                           // object-position 垂直 %
+let objPos=95;                          // object-position 垂直 %（95% → 保留底部）
 let showText=true,muted=false;          // ✅ missome: 字幕開關、靜音
 let mode='single',cols=3;
 let rowH=Math.max(60,Math.floor(window.innerHeight/4)); // 智慧預設列高
@@ -206,9 +205,9 @@ let uiTimer=null,cursorTimer=null,uiLocked=false;
 let lbIdx=0, lbScale=1;
 
 /* 字幕文字池：
-   優先從 general_lines.js 載入（window.LinesPool = [...]）
-   格式也支援純文字陣列 window.generalLines = [...]
-   載入失敗則用內建備用池 */
+   fetch('general_lines.txt') → 純文字，每行一句，空行略過
+   失敗或不存在 → fallback 到內建5句
+   fetch 是非同步的，所以先用 fallback，載入後替換 */
 const _fallbackPool=[
   "月光落在鎖骨上，涼涼的，像一片薄霜。",
   "指尖輕輕劃過小腹，感受夜的溫柔。",
@@ -216,9 +215,14 @@ const _fallbackPool=[
   "完全赤裸躺在床上，感受空氣拂過肌膚的涼意。",
   "白蕾絲輕覆身體，感受細膩的溫熱。"
 ];
-const textPool=(!window._noLines&&(window.LinesPool||window.generalLines))
-  ? (window.LinesPool||window.generalLines)
-  : _fallbackPool;
+let textPool=_fallbackPool.slice(); // 先用 fallback，fetch 成功後覆蓋
+fetch('general_lines.txt')
+  .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+  .then(t=>{
+    const lines=t.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if(lines.length) textPool=lines;  // 直接替換，下一張圖就生效
+  })
+  .catch(()=>{/* 靜默失敗，保持 fallback */});
 
 /* ══════════════════════════════════════
    MEDIA LIST：雙軌路由
@@ -497,17 +501,26 @@ function openLightbox(i){
   }
   cur.src=item.url;
   lbUrl.textContent=item.url;
+  const firstOpen=!lb.classList.contains('show');
   lb.classList.add('show');
-  lb.classList.remove('lb-hover');   // start clean, hover will reveal UI
+  lb.classList.remove('lb-hover');
   document.body.classList.add('show-cursor');
   clearTimeout(cursorTimer);
-  lbScale=1; const lm=$('lbMedia'); if(lm) lm.style.transform='';
+  /* (3) 保持放大比例：只在第一次開啟時重置，換圖時維持當前 lbScale */
+  if(firstOpen){
+    lbScale=1;
+    const lm=$('lbMedia'); if(lm) lm.style.transform='';
+  } else {
+    /* 換圖時套用當前 lbScale（平移偏移由 drag IIFE 自行管理） */
+    const lm=$('lbMedia'); if(lm) lm.style.transform=`scale(${lbScale})`;
+  }
   hookLbMedia();
   updateLbCoord();
 }
 function closeLightbox(){
-  lb.classList.remove('show');
-  const m=$('lbMedia');if(m)m.src='';
+  lb.classList.remove('show','lb-hover');
+  const m=$('lbMedia');if(m){m.src='';m.style.transform='';}
+  lbScale=1;
   resetUITimer();
 }
 function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);}
@@ -577,20 +590,33 @@ document.addEventListener('keydown',e=>{
 
   /* 模式專屬方向鍵 */
   if(mode==='single'){
-    if(e.key==='ArrowLeft')  renderSingle(idx-scrollDir);   // 方向感知
+    if(e.key==='ArrowLeft')  renderSingle(idx-scrollDir);
     if(e.key==='ArrowRight') renderSingle(idx+scrollDir);
     if(e.key==='ArrowUp')  {scale=Math.min(3,+(scale+0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;}
     if(e.key==='ArrowDown'){scale=Math.max(0.3,+(scale-0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;}
     if(e.key===','||e.key==='<') setObjPos(-5);
     if(e.key==='.'||e.key==='>') setObjPos(+5);
+    /* 單圖模式：Home/End = 第一張/最後一張 */
+    if(e.key==='Home'){e.preventDefault();renderSingle(0);}
+    if(e.key==='End') {e.preventDefault();renderSingle(list.length-1);}
   } else {
     if(e.key==='ArrowLeft')  setCols(-1);
     if(e.key==='ArrowRight') setCols(+1);
     if(e.key==='ArrowUp')   {e.preventDefault();setRowH(+30);}
     if(e.key==='ArrowDown') {e.preventDefault();setRowH(-30);}
-    /* II-2: Home → 最小 60px，End → 最大 768px（即時到達，不需逐步） */
-    if(e.key==='Home'){e.preventDefault();rowH=60;rowHManual=true;css('--row-h','60px');statGrid();}
-    if(e.key==='End') {e.preventDefault();rowH=768;rowHManual=true;css('--row-h','768px');statGrid();}
+    /* 網格模式：6 → 列高60(最小)，7 → 列高768(最大) */
+    if(e.key==='6'){rowH=60;rowHManual=true;css('--row-h','60px');statGrid();}
+    if(e.key==='7'){rowH=768;rowHManual=true;css('--row-h','768px');statGrid();}
+    /* 網格模式：Home/End = 捲到最頂/最底（第一頁/最後頁） */
+    if(e.key==='Home'){e.preventDefault();grid.scrollTop=0;}
+    if(e.key==='End') {e.preventDefault();grid.scrollTop=grid.scrollHeight;}
+    /* 網格模式：PageUp/PageDown = 上一頁/下一頁（一個視口高度） */
+    if(e.key==='PageUp')  {e.preventDefault();grid.scrollTop-=grid.clientHeight;}
+    if(e.key==='PageDown'){e.preventDefault();grid.scrollTop+=grid.clientHeight;
+      /* 捲到底時若還有未渲染項目，觸發載入 */
+      if(grid.scrollTop+grid.clientHeight>=grid.scrollHeight-120&&gridRendered<list.length)
+        renderBatch(gridRendered,BATCH);
+    }
   }
 
   /* 全域 */
@@ -605,8 +631,8 @@ document.addEventListener('keydown',e=>{
     if(mode==='single') togglePlay();
   }
   if(k.toLowerCase()==='g'){
-    if(mode==='single'){ gridAuto=true; showGrid(); }
-    else showSingle();
+    if(mode==='single'){ gridAuto=true; showGrid(); }   // 進網格 → 自動捲
+    else{ showSingle(); }
   }
   if(k.toLowerCase()==='f') toggleFS();
   if(k.toLowerCase()==='h') toggleUI();
@@ -813,7 +839,16 @@ function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);
   };
 })();
 
-/* ══ INIT ══ */
+/* ══ HOVER URL — single mode ══ */
+single.addEventListener('mouseenter',()=>{
+  if(list[idx]) hoverUrl.textContent=list[idx].url;
+  hoverUrl.classList.add('show');
+});
+single.addEventListener('mousemove',()=>{
+  if(list[idx]) hoverUrl.textContent=list[idx].url;
+  hoverUrl.classList.add('show');
+});
+single.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
 waitForLib(builtList=>{
   const p=new URLSearchParams(location.search);
   if(p.get('cols')) cols=Math.max(1,Math.min(8,+p.get('cols')));
