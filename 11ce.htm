@@ -144,15 +144,15 @@ body.show-cursor{cursor:auto}
 </div>
 
 <div class="ui" id="ui"><div class="ctrl">
-  <button id="bPrev"    title="上一張">◀</button>
-  <button id="bPlay"    title="暫停/播放">⏸</button>
-  <button id="bNext"    title="下一張">▶</button>
-  <button id="bZoom"    title="放大">+</button>
+  <button id="bPrev"    title="單圖:上一張 / 網格:上一頁">◀</button>
+  <button id="bPlay"    title="單圖:暫停/播放 / 網格:捲動開/關">⏸</button>
+  <button id="bNext"    title="單圖:下一張 / 網格:下一頁">▶</button>
+  <button id="bZoom"    title="單圖:放大 / 網格:列高+">+</button>
   <button id="bMode"    title="切換模式">⊞</button>
-  <button id="bZoomOut" title="縮小">−</button>
-  <button id="bCMin"    title="欄−">C−</button>
+  <button id="bZoomOut" title="單圖:縮小 / 網格:列高−">−</button>
+  <button id="bCMin"    title="單圖:速度慢 / 網格:欄−">C−</button>
   <button id="bFull"    title="全螢幕">⛶</button>
-  <button id="bCPlus"   title="欄+">C+</button>
+  <button id="bCPlus"   title="單圖:速度快 / 網格:欄+">C+</button>
 </div></div>
 
 <div id="ov">⏹ 已暫停 &nbsp;·&nbsp; Space/S 恢復</div>
@@ -434,6 +434,7 @@ function showGrid(){
   mode='grid';
   single.classList.add('hide');stopSingle();
   ov.classList.remove('show');             // hide pause badge in grid
+  $('bPlay').textContent=gridAuto?'⏸':'▶'; // reflect grid scroll state
   txt.style.opacity='0';
   grid.classList.add('show');
   gal.innerHTML='';gridRendered=0;
@@ -449,6 +450,7 @@ function showSingle(){
   single.classList.remove('hide');
   txt.style.opacity=showText?'1':'0';
   modeBadge.classList.remove('show');    // hidden in single
+  $('bPlay').textContent=playing?'⏸':'▶'; // reflect single play state
   renderSingle(idx);
   if(playing) singleLoop();
 }
@@ -648,6 +650,7 @@ document.addEventListener('keydown',e=>{
   if(k.toLowerCase()==='m') toggleMute();             // ✅ missome
   if(k.toLowerCase()==='r'){                           // ✅ missome: 重置縮放
     scale=1;const m=$('media');if(m)m.style.transform='scale(1)';
+    renderSingle(idx);  // clears drag translation
   }
   if(k==='\\'){                                        // ✅ missome: 反轉方向
     scrollDir*=-1;
@@ -670,20 +673,51 @@ document.addEventListener('keydown',e=>{
   if(k==='Escape') $('help').classList.remove('show');
 });
 
-/* ══ BUTTONS ══ */
-$('bPrev').onclick=()=>{if(mode==='single')renderSingle(idx-scrollDir);resetUITimer();};
-$('bNext').onclick=()=>{if(mode==='single')renderSingle(idx+scrollDir);resetUITimer();};
-$('bPlay').onclick=()=>{togglePlay();resetUITimer();};
-$('bZoom').onclick=()=>{scale=Math.min(3,+(scale+0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;resetUITimer();};
-$('bZoomOut').onclick=()=>{scale=Math.max(0.3,+(scale-0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`;resetUITimer();};
-$('bMode').onclick=()=>{toggleMode();resetUITimer();};
+/* ══ BUTTONS — dual-mode ══ */
+$('bPrev').onclick=()=>{
+  if(mode==='single') renderSingle(idx-scrollDir);
+  else { grid.scrollTop-=grid.clientHeight; }
+  resetUITimer();
+};
+$('bNext').onclick=()=>{
+  if(mode==='single') renderSingle(idx+scrollDir);
+  else {
+    grid.scrollTop+=grid.clientHeight;
+    if(grid.scrollTop+grid.clientHeight>=grid.scrollHeight-120&&gridRendered<list.length)
+      renderBatch(gridRendered,BATCH);
+  }
+  resetUITimer();
+};
+$('bPlay').onclick=()=>{
+  if(mode==='single'){ togglePlay(); }
+  else { gridAuto=!gridAuto; gridAuto?startScroll():stopScroll(); statGrid(); $('bPlay').textContent=gridAuto?'⏸':'▶'; }
+  resetUITimer();
+};
+$('bZoom').onclick=()=>{
+  if(mode==='single'){ scale=Math.min(3,+(scale+0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`; }
+  else setRowH(+30);
+  resetUITimer();
+};
+$('bZoomOut').onclick=()=>{
+  if(mode==='single'){ scale=Math.max(0.3,+(scale-0.2).toFixed(1));const m=$('media');if(m)m.style.transform=`scale(${scale})`; }
+  else setRowH(-30);
+  resetUITimer();
+};
+$('bCMin').onclick=()=>{
+  if(mode==='single'){ speed=Math.min(9000,speed+300);const spx=+(3000/speed).toFixed(1);stat.textContent=`⏱ ${spx}x`; }
+  else setCols(-1);
+  resetUITimer();
+};
+$('bCPlus').onclick=()=>{
+  if(mode==='single'){ speed=Math.max(400,speed-300);const spx=+(3000/speed).toFixed(1);stat.textContent=`⏱ ${spx}x`; }
+  else setCols(+1);
+  resetUITimer();
+};
 $('bFull').onclick=()=>{toggleFS();resetUITimer();};
-$('bCMin').onclick=()=>{setCols(-1);resetUITimer();};
-$('bCPlus').onclick=()=>{setCols(+1);resetUITimer();};
 /* ⊞ bMode: 切換模式 + 進入網格時自動開啟捲動（同 G 鍵） */
 $('bMode').onclick=()=>{
   if(mode==='single'){
-    gridAuto=true;          // 切到網格 → 自動開捲
+    gridAuto=true;
     showGrid();
   } else {
     showSingle();
@@ -796,6 +830,7 @@ function hookLbMedia(){
     const dy=e.changedTouches[0].clientY-sy;
     const adx=Math.abs(dx),ady=Math.abs(dy);
     if(adx<10&&ady<10){ resetUITimer(); return; }   // 點一下喚醒 UI
+    if(scale>1.05) return;                           // 放大中：不換圖，讓 touch 拖曳
     if(adx>ady && adx>40){
       renderSingle(dx<0?idx+scrollDir:idx-scrollDir);
     } else if(ady>adx && ady>40){
@@ -845,7 +880,36 @@ function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);
   };
 })();
 
-/* ══ HOVER URL — single mode ══ */
+/* ── 單圖模式：放大後滑鼠拖曳平移 ── */
+(function(){
+  let dragging=false,startX=0,startY=0,originX=0,originY=0,tx=0,ty=0;
+  single.addEventListener('mousedown',e=>{
+    if(scale<=1.01||e.button!==0) return;
+    dragging=true;
+    startX=e.clientX;startY=e.clientY;
+    originX=tx;originY=ty;
+    single.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    tx=originX+(e.clientX-startX);
+    ty=originY+(e.clientY-startY);
+    const m=$('media');
+    if(m) m.style.transform=`scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
+  });
+  window.addEventListener('mouseup',()=>{
+    if(!dragging) return;
+    dragging=false;
+    single.style.cursor='';
+  });
+  /* 重置縮放時也清除平移 */
+  const _origRenderSingle=renderSingle;
+  renderSingle=function(i){
+    tx=0;ty=0;
+    _origRenderSingle(i);
+  };
+})();
 single.addEventListener('mouseenter',()=>{
   if(!document.body.classList.contains('show-cursor')) return;
   if(list[idx]) hoverUrl.textContent=list[idx].url;
