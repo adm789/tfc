@@ -842,73 +842,103 @@ function hookLbMedia(){
 // lbNav uses openLightbox (may be wrapped by drag IIFE above)
 function lbNav(d){lbIdx=((lbIdx+d)+list.length)%list.length;openLightbox(lbIdx);}
 
-/* ── 燈箱拖曳平移（放大後可拖動） ── */
+/* ── 燈箱拖曳平移（放大後可拖動，滑鼠 + 觸控） ── */
 (function(){
   let dragging=false,startX=0,startY=0,originX=0,originY=0;
-  /* lbMedia 的當前 translate 偏移 */
   let tx=0,ty=0;
 
   function getMediaEl(){return $('lbMedia');}
+  function applyTransform(){
+    const m=getMediaEl();
+    if(m) m.style.transform=`scale(${lbScale}) translate(${tx/lbScale}px,${ty/lbScale}px)`;
+  }
+  function startDrag(cx,cy){
+    dragging=true; startX=cx; startY=cy; originX=tx; originY=ty;
+  }
+  function moveDrag(cx,cy){
+    if(!dragging) return;
+    tx=originX+(cx-startX); ty=originY+(cy-startY);
+    applyTransform();
+  }
+  function endDrag(){ dragging=false; }
 
+  /* 滑鼠 */
   lb.addEventListener('mousedown',e=>{
-    if(lbScale<=1.01) return;           // 未放大時不拖
-    if(e.button!==0) return;
-    dragging=true;
-    startX=e.clientX; startY=e.clientY;
-    originX=tx; originY=ty;
+    if(lbScale<=1.01||e.button!==0) return;
+    startDrag(e.clientX,e.clientY);
     const m=getMediaEl(); if(m) m.classList.add('dragging');
     e.preventDefault();
   });
-  window.addEventListener('mousemove',e=>{
-    if(!dragging) return;
-    tx=originX+(e.clientX-startX);
-    ty=originY+(e.clientY-startY);
-    const m=getMediaEl();
-    if(m) m.style.transform=`scale(${lbScale}) translate(${tx/lbScale}px,${ty/lbScale}px)`;
-  });
+  window.addEventListener('mousemove',e=>{ if(dragging) moveDrag(e.clientX,e.clientY); });
   window.addEventListener('mouseup',()=>{
-    if(!dragging) return;
-    dragging=false;
+    if(!dragging) return; endDrag();
     const m=getMediaEl(); if(m) m.classList.remove('dragging');
   });
 
+  /* 觸控 — 單指平移（放大時）*/
+  lb.addEventListener('touchstart',e=>{
+    if(lbScale<=1.05||e.touches.length!==1) return;
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  },{passive:true});
+  lb.addEventListener('touchmove',e=>{
+    if(!dragging||e.touches.length!==1) return;
+    e.preventDefault();                   // 阻止底層捲動
+    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+  },{passive:false});
+  lb.addEventListener('touchend',()=>endDrag(),{passive:true});
+  lb.addEventListener('touchcancel',()=>endDrag(),{passive:true});
+
   /* 開新圖時重置偏移 */
   const _origOpen=openLightbox;
-  openLightbox=function(i){
-    tx=0;ty=0;
-    _origOpen(i);
-  };
+  openLightbox=function(i){ tx=0; ty=0; _origOpen(i); };
 })();
 
-/* ── 單圖模式：放大後滑鼠拖曳平移 ── */
+/* ── 單圖模式：放大後拖曳平移（滑鼠 + 觸控） ── */
 (function(){
   let dragging=false,startX=0,startY=0,originX=0,originY=0,tx=0,ty=0;
+
+  function applyTransform(){
+    const m=$('media');
+    if(m) m.style.transform=`scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
+  }
+  function startDrag(cx,cy){
+    dragging=true; startX=cx; startY=cy; originX=tx; originY=ty;
+  }
+  function moveDrag(cx,cy){
+    if(!dragging) return;
+    tx=originX+(cx-startX); ty=originY+(cy-startY);
+    applyTransform();
+  }
+  function endDrag(){ dragging=false; }
+
+  /* 滑鼠 */
   single.addEventListener('mousedown',e=>{
     if(scale<=1.01||e.button!==0) return;
-    dragging=true;
-    startX=e.clientX;startY=e.clientY;
-    originX=tx;originY=ty;
+    startDrag(e.clientX,e.clientY);
     single.style.cursor='grabbing';
     e.preventDefault();
   });
-  window.addEventListener('mousemove',e=>{
-    if(!dragging) return;
-    tx=originX+(e.clientX-startX);
-    ty=originY+(e.clientY-startY);
-    const m=$('media');
-    if(m) m.style.transform=`scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
-  });
+  window.addEventListener('mousemove',e=>{ if(dragging) moveDrag(e.clientX,e.clientY); });
   window.addEventListener('mouseup',()=>{
-    if(!dragging) return;
-    dragging=false;
-    single.style.cursor='';
+    if(!dragging) return; endDrag(); single.style.cursor='';
   });
-  /* 重置縮放時也清除平移 */
+
+  /* 觸控 — 單指平移（放大時）*/
+  single.addEventListener('touchstart',e=>{
+    if(scale<=1.05||e.touches.length!==1) return;
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  },{passive:true});
+  single.addEventListener('touchmove',e=>{
+    if(!dragging||e.touches.length!==1) return;
+    e.preventDefault();                   // 阻止底層捲動
+    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+  },{passive:false});
+  single.addEventListener('touchend',()=>endDrag(),{passive:true});
+  single.addEventListener('touchcancel',()=>endDrag(),{passive:true});
+
+  /* 換圖時重置平移 */
   const _origRenderSingle=renderSingle;
-  renderSingle=function(i){
-    tx=0;ty=0;
-    _origRenderSingle(i);
-  };
+  renderSingle=function(i){ tx=0; ty=0; _origRenderSingle(i); };
 })();
 single.addEventListener('mouseenter',()=>{
   if(!document.body.classList.contains('show-cursor')) return;
