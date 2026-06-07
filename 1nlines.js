@@ -49,18 +49,19 @@ function buildLine(template) {
 const IMG_BASE_URL = 'https://lkk-2eo.pages.dev/x/img/';
 
 const FOLDER_IMAGES = {
-    '': (function(){
+    /* '': (function(){
         var a = [];
         for (var i = 1; i <= 99; i++) a.push(i.toString().padStart(3,'0') + '.jpg');
         return a;
-    })(),
-    'm4':["x:/x/3/1038525004548342244.mp4","x:/x/3/1038525004548342244.mp4",
+    })(),*/
+    'm4':["x:/x/3/1038525004548342244.mp4","x:/x/3/2.mp4",
 "https://adm.gamer.gd/2/js/x/1038525004548342244.mp4","https://adm.gamer.gd/2/js/x2\/1035978409722212426.mp4"],
-    'n1':[5,"https://adm789.github.io/tfc/1/001.jpg"],
-    '42':[42,"https://adm.gamer.gd/3/1/42/001.jpg"],
-   'q1':        ["000.jpg","001.jpg","002.jpg","003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],
-    'w7': ["000.jpg","001.jpg","002.jpg","003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],
-    'w9': ["000.jpg","001.jpg","002.jpg","003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"]
+    'n1':[6,"https://adm789.github.io/tfc/1/001.jpg"],
+    '42':[12,"https://adm.gamer.gd/3/1/42/001.jpg"],
+   'q1':        ["000.jpg","001.jpg","002.jpg"], /*,"003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],*/
+    'w7': ["000.jpg","001.jpg"], /*,"002.jpg","003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],*/
+    'w9': ["000.jpg","001.jpg","002.jpg","003.jpg"], /* "004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"] */
+     '16':[12,"https://adm.gamer.gd/3/1/img/60/001.jpg"]
 };
 
 function getImage(folder) {
