@@ -47,18 +47,24 @@ function buildLine(template) {
 //  【B】圖片路徑 — 改為變數便于修改
 // ════════════════════════════════════════════════════════════
 const IMG_BASE_URL = 'https://lkk-2eo.pages.dev/x/img/';
-
+const FOLDER_ORDER = ['m4','n1','42','16','q1','w7','w9'];
 const FOLDER_IMAGES = {
     /* '': (function(){
         var a = [];
         for (var i = 1; i <= 99; i++) a.push(i.toString().padStart(3,'0') + '.jpg');
         return a;
-    })(),*/
-    'm4':["x:/x/3/1038525004548342244.mp4","x:/x/3/2.mp4",
+    })(),
+    瀏覽器對 `＜video＞` 的 CORS 要求比 `＜img＞` 嚴格——`＜img＞` 預設不送 CORS request，`＜video＞` 會。
+總結這次完成的所有修改：
+,/.// 網格焦點移動（直圖有效） /:焦點重置 (50%)  燈箱 ,/. 焦點移動（cover模式）  C 鍵切換 cover ⇄ contain
+燈箱預設 auto-run，網格預設不自動捲   字T 按鈕改為 ⛶F 全螢幕   燈箱 auto-go 時游標自動隱藏
+絕對URL（http://、本地路徑）不加前綴  ..CORS mp4 凍結（下次處理）
+ 如果你在 1nlines.js 寫 'v4': 12（只有數字，沒有副檔名），那就只能靠folder名推斷，目前 buildFromLib 沒有這個邏輯。需要補嗎？*/
+    'm4':["x:/1038525004548342244.mp4","x:/x/3/2.mp4",
 "https://adm.gamer.gd/2/js/x/1038525004548342244.mp4","https://adm.gamer.gd/2/js/x2\/1035978409722212426.mp4"],
     'n1':[6,"https://adm789.github.io/tfc/1/001.jpg"],
     '42':[12,"https://adm.gamer.gd/3/1/42/001.jpg"],
-   'q1':        ["000.jpg","001.jpg","002.jpg"], /*,"003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],*/
+   'q1': ["000.jpg","001.jpg","002.jpg"], /*,"003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],*/
     'w7': ["000.jpg","001.jpg"], /*,"002.jpg","003.jpg","004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"],*/
     'w9': ["000.jpg","001.jpg","002.jpg","003.jpg"], /* "004.jpg","005.jpg","006.jpg","007.jpg","008.jpg","009.jpg","010.jpg","011.jpg","012.jpg","013.jpg","014.jpg","015.jpg","016.jpg","017.jpg","018.jpg","019.jpg","020.jpg"] */
      '16':[12,"https://adm.gamer.gd/3/1/img/60/001.jpg"]
@@ -205,6 +211,7 @@ global.LinesLib = {
     getImage: getImage,
     imgSrc: imgSrc,
     autoDetectFolder: autoDetectFolder,
+    FOLDER_ORDER: FOLDER_ORDER,
     FOLDER_IMAGES: FOLDER_IMAGES,
     POOLS: POOLS
 };
