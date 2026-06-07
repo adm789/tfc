@@ -169,7 +169,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
     <button class="lbc" id="lcNext"   title="下一張 →">▶</button>
     <button class="lbc" id="lcZoomOut" title="縮放 (循環)">1.0x</button>
     <button class="lbc warn" id="lcClose" title="關閉 Esc">✕</button>
-    <button class="lbc" id="lcCaption" title="字幕 T">字T</button>
+    <button class="lbc" id="lcFull2" title="全螢幕 F">⛶F</button>
   </div>
 </div>
 
@@ -202,7 +202,7 @@ let lbIdx=0;
 let lbScale=1;          
 let lbPanX=0, lbPanY=0, lbPosY=85, lbCoverMode=true; 
 let lbDir=1;
-let lbAutoPlay=false,lbAutoTimer=null,lbSpeed=3000;
+let lbAutoPlay=true,lbAutoTimer=null,lbSpeed=3000;
 
 let lbStatePerIndex = new Map();
 let lbStateRestoredForCurrent = false;
@@ -249,8 +249,13 @@ function buildFromLib(){
     }
     files.forEach(fn=>{
       if(!fn) return;
+      const fnIsAbs=/^(https?:\/\/|\/|[a-zA-Z]:[/\\]|\\\\)/.test(fn);
       let url='';
-      try{if(LinesLib.imgSrc) url=LinesLib.imgSrc(f,fn);}catch(e){}
+      if(fnIsAbs){
+        url=fn; // 絕對路徑直接用，不經 imgSrc
+      } else {
+        try{if(LinesLib.imgSrc) url=LinesLib.imgSrc(f,fn);}catch(e){}
+      }
       if(!url){
         const iv=/\.(mp4|webm|m4v|mov)$/i.test(fn);
         url=iv?(fn.includes('/')?`./${f}/${fn}`:`./m4/${fn}`):`./${f}/${fn}`;
@@ -769,7 +774,7 @@ lbBtn('lcPrev',    ()=>lbNav(-1));
 lbBtn('lcNext',    ()=>lbNav(+1));
 lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; });
 lbBtn('lcClose',   ()=>closeLightbox());
-lbBtn('lcCaption', ()=>{ showText=!showText; lbTxt.classList.toggle('show',showText); $('lcCaption').classList.toggle('on',showText); });
+lbBtn('lcFull2', ()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
 lbBtn('lcZoomOut', ()=>{ cycleLbZoom('cycle'); });
 
 let _touchMode=false;
