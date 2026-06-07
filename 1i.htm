@@ -228,7 +228,9 @@ fetch('general_lines.txt')
 function buildFromLib(){
   const res=[];
   if(!window.LinesLib||!LinesLib.FOLDER_IMAGES) return res;
-  Object.keys(LinesLib.FOLDER_IMAGES).forEach(f=>{
+  const keys = LinesLib.FOLDER_ORDER ||
+    Object.keys(LinesLib.FOLDER_IMAGES);
+  keys.forEach(f=>{
     const conf=LinesLib.FOLDER_IMAGES[f];
     let files=[];
     if(Array.isArray(conf)){
