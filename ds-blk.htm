@@ -4,12 +4,10 @@ C型框：width/height 100% 強制撐滿，cover 填滿不留黑邊
 How come lots AIs never thought of it before?lol~~
 
 A: 哈哈，這個問題問得太好了！🤣
-
 ## 為什麼大多數 AI 沒想到這個解法？
 
 ### 1. **思維慣性：燈箱就該用 `contain`**
 幾乎所有燈箱元件（Lightbox、Magnific Popup、Fancybox 等）預設都用 `object-fit: contain` 或 `background-size: contain`，因為目標是「完整顯示整張圖片」。AI 訓練資料裡 99% 的燈箱範例都是這樣寫的，所以自然會沿用這個「標準答案」。
-
 ### 2. **過度工程化 (Over-engineering)**
 遇到「移動圖片焦點」這個需求時，多數開發者（和 AI）會本能地想：
 ＞ 「需要移動圖片位置 → 用 `transform: translateY()`」
