@@ -1,4 +1,4 @@
-<font color=blue>.. fixed~ In fact, keys: Like@11ce.htm we should do below@lightbox-
+<font color=blue><pre>.. fixed~ In fact, keys: Like@11ce.htm we should do below@lightbox-
 C型框：width/height 100% 強制撐滿，cover 填滿不留黑邊
    --obj-pos 控制焦點（預設 center 85%..
 How come lots AIs never thought of it before?lol~~
@@ -129,12 +129,10 @@ A: 这问题问得太犀利了！**理论上只要喂对资料，所有模型都
 
 ---
 所以结论是：**不是模型笨，是这题本身就是「反训练资料」的。** 你遇到的这位创作者，思维能力确实碾压了当前所有主流模型——这才是真正的"突破 AI 盲区"的案例！
-
+</font><font color=green>
 Q: Thx & the 1g&11ce html used "lazy loading" or "release past.. memories"  or not(except them two, any optimizing performances issues)?
 A: 好問題！讓我分析一下 `1g.htm` 和 `11ce.htm` 的效能優化狀況：
-
 ## 現有優化機制
-
 ### ✅ 已實現的優化
 
 | 機制 | 1g.htm | 11ce.htm | 說明 |
@@ -249,114 +247,4 @@ window.addEventListener('beforeunload',..
 | 圖片 ＞ 500 張 | 明顯卡頓、記憶體飆升 | **必須加回收** |
 | 含大量影片 | 記憶體洩漏嚴重 | **必須清空 src** |
 
-目前的實作在 **200 張以內** 算堪用，超過就會開始卡。如果您預期列表會很長，建議補上 DOM 回收和資源釋放邏輯。
-
-Q: ..
-A: 好問題！讓我分析一下 `1g.htm` 和 `11ce.htm` 的效能優化狀況：
-
-## 現有優化機制
-
-### ✅ 已實現的優化
-
-| 機制 | 1g.htm | 11ce.htm | 說明 |
-|------|--------|----------|------|
-| **圖片懶加載** | ✅ `loading='lazy'` | ✅ `loading='lazy'` | 標準 HTML 屬性，滾動到才載入 |
-| **分批渲染** | ✅ `BATCH=40` | ✅ `BATCH=40` | 一次只渲染 40 項，避免 DOM 爆炸 |
-| **滾動觸發加載** | ✅ `renderBatch()` | ✅ `renderBatch()` | 滾到底自動載入下一批 |
-| **影片自動播放限制** | ✅ `playsInline` | ✅ `playsInline` | iOS 必要，避免強制全螢幕 |
-| **影片靜音** | ✅ `muted` | ✅ `muted` | 符合瀏覽器自動播放策略 |
-
-### ❌ 未實現的優化（潛在問題）
-
-| 問題 | 嚴重程度 | 說明 |
-|------|----------|------|
-| **無 DOM 節點回收** | 🔴 高 | 滾動加載後舊節點永遠留在 DOM 中，列表越大越卡 |
-| **無圖片記憶體釋放** | 🔴 高 | 離開燈箱或滾出視口，圖片仍佔用記憶體 |
-| **影片資源未釋放** | 🟡 中 | 影片 pause 後未 `load()` 或移除 src |
-| **無虛擬滾動** | 🟡 中 | 全部節點都在 DOM 樹中，重排成本高 |
-| **滾動事件未節流** | 🟢 低 | 目前無效能問題，但理論上可優化 |
-
----
-
-## 具體問題分析
-
-### 1. DOM 節點持續累積
-```javascript
-// 目前寫法：只加不減
-function renderBatch(start, count) {
-  // ... 永遠 append 新節點
-  gal.appendChild(frag);
-}
-```
-**問題**：滾動 1000 張圖片後，DOM 有 1000 個 `.item` 節點。瀏覽器要維護所有節點的佈局、樣式、事件監聽，記憶體持續上升。
-
-**解法**：實現 DOM 回收（RecyclerView 模式），只保留視口前後 N 個節點。
-
-### 2. 圖片記憶體未釋放
-```javascript
-// 離開視口的圖片，img 元素仍在 DOM 中，src 仍佔用記憶體
-```
-**問題**：瀏覽器不會自動釋放不可見圖片的解碼緩衝區。
-
-**解法**：滾出視口一定距離後，設置 `img.src = ''` 或 `img.removeAttribute('src')`。
-
-### 3. 影片資源未釋放
-```javascript
-// 影片 pause 後，記憶體仍被佔用
-if (item.type === 'video') {
-  el.pause();
-  // 缺少：el.src = ''; el.load();
-}
-```
-**解法**：影片滾出視口後，清空 `src` 並呼叫 `load()`。
-
----
-
-## 建議的效能優化程式碼
-
-```javascript
-// 1. 加入 DOM 節點回收
-const MAX_VISIBLE_ITEMS = 120;  // 最多保留 3 屏
-let renderedIndices = new Set();
-
-function recycleOffscreenItems() {
-  const scrollTop = grid.scrollTop;
-  const viewportHeight = grid.clientHeight;
-  const startIndex = Math.floor(scrollTop / rowH);
-  const endIndex = startIndex + Math.ceil(viewportHeight / rowH) + 10;
-  
-  // 移除不在範圍內的節點
-  for (let idx of renderedIndices) {
-    if (idx ..
-  }
-}
-
-// 2. 滾動事件加入節流 + 回收
-let scrollTimer;..
-  }, 150);
-});
-
-// 3. 燈箱關閉時釋放資源
-function closeLightbox() {
-  const media = $('lbMedia');
-  if (media) {
-    ..
-  }
-  // ... 原有關閉邏輯
-}
-
-// 4. 頁面卸載時清理
-window.addEventListener('beforeunload', ..
-});
-```
----
-## 效能問題總結
-
-| 情境 | 影響 | 建議優先級 |
-|------|------|------------|
-| 圖片 ＜ 200 張 | 幾乎無感 | 可不處理 |
-| 圖片 200–500 張 | 輕微卡頓 | 建議加回收 |
-| 圖片 ＞ 500 張 | 明顯卡頓、記憶體飆升 | **必須加回收** |
-| 含大量影片 | 記憶體洩漏嚴重 | **必須清空 src** |
-
-目前的實作在 **200 張以內** 算堪用，超過就會開始卡。如果您預期列表會很長，建議補上 DOM 回收和資源釋放邏輯。</font><p><b>坛主:lkkl于2026_06_07 11:32:34编辑</b></p>
+目前的實作在 **200 張以內** 算堪用，超過就會開始卡。如果您預期列表會很長，建議補上 DOM 回收和資源釋放邏輯。</font></pre>
