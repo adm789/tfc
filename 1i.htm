@@ -110,6 +110,9 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 .lbc.on{background:#3a8a5a;box-shadow:0 0 0 1px #5cf}
 .lbc.warn{background:rgba(180,60,40,.75)}
 .lbc.ph{background:transparent;pointer-events:none}
+@media (pointer: coarse) {
+  .ui.hide{opacity:0!important;pointer-events:none!important}
+}
 </style>
 </head>
 <body>
@@ -228,10 +231,11 @@ fetch('general_lines.txt')
 function buildFromLib(){
   const res=[];
   if(!window.LinesLib||!LinesLib.FOLDER_IMAGES) return res;
-  const keys = LinesLib.FOLDER_ORDER ||
-    Object.keys(LinesLib.FOLDER_IMAGES);
+  const fi = LinesLib.FOLDER_IMAGES;
+  const isMap = fi instanceof Map;
+  const keys = isMap ? [...fi.keys()] : (LinesLib.FOLDER_ORDER || Object.keys(fi));
   keys.forEach(f=>{
-    const conf=LinesLib.FOLDER_IMAGES[f];
+    const conf=isMap ? fi.get(f) : fi[f];
     let files=[];
     if(Array.isArray(conf)){
       if(typeof conf[0]==='string'){
@@ -515,8 +519,8 @@ function openLightbox(i){
   lbUrl.textContent = item.url;
   const wasOpen = lb.classList.contains('show');
   lb.classList.add('show');
-  if(_touchMode) lb.classList.add('lb-touch');
-  else lb.classList.remove('lb-touch');
+  lb.classList.remove('lb-touch');
+  if(_touchMode && !lbAutoPlay){ showLbTouch(); }
   
   if(!wasOpen){
     lb.classList.add('lb-hover');
@@ -653,7 +657,13 @@ function hookLbMedia(){
 let lbHoverTimer=null;
 function hideLbCursorAndHover(){
   lb.classList.remove('lb-hover');
+  lb.classList.remove('lb-touch');
   document.body.classList.remove('show-cursor');
+}
+function showLbTouch(){
+  lb.classList.add('lb-touch');
+  clearTimeout(lbHoverTimer);
+  lbHoverTimer=setTimeout(hideLbCursorAndHover, 3000);
 }
 
 /* 縮放狀態「循環重置（Recycling）」機制 */
@@ -830,6 +840,8 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); }
+    else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
     if(e.touches.length===2){
@@ -846,7 +858,7 @@ makeDraggable($('lbCtrlPanel'));
       const dy=e.changedTouches[0].clientY-t0y;
       const adx=Math.abs(dx),ady=Math.abs(dy);
       if(adx<10&&ady<10){
-        if(_tapFromBtn) return;
+        if(_tapFromBtn){ lbHoverTimer=setTimeout(hideLbCursorAndHover,3000); return; }
         if(lbScale>1.05){lbScale=1;lbPanX=0;lbPanY=0;applyLbTransform(); saveCurrentLbStateToMap();}
         else closeLightbox();
         return;
