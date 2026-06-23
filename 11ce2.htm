@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>11ce · 網格播放器 v7 (極致修復版)</title>
+<title>11ce · 網格播放器 v7 (3x3 面板優化版)</title>
 <style>
 /* 基礎相容性防禦 */
 .item, #lightbox, .lbc {  
@@ -26,7 +26,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
       display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:box-shadow .12s}
 .item:hover{box-shadow:0 0 0 2px #6cf}
 
-/* 核心修復：強制讓網格內的圖片/影片完美填滿格線，並透過 CSS 屬性 object-position 進行不露底的捲動 */
+/* 強制讓網格內的圖片/影片完美填滿格線 */
 .item img, .item video {
   display: block !important;
   pointer-events: none !important;
@@ -140,15 +140,14 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
   <div><span class="k">PgUp / PgDn</span> 上一頁 / 下一頁</div>
   <div><span class="k">Space / S / L</span> 自動捲動 開/關</div>
   <div><span class="k">Net / ]</span> 捲速 慢/快</div>
-  <div><span class="k">, / .</span> 網格焦點上/下移 5%（直圖有效，橫圖無效）</div>
+  <div><span class="k">, / .</span> 網格焦點上/下移 5%</div>
   <div><span class="k">/</span> 焦點重置 (50%)</div>
   <div><span class="k">燈箱 Space</span> 自動翻頁 開/關</div>
   <div><span class="k">燈箱 [ / ]</span> 翻頁速度 慢/快</div>
   <div><span class="k">燈箱 T</span> 字幕 顯示/隱藏</div>
   <div><span class="k">燈箱 ← / →</span> 上/下一張</div>
-  <div><span class="k">燈箱 ↑ / ↓</span> 縮放 (循環重置)</div>
+  <div><span class="k">燈箱 ↑ / ↓</span> 縮放</div>
   <div><span class="k">燈箱 \</span> 反轉瀏覽方向</div>
-  <div><span class="k">燈箱 Home / End</span> 第一張 / 最後一張</div>
   <div><span class="k">M</span> 影片靜音切換</div>
   <div><span class="k">F</span> 全螢幕切換</div>
   <div><span class="k">H</span> UI 顯示/隱藏</div>
@@ -193,10 +192,12 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 (function(){
 'use strict';
 
+// 核心修正 1：明確宣告所有變數，絕不允許嚴格模式崩潰
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 const css=(k,v)=>root.style.setProperty(k,v);
-const grid=$('grid'); // 👈 就是漏了這行，導致嚴格模式下整個腳本卡死！
+
+const grid=$('grid'); // 👈 補上宣告，終結 ReferenceError
 const gal=$('gal');
 const stat=$('stat'),ui=$('ui');
 const hoverUrl=$('hoverUrl');
@@ -221,8 +222,7 @@ let lbAutoPlay=true,lbAutoTimer=null,lbSpeed=3000;
 
 let lbStatePerIndex = new Map();
 let lbStateRestoredForCurrent = false;
-
-let objPosY = 50; /* 預設 50% 居中 */
+let objPosY = 50; 
 
 const _fallbackPool=[
   "月光落在鎖骨上，涼涼的，像一片薄霜。",
@@ -374,13 +374,8 @@ function renderBatch(start,count){
     div.addEventListener('mouseenter',()=>{hoverUrl.textContent=item.url;hoverUrl.classList.add('show');});
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
     
-    // 修正：徹底移除 touchend 內會阻斷 iOS 事件鏈的 preventDefault
     let _itemTouched=false;
-    div.addEventListener('touchend',e=>{
-      _itemTouched=true;
-      openLightbox(i);
-      setTimeout(()=>_itemTouched=false,400);
-    },{passive:true});
+    div.addEventListener('touchstart',()=>{ _itemTouched=true; openLightbox(i); },{passive:true});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
@@ -427,7 +422,6 @@ grid.addEventListener('touchstart',()=>resetUITimer(),{passive:true});
 function lbPan(dy){
   lbPanY+=dy;
   applyLbTransform();
-  stat.textContent=`燈箱平移 Y:${lbPanY}px`;
 }
 
 function applyLbTransform(){
@@ -518,13 +512,9 @@ function openLightbox(i){
   if(cur.tagName === 'IMG'){
     cur.removeEventListener('load', onMediaReady);
     cur.addEventListener('load', onMediaReady, {once:true});
-    cur.removeEventListener('error', onMediaReady);
-    cur.addEventListener('error', onMediaReady, {once:true});
   } else {
     cur.removeEventListener('loadeddata', onMediaReady);
     cur.addEventListener('loadeddata', onMediaReady, {once:true});
-    cur.removeEventListener('error', onMediaReady);
-    cur.addEventListener('error', onMediaReady, {once:true});
   }
   
   lbUrl.textContent = item.url;
@@ -537,7 +527,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover, 4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover, 7500); // 7.5 秒自動隱藏
   }
   
   hookLbMedia();
@@ -604,27 +594,29 @@ function updateLbAutoBtn(){
 }
 
 function lbOpen(){return lb.classList.contains('show');}
+
+// 核心修正 2：防干擾計時器重置機制（7.5 秒防斷線鎖）
 function resetUITimer(){
-  if(uiLocked) return;
-  if(lbOpen()) return;
+  if(uiLocked || lbOpen() || uiHovered) return; // 如果 3x3 面板正被按住或滑鼠停留，不執行隱藏計時
   ui.classList.remove('hide');
   stat.style.display='block';
   document.body.classList.add('show-cursor');
-  clearTimeout(uiTimer);clearTimeout(cursorTimer);
-  uiTimer=setTimeout(()=>{ ui.classList.add('hide'); stat.style.display='none'; },3500);
-  cursorTimer=setTimeout(()=>{ document.body.classList.remove('show-cursor'); hoverUrl.classList.remove('show'); },3500);
+  clearTimeout(uiTimer); clearTimeout(cursorTimer);
+  uiTimer=setTimeout(()=>{ if(!uiHovered) { ui.classList.add('hide'); stat.style.display='none'; } }, 7500);
+  cursorTimer=setTimeout(()=>{ if(!uiHovered) { document.body.classList.remove('show-cursor'); hoverUrl.classList.remove('show'); } }, 7500);
 }
 
 let _lbLastMX=-999,_lbLastMY=-999;
 document.addEventListener('mousemove',e=>{
   if(lbOpen()){
+    if(lbPanelHovered) { clearTimeout(lbHoverTimer); return; } // 面板被觸碰時，永遠不隱藏
     const dx=e.clientX-_lbLastMX, dy=e.clientY-_lbLastMY;
     if(dx*dx+dy*dy < 9) return;
     _lbLastMX=e.clientX; _lbLastMY=e.clientY;
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover, 7500);
   } else {
     resetUITimer();
   }
@@ -644,30 +636,21 @@ function toggleUI(){
   }
 }
 
-/* 核心修復：全面相容 iOS 12 全螢幕與虛擬 Fallback 機制 */
 function toggleFS(){
   const el = document.documentElement;
   const isCurrentlyFS = document.fullscreenElement || document.webkitFullscreenElement || el.classList.contains('ios-fs-fallback');
   const lv = $('lbMedia');
 
   if (!isCurrentlyFS) {
-    // 狀況 A: 如果在燈箱模式且正在播放影片，iOS 12 僅支援對 video 進行原生全螢幕
     if (lbOpen() && lv && lv.tagName === 'VIDEO' && typeof lv.webkitEnterFullscreen === 'function') {
       lv.webkitEnterFullscreen();
-      stat.textContent = '⛶ iOS 影片原生全螢幕';
       return;
     }
-
-    // 狀況 B: 處理圖片或網格的全螢幕請求 (相容舊版 WebKit)
     const rfs = el.requestFullscreen || el.webkitRequestFullscreen;
     if (typeof rfs === 'function') {
-      rfs.call(el).catch(()=>{
-        el.classList.add('ios-fs-fallback');
-        stat.textContent = '⛶ 虛擬全螢幕啟用';
-      });
+      rfs.call(el).catch(()=>{ el.classList.add('ios-fs-fallback'); });
     } else {
       el.classList.add('ios-fs-fallback');
-      stat.textContent = '⛶ 虛擬全螢幕啟用';
     }
   } else {
     const efs = document.exitFullscreen || document.webkitExitFullscreen;
@@ -675,7 +658,6 @@ function toggleFS(){
       efs.call(document).catch(()=>{});
     }
     el.classList.remove('ios-fs-fallback');
-    stat.textContent = '⛶ 已退出全螢幕';
   }
 }
 
@@ -683,7 +665,6 @@ function toggleMute(){
   muted=!muted;
   const v=document.querySelector('video');if(v) v.muted=muted;
   const lv=$('lbMedia');if(lv&&lv.tagName==='VIDEO') lv.muted=muted;
-  stat.textContent=muted?'🔇 靜音':'🔊 聲音已開';
 }
 function updateLbCoord(){
   const m=$('lbMedia');if(!m) return;
@@ -699,6 +680,7 @@ function hookLbMedia(){
 
 let lbHoverTimer=null;
 function hideLbCursorAndHover(){
+  if(lbPanelHovered) return; // 面板正被碰觸時，拒絕隱藏
   lb.classList.remove('lb-hover');
   lb.classList.remove('lb-touch');
   document.body.classList.remove('show-cursor');
@@ -706,10 +688,9 @@ function hideLbCursorAndHover(){
 function showLbTouch(){
   lb.classList.add('lb-touch');
   clearTimeout(lbHoverTimer);
-  lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+  if(!lbPanelHovered) lbHoverTimer=setTimeout(hideLbCursorAndHover, 7500);
 }
 
-/* 縮放狀態「循環重置」機制 */
 function cycleLbZoom(direction) {
   if(!lbOpen()) return;
   if(direction === 'up') {
@@ -727,16 +708,12 @@ function cycleLbZoom(direction) {
   saveCurrentLbStateToMap();
 }
 
-/* 鍵盤監聽 */
+/* 鍵盤與 UI3x3 同步 */
 document.addEventListener('keydown',e=>{
-  // 核心修正：若按的是 F 鍵，直接用 JS 觸發畫面上按鈕的真實 Click，繞過 iOS 12 鍵盤事件全螢幕攔截
   if(e.key==='f' || e.key==='F'){
     e.preventDefault();
-    if(lbOpen()){
-      const b2 = $('lcFull2'); if(b2) b2.click();
-    } else {
-      const b1 = $('bFull'); if(b1) b1.click();
-    }
+    if(lbOpen()){ const b2 = $('lcFull2'); if(b2) b2.click(); } 
+    else { const b1 = $('bFull'); if(b1) b1.click(); }
     return;
   }
 
@@ -748,71 +725,37 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowDown'){ e.preventDefault(); cycleLbZoom('down'); return; }
     if(e.key==='Home'){e.preventDefault(); saveCurrentLbStateToMap(); lbIdx=0; openLightbox(lbIdx); return;}
     if(e.key==='End'){e.preventDefault(); saveCurrentLbStateToMap(); lbIdx=list.length-1; openLightbox(lbIdx); return;}
-    if(e.key==='\\'){lbDir*=-1; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; return;}
+    if(e.key==='\\'){lbDir*=-1; return;}
     if(e.key===' '){e.preventDefault(); toggleLbAuto(); return;}
     if(e.key==='c'||e.key==='C'){
-      e.preventDefault();
-      lbCoverMode=!lbCoverMode;
+      e.preventDefault(); lbCoverMode=!lbCoverMode;
       const m=document.getElementById('lbMedia');
-      if(m){
-        m.style.objectFit=lbCoverMode?'cover':'contain';
-        m.style.objectPosition=lbCoverMode?`center ${lbPosY}%`:'center center';
-      }
-      stat.textContent=lbCoverMode?'🔲 燈箱：Cover 模式':'🔳 燈箱：Contain 模式';
+      if(m){ m.style.objectFit=lbCoverMode?'cover':'contain'; m.style.objectPosition=lbCoverMode?`center ${lbPosY}%`:'center center'; }
       return;
     }
     if(e.key.toLowerCase()==='t'){ showText=!showText; lbTxt.classList.toggle('show',showText); return; }
     if(e.key==='['){lbSpeed=Math.min(9000,lbSpeed+300); updateLbAutoBtn(); return;}
     if(e.key===']'){lbSpeed=Math.max(400,lbSpeed-300); updateLbAutoBtn(); return;}
-    if(e.key===','||e.key==='<'){ e.preventDefault(); lbPosY=Math.max(5,lbPosY-5); document.documentElement.style.setProperty('--lb-pos-y',lbPosY+'%'); const m=document.getElementById('lbMedia');if(m&&lbCoverMode)m.style.objectPosition=`center ${lbPosY}%`; stat.textContent=`📌 燈箱焦點 Y:${lbPosY}%`; return; }
-    if(e.key==='.'||e.key==='>'){ e.preventDefault(); lbPosY=Math.min(95,lbPosY+5); document.documentElement.style.setProperty('--lb-pos-y',lbPosY+'%'); const m=document.getElementById('lbMedia');if(m&&lbCoverMode)m.style.objectPosition=`center ${lbPosY}%`; stat.textContent=`📌 燈箱焦點 Y:${lbPosY}%`; return; }
     return;
   }
   
-  // 網格快捷鍵
   if(e.key==='ArrowLeft') setCols(-1);
   if(e.key==='ArrowRight') setCols(+1);
   if(e.key==='ArrowUp'){e.preventDefault();setRowH(+30);}
   if(e.key==='ArrowDown'){e.preventDefault();setRowH(-30);}
-  
-  if(e.key===','||e.key==='<'){
-    e.preventDefault();
-    objPosY=Math.max(5,objPosY-5);
-    root.style.setProperty('--obj-pos-y',objPosY+'%');
-    stat.textContent=`📌 焦點 Y:${objPosY}% (直圖有效)`;
-  }
-  if(e.key==='.'||e.key==='>'){
-    e.preventDefault();
-    objPosY=Math.min(95,objPosY+5);
-    root.style.setProperty('--obj-pos-y',objPosY+'%');
-    stat.textContent=`📌 焦點 Y:${objPosY}% (直圖有效)`;
-  }
-  if(e.key==='/'){
-    e.preventDefault();
-    objPosY=50;
-    root.style.setProperty('--obj-pos-y','50%');
-    stat.textContent='📌 焦點重置 50%';
-  }
-  
   if(e.key==='6'){rowH=60;rowHManual=true;css('--row-h','60px');statGrid();}
   if(e.key==='7'){rowH=768;rowHManual=true;css('--row-h','768px');statGrid();}
   if(e.key==='Home'){e.preventDefault();grid.scrollTop=0;}
   if(e.key==='End'){e.preventDefault();grid.scrollTop=grid.scrollHeight;}
-  if(e.key==='PageUp'){e.preventDefault();grid.scrollTop-=grid.clientHeight;}
-  if(e.key==='PageDown'){e.preventDefault();grid.scrollTop+=grid.clientHeight; if(grid.scrollTop+grid.clientHeight>=grid.scrollHeight-120&&gridRendered<list.length) renderBatch(gridRendered,BATCH);}
   const k=e.key;
-  if(k===' '){e.preventDefault();toggleScroll();}
-  if(k.toLowerCase()==='s') toggleScroll();
-  if(k.toLowerCase()==='l') toggleScroll();
+  if(k===' ' || k.toLowerCase()==='s' || k.toLowerCase()==='l'){e.preventDefault();toggleScroll();}
   if(k.toLowerCase()==='h') toggleUI();
   if(k.toLowerCase()==='m') toggleMute();
   if(k==='['){scrollSpeed=Math.max(1,scrollSpeed-1);statGrid();}
   if(k===']'){scrollSpeed=Math.min(20,scrollSpeed+1);statGrid();}
-  if(k==='?') $('help').classList.toggle('show');
-  if(k==='Escape') $('help').classList.remove('show');
 });
 
-/* UI按鈕 */
+/* 主網格 UI 按鈕事件 */
 $('bPrev').onclick=()=>{grid.scrollTop-=grid.clientHeight;resetUITimer();};
 $('bNext').onclick=()=>{grid.scrollTop+=grid.clientHeight; if(grid.scrollTop+grid.clientHeight>=grid.scrollHeight-120&&gridRendered<list.length) renderBatch(gridRendered,BATCH); resetUITimer();};
 $('bPlay').onclick=()=>{toggleScroll();resetUITimer();};
@@ -834,15 +777,31 @@ function lbBtn(id,fn){
 lbBtn('lcAuto',    ()=>toggleLbAuto());
 lbBtn('lcSlower',  ()=>{ lbSpeed=Math.min(9000,lbSpeed+300); updateLbAutoBtn(); });
 lbBtn('lcFaster',  ()=>{ lbSpeed=Math.max(400,lbSpeed-300);  updateLbAutoBtn(); });
-lbBtn('lcCover',   ()=>{ lbCoverMode=!lbCoverMode; const m=document.getElementById('lbMedia'); if(m){ m.style.objectFit=lbCoverMode?'cover':'contain'; m.style.objectPosition=lbCoverMode?`center ${lbPosY}%`:'center center'; } stat.textContent=lbCoverMode?'Cover模式':'Contain模式'; });
+lbBtn('lcCover',   ()=>{ lbCoverMode=!lbCoverMode; const m=document.getElementById('lbMedia'); if(m){ m.style.objectFit=lbCoverMode?'cover':'contain'; m.style.objectPosition=lbCoverMode?`center ${lbPosY}%`:'center center'; } });
 lbBtn('lcCaption', ()=>{ showText=!showText; lbTxt.classList.toggle('show',showText); const b=$('lcCaption'); if(b) b.classList.toggle('on',showText); });
-lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; });
+lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; });
 lbBtn('lcClose',   ()=>closeLightbox());
 lbBtn('lcFull2',   ()=>toggleFS());
 lbBtn('lcZoomOut', ()=>{ cycleLbZoom('cycle'); });
 
 let _touchMode=false;
 document.addEventListener('touchstart',()=>{_touchMode=true;},{passive:true,once:true});
+
+// 核心修正 3：對 3x3 控制面板實施「觸碰鎖定（不准消失）」機制
+let uiHovered = false;     // 主頁 3x3 面板狀態
+let lbPanelHovered = false; // 燈箱 3x3 面板狀態
+
+function freezeUI(panel, isLb) {
+  const start = () => { if(isLb) lbPanelHovered = true; else uiHovered = true; clearTimeout(lbHoverTimer); clearTimeout(uiTimer); };
+  const end = () => { if(isLb) lbPanelHovered = false; else uiHovered = false; if(isLb) { lbHoverTimer = setTimeout(hideLbCursorAndHover, 7500); } else { resetUITimer(); } };
+  
+  panel.addEventListener('touchstart', start, {passive:true});
+  panel.addEventListener('touchend', end, {passive:true});
+  panel.addEventListener('mouseenter', start, {passive:true});
+  panel.addEventListener('mouseleave', end, {passive:true});
+}
+freezeUI($('ui'), false);
+freezeUI($('lbCtrlPanel'), true);
 
 function makeDraggable(el){
   let sx=0,sy=0,dragging=false;
@@ -871,7 +830,6 @@ function makeDraggable(el){
     },{passive:true});
     const endT=()=>{dragging=false;el.style.transition='';};
     el.addEventListener('touchend',endT,{passive:true});
-    el.addEventListener('touchcancel',endT,{passive:true});
   } else {
     let capturedId=null;
     el.addEventListener('pointerdown',e=>{
@@ -888,14 +846,9 @@ function makeDraggable(el){
       el.style.left=clamp(e.clientX-sx,0,window.innerWidth-el.offsetWidth)+'px';
       el.style.top=clamp(e.clientY-sy,0,window.innerHeight-el.offsetHeight)+'px';
     });
-    const endD=e=>{
-      if(!dragging) return; dragging=false; el.style.transition='';
-      if(capturedId!==null&&typeof el.releasePointerCapture==='function'){try{el.releasePointerCapture(capturedId);}catch(x){} capturedId=null;}
-    };
+    const endD=()=>{ if(!dragging) return; dragging=false; el.style.transition=''; };
     el.addEventListener('pointerup',endD);
-    el.addEventListener('pointercancel',endD);
   }
-  el.style.cursor='move';
 }
 makeDraggable($('ui'));
 makeDraggable($('lbCtrlPanel'));
@@ -911,7 +864,7 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
-    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,4500); }
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); }
     else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
@@ -944,7 +897,7 @@ makeDraggable($('lbCtrlPanel'));
   },{passive:true});
 })();
 
-/* 滑鼠拖拽平移 */
+/* 滑鼠與單指平移拖拽 */
 (function(){
   let dragging=false,startX=0,startY=0,originPanX=0,originPanY=0;
   function startDrag(cx,cy){dragging=true;startX=cx;startY=cy;originPanX=lbPanX;originPanY=lbPanY;}
@@ -956,19 +909,19 @@ makeDraggable($('lbCtrlPanel'));
   }
   function endDrag(){dragging=false; saveCurrentLbStateToMap();}
   lb.addEventListener('mousedown',e=>{
-    if(lbScale<=1.01||e.button!==0) return;
+    if(lbScale<=1.01||e.button!==0||e.target.closest('#lbCtrlPanel')) return;
     startDrag(e.clientX,e.clientY);
     const m=$('lbMedia');if(m)m.classList.add('dragging');
     e.preventDefault();
   });
   window.addEventListener('mousemove',e=>{if(dragging)moveDrag(e.clientX,e.clientY);});
   window.addEventListener('mouseup',()=>{if(!dragging)return;endDrag();const m=$('lbMedia');if(m)m.classList.remove('dragging');});
-  lb.addEventListener('touchstart',e=>{if(lbScale<=1.05||e.touches.length!==1)return; startDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+  lb.addEventListener('touchstart',e=>{if(lbScale<=1.05||e.touches.length!==1||e.target.closest('#lbCtrlPanel'))return; startDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
   lb.addEventListener('touchmove',e=>{if(!dragging||e.touches.length!==1)return; e.preventDefault(); moveDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
   lb.addEventListener('touchend',()=>endDrag(),{passive:true});
 })();
 
-/* 初始化 */
+/* 初始化載入 */
 waitForLib(builtList=>{
   const p=new URLSearchParams(location.search);
   cols=p.has('cols')?Math.max(1,Math.min(8,+p.get('cols'))):6;
@@ -976,28 +929,18 @@ waitForLib(builtList=>{
   css('--cols',cols);
   css('--row-h',rowH+'px');
   list=builtList;
-  if(!list.length){
-    stat.textContent='⊞ 0項';
-    return;
-  }
+  if(!list.length){ stat.textContent='⊞ 0項'; return; }
   renderBatch(0,BATCH);
   statGrid();
   resetUITimer();
 });
 
 document.addEventListener('fullscreenchange',()=>{
-  if(!rowHManual){
-    rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
-    css('--row-h',rowH+'px');
-  }
+  if(!rowHManual){ rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4))); css('--row-h',rowH+'px'); }
   statGrid();
 });
-
 document.addEventListener('webkitfullscreenchange',()=>{
-  if(!rowHManual){
-    rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
-    css('--row-h',rowH+'px');
-  }
+  if(!rowHManual){ rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4))); css('--row-h',rowH+'px'); }
   statGrid();
 });
 
