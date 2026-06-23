@@ -196,7 +196,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 const css=(k,v)=>root.style.setProperty(k,v);
-
+const grid=$('grid'); // 👈 就是漏了這行，導致嚴格模式下整個腳本卡死！
 const gal=$('gal');
 const stat=$('stat'),ui=$('ui');
 const hoverUrl=$('hoverUrl');
