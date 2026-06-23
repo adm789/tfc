@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 網格播放器 v7 (極致修復版)</title>
 <style>
+.item,#lightbox,.lbc{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;
           font-family:system-ui,sans-serif;cursor:none}
@@ -14,7 +15,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 /* 設定全域變數，--obj-pos-y 初始值 50% */
 :root{--cols:3;--row-h:200px;--obj-pos-y:50%}
 
-#grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px}
+#grid{position:fixed;top:0;right:0;bottom:0;left:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px;-webkit-overflow-scrolling:touch;}
 .gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:var(--row-h);gap:6px}
 .item{background:#111;border-radius:5px;overflow:hidden;cursor:zoom-in;position:relative;
       display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:box-shadow .12s}
@@ -60,9 +61,9 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
           opacity:0;transition:opacity .18s;pointer-events:none}
 #hoverUrl.show{opacity:1}
 
-#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;touch-action:none}
+#lightbox{position:fixed;top:0;right:0;bottom:0;left:0;background:#000;z-index:1000;display:none;touch-action:none}
 #lightbox.show{display:block}
-#lbMedia{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+#lbMedia{display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;
          object-position:center var(--lb-pos-y,85%);
          transition:object-position .15s ease;cursor:grab}
 #lbMedia.dragging{cursor:grabbing;transition:none}
@@ -361,11 +362,10 @@ function renderBatch(start,count){
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
     let _itemTouched=false;
     div.addEventListener('touchend',e=>{
-      e.preventDefault();
       _itemTouched=true;
       openLightbox(i);
       setTimeout(()=>_itemTouched=false,400);
-    },{passive:false});
+    },{passive:true});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
@@ -464,7 +464,7 @@ function openLightbox(i){
     if(!cur || cur.tagName!=='VIDEO'){
       const v=document.createElement('video');
       v.id='lbMedia';v.autoplay=true;v.loop=false;v.muted=muted;v.playsInline=true;
-      v.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain';
+      v.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:contain';
       if(cur && cur.parentNode) cur.replaceWith(v);
       else lb.appendChild(v);
       cur=v;
@@ -475,13 +475,13 @@ function openLightbox(i){
     if(cur && cur.tagName==='VIDEO'){
       cur.pause();
       const img=document.createElement('img');
-      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
       cur.replaceWith(img);
       cur=img;
     } else if(!cur || cur.tagName !== 'IMG'){
       const img=document.createElement('img');
       img.id='lbMedia';img.alt='';
-      img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+      img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
       if(cur && cur.parentNode) cur.replaceWith(img);
       else lb.appendChild(img);
       cur=img;
