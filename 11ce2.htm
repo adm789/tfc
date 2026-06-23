@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>11ce · 網格播放器 v7 (3x3 面板優化版)</title>
+<title>11ce · 網格播放器 v7.1 (iOS12修復版)</title>
 <style>
 /* 基礎相容性防禦 */
 .item, #lightbox, .lbc {  
@@ -130,7 +130,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 <body>
 
 <div id="grid"><div class="gal" id="gal"></div></div>
-<div id="stat">⏳ 解析中...</div>
+<div id="stat">v7 (3x3 面板優化版) ⏳ 解析中...</div>
 
 <div id="help">
   <div><span class="k">← / →</span> 欄數 ±1</div>
@@ -192,12 +192,11 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 (function(){
 'use strict';
 
-// 核心修正 1：明確宣告所有變數，絕不允許嚴格模式崩潰
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 const css=(k,v)=>root.style.setProperty(k,v);
 
-const grid=$('grid'); // 👈 補上宣告，終結 ReferenceError
+const grid=$('grid'); 
 const gal=$('gal');
 const stat=$('stat'),ui=$('ui');
 const hoverUrl=$('hoverUrl');
@@ -360,7 +359,7 @@ function makeEl(item){
 
 function statGrid(){
   const sc=gridAuto?`▶ ${scrollSpeed}px/tick`:'⏹停';
-  stat.textContent=`⊞ ${list.length}項 | 欄:${cols} | 高:${rowH}px | ${sc}`;
+  stat.textContent=`v7.1 | ⊞ ${list.length}項 | 欄:${cols} | 高:${rowH}px | ${sc}`;
 }
 
 function renderBatch(start,count){
@@ -527,7 +526,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover, 7500); // 7.5 秒自動隱藏
+    lbHoverTimer=setTimeout(hideLbCursorAndHover, 7500); 
   }
   
   hookLbMedia();
@@ -595,9 +594,8 @@ function updateLbAutoBtn(){
 
 function lbOpen(){return lb.classList.contains('show');}
 
-// 核心修正 2：防干擾計時器重置機制（7.5 秒防斷線鎖）
 function resetUITimer(){
-  if(uiLocked || lbOpen() || uiHovered) return; // 如果 3x3 面板正被按住或滑鼠停留，不執行隱藏計時
+  if(uiLocked || lbOpen() || uiHovered) return; 
   ui.classList.remove('hide');
   stat.style.display='block';
   document.body.classList.add('show-cursor');
@@ -609,7 +607,7 @@ function resetUITimer(){
 let _lbLastMX=-999,_lbLastMY=-999;
 document.addEventListener('mousemove',e=>{
   if(lbOpen()){
-    if(lbPanelHovered) { clearTimeout(lbHoverTimer); return; } // 面板被觸碰時，永遠不隱藏
+    if(lbPanelHovered) { clearTimeout(lbHoverTimer); return; } 
     const dx=e.clientX-_lbLastMX, dy=e.clientY-_lbLastMY;
     if(dx*dx+dy*dy < 9) return;
     _lbLastMX=e.clientX; _lbLastMY=e.clientY;
@@ -680,7 +678,7 @@ function hookLbMedia(){
 
 let lbHoverTimer=null;
 function hideLbCursorAndHover(){
-  if(lbPanelHovered) return; // 面板正被碰觸時，拒絕隱藏
+  if(lbPanelHovered) return; 
   lb.classList.remove('lb-hover');
   lb.classList.remove('lb-touch');
   document.body.classList.remove('show-cursor');
@@ -787,13 +785,13 @@ lbBtn('lcZoomOut', ()=>{ cycleLbZoom('cycle'); });
 let _touchMode=false;
 document.addEventListener('touchstart',()=>{_touchMode=true;},{passive:true,once:true});
 
-// 核心修正 3：對 3x3 控制面板實施「觸碰鎖定（不准消失）」機制
-let uiHovered = false;     // 主頁 3x3 面板狀態
-let lbPanelHovered = false; // 燈箱 3x3 面板狀態
+// 核心修復：徹底重命名不相容的 isLb 變數，終結 iOS 12 的作用域解析 Bug
+let uiHovered = false;     
+let lbPanelHovered = false; 
 
-function freezeUI(panel, isLb) {
-  const start = () => { if(isLb) lbPanelHovered = true; else uiHovered = true; clearTimeout(lbHoverTimer); clearTimeout(uiTimer); };
-  const end = () => { if(isLb) lbPanelHovered = false; else uiHovered = false; if(isLb) { lbHoverTimer = setTimeout(hideLbCursorAndHover, 7500); } else { resetUITimer(); } };
+function freezeUI(panel, inLbMode) {
+  const start = () => { if(inLbMode) lbPanelHovered = true; else uiHovered = true; clearTimeout(lbHoverTimer); clearTimeout(uiTimer); };
+  const end = () => { if(inLbMode) lbPanelHovered = false; else uiHovered = false; if(inLbMode) { lbHoverTimer = setTimeout(hideLbCursorAndHover, 7500); } else { resetUITimer(); } };
   
   panel.addEventListener('touchstart', start, {passive:true});
   panel.addEventListener('touchend', end, {passive:true});
@@ -929,7 +927,7 @@ waitForLib(builtList=>{
   css('--cols',cols);
   css('--row-h',rowH+'px');
   list=builtList;
-  if(!list.length){ stat.textContent='⊞ 0項'; return; }
+  if(!list.length){ stat.textContent='v7.1 | ⊞ 0項'; return; }
   renderBatch(0,BATCH);
   statGrid();
   resetUITimer();
