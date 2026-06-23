@@ -373,8 +373,13 @@ function renderBatch(start,count){
     div.addEventListener('mouseenter',()=>{hoverUrl.textContent=item.url;hoverUrl.classList.add('show');});
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
     
-    let _itemTouched=false;
-    div.addEventListener('touchstart',()=>{ _itemTouched=true; openLightbox(i); },{passive:true});
+    let _itemTouched=false, _t0x=0, _t0y=0;
+    div.addEventListener('touchstart',e=>{ _t0x=e.touches[0].clientX; _t0y=e.touches[0].clientY; },{passive:true});
+    div.addEventListener('touchend',e=>{
+      const dx=Math.abs(e.changedTouches[0].clientX-_t0x);
+      const dy=Math.abs(e.changedTouches[0].clientY-_t0y);
+      if(dx<10&&dy<10){ _itemTouched=true; openLightbox(i); setTimeout(()=>_itemTouched=false,400); }
+    },{passive:true});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
