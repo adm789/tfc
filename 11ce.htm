@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 網格播放器 v7 (極致修復版)</title>
 <style>
+.item,#lightbox,.lbc{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;
           font-family:system-ui,sans-serif;cursor:none}
@@ -14,7 +15,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 /* 設定全域變數，--obj-pos-y 初始值 50% */
 :root{--cols:3;--row-h:200px;--obj-pos-y:50%}
 
-#grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px}
+#grid{position:fixed;top:0;right:0;bottom:0;left:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px;-webkit-overflow-scrolling:touch;}
 .gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:var(--row-h);gap:6px}
 .item{background:#111;border-radius:5px;overflow:hidden;cursor:zoom-in;position:relative;
       display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:box-shadow .12s}
@@ -60,9 +61,9 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
           opacity:0;transition:opacity .18s;pointer-events:none}
 #hoverUrl.show{opacity:1}
 
-#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;touch-action:none}
+#lightbox{position:fixed;top:0;right:0;bottom:0;left:0;background:#000;z-index:1000;display:none;touch-action:none}
 #lightbox.show{display:block}
-#lbMedia{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+#lbMedia{display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;
          object-position:center var(--lb-pos-y,85%);
          transition:object-position .15s ease;cursor:grab}
 #lbMedia.dragging{cursor:grabbing;transition:none}
@@ -110,15 +111,6 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 .lbc.on{background:#3a8a5a;box-shadow:0 0 0 1px #5cf}
 .lbc.warn{background:rgba(180,60,40,.75)}
 .lbc.ph{background:transparent;pointer-events:none}
-
-/* iOS 12 專用虛擬全螢幕強制覆蓋樣式 */
-.ios-fs-fallback, .ios-fs-fallback body {
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  inset: 0 !important;
-}
 </style>
 </head>
 <body>
@@ -253,7 +245,7 @@ function buildFromLib(){
           const sl=s.lastIndexOf('/');
           const pre=sl>=0?s.slice(0,sl+1):'';
           const ext=s.split('.').pop();
-          for(let i=0; i<conf[0]; i++)
+          for(let i=0;i<conf[0];i++)
             files.push(pre+String(n+i).padStart(pad,'0')+'.'+ext);
         }
       }
@@ -314,7 +306,7 @@ function buildFromUrl(){
     const isAbs=/^(https?:\/\/|\/|[a-zA-Z]:[/\\]|\\\\)/.test(rawPath);
     const isRel=/^\.\.?\//.test(rawPath);
     const base=(isAbs||isRel) ? rawPath.replace(/[/\\]+$/,'') : `./${rawPath}`;
-    for(let i=1; i<=count; i++){
+    for(let i=1;i<=count;i++){
       const n=String(i).padStart(3,'0');
       const url=`${base}/${n}.${ext}`;
       res.push({name:`${n}.${ext}`,url,type:isVid?'video':'image'});
@@ -326,7 +318,7 @@ function buildFromUrl(){
 function hasUrlParam(){return location.search.slice(1).trim().length>0;}
 function buildDefaultPool(){
   const res=[];
-  for(let i=1; i<=60; i++){
+  for(let i=1;i<=60;i++){
     const n=String(i).padStart(3,'0');
     res.push({name:`${n}.jpg`,url:`./60/${n}.jpg`,type:'image'});
   }
@@ -362,7 +354,7 @@ function renderBatch(start,count){
   const end=Math.min(start+count,list.length);
   if(start>=end) return;
   const frag=document.createDocumentFragment();
-  for(let i=start; i<end; i++){
+  for(let i=start;i<end;i++){
     const item=list[i];
     const div=document.createElement('div');
     div.className='item';
@@ -370,11 +362,10 @@ function renderBatch(start,count){
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
     let _itemTouched=false;
     div.addEventListener('touchend',e=>{
-      e.preventDefault();
       _itemTouched=true;
       openLightbox(i);
       setTimeout(()=>_itemTouched=false,400);
-    },{passive:false});
+    },{passive:true});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
@@ -473,7 +464,7 @@ function openLightbox(i){
     if(!cur || cur.tagName!=='VIDEO'){
       const v=document.createElement('video');
       v.id='lbMedia';v.autoplay=true;v.loop=false;v.muted=muted;v.playsInline=true;
-      v.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain';
+      v.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:contain';
       if(cur && cur.parentNode) cur.replaceWith(v);
       else lb.appendChild(v);
       cur=v;
@@ -484,13 +475,13 @@ function openLightbox(i){
     if(cur && cur.tagName==='VIDEO'){
       cur.pause();
       const img=document.createElement('img');
-      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
       cur.replaceWith(img);
       cur=img;
     } else if(!cur || cur.tagName !== 'IMG'){
       const img=document.createElement('img');
       img.id='lbMedia';img.alt='';
-      img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+      img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
       if(cur && cur.parentNode) cur.replaceWith(img);
       else lb.appendChild(img);
       cur=img;
@@ -531,7 +522,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover, 4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
   }
   
   hookLbMedia();
@@ -618,7 +609,7 @@ document.addEventListener('mousemove',e=>{
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
   } else {
     resetUITimer();
   }
@@ -637,45 +628,35 @@ function toggleUI(){
     resetUITimer();
   }
 }
-
-/* 核心修復：相容 iOS 12.5.7 的全螢幕與虛擬全螢幕切換函數 */
 function toggleFS(){
-  const el = document.documentElement;
-  const isCurrentlyFS = document.fullscreenElement || document.webkitFullscreenElement || el.classList.contains('ios-fs-fallback');
-  const lv = $('lbMedia');
-
-  if (!isCurrentlyFS) {
-    // 狀況 A: 如果在燈箱模式且正在播放影片，iOS 12 僅支援對 video 進行原生全螢幕
-    if (lbOpen() && lv && lv.tagName === 'VIDEO' && typeof lv.webkitEnterFullscreen === 'function') {
-      lv.webkitEnterFullscreen();
-      stat.textContent = '⛶ iOS 影片原生全螢幕';
-      return;
-    }
-
-    // 狀況 B: 嘗試呼叫標準與舊版 WebKit 全螢幕 API
-    const rfs = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (typeof rfs === 'function') {
-      rfs.call(el).catch(()=>{
-        // 被 iOS 拒絕時，立刻執行虛擬全螢幕備用方案
-        el.classList.add('ios-fs-fallback');
-        stat.textContent = '⛶ 虛擬全螢幕啟用';
-      });
-    } else {
-      // 根本不支援 Element 全螢幕 API (如舊版 iOS Safari)
-      el.classList.add('ios-fs-fallback');
-      stat.textContent = '⛶ 虛擬全螢幕啟用';
+  const hasFallback=document.documentElement.classList.contains('ios-fs-fallback');
+  if(!document.fullscreenElement&&!hasFallback){
+    let triggered=false;
+    try{
+      const p=document.documentElement.requestFullscreen();
+      if(p&&typeof p.catch==='function'){
+        p.catch(()=>{
+          document.documentElement.classList.add('ios-fs-fallback');
+          stat.textContent='⛶ 虛擬全螢幕';
+        });
+      }
+      // iOS 12: requestFullscreen returns undefined, check after tick
+      setTimeout(()=>{
+        if(!document.fullscreenElement&&!document.documentElement.classList.contains('ios-fs-fallback')){
+          document.documentElement.classList.add('ios-fs-fallback');
+          stat.textContent='⛶ 虛擬全螢幕';
+        }
+      },300);
+    }catch(e){
+      document.documentElement.classList.add('ios-fs-fallback');
+      stat.textContent='⛶ 虛擬全螢幕';
     }
   } else {
-    // 退出全螢幕
-    const efs = document.exitFullscreen || document.webkitExitFullscreen;
-    if (typeof efs === 'function' && (document.fullscreenElement || document.webkitFullscreenElement)) {
-      efs.call(document).catch(()=>{});
-    }
-    el.classList.remove('ios-fs-fallback');
-    stat.textContent = '⛶ 已退出全螢幕';
+    if(document.fullscreenElement) try{document.exitFullscreen();}catch(e){}
+    document.documentElement.classList.remove('ios-fs-fallback');
+    stat.textContent='';
   }
 }
-
 function toggleMute(){
   muted=!muted;
   const v=document.querySelector('video');if(v) v.muted=muted;
@@ -703,7 +684,7 @@ function hideLbCursorAndHover(){
 function showLbTouch(){
   lb.classList.add('lb-touch');
   clearTimeout(lbHoverTimer);
-  lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+  lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
 }
 
 /* 縮放狀態「循環重置（Recycling）」機制 */
@@ -736,7 +717,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='End'){e.preventDefault(); saveCurrentLbStateToMap(); lbIdx=list.length-1; openLightbox(lbIdx); return;}
     if(e.key==='\\'){lbDir*=-1; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; return;}
     if(e.key===' '){e.preventDefault(); toggleLbAuto(); return;}
-    if(e.key==='f'||e.key==='F'){e.preventDefault(); toggleFS(); return;}
+    if(e.key==='f'||e.key==='F'){e.preventDefault(); const fb=$('lcFull2'); if(fb) fb.click(); else toggleFS(); return;}
     if(e.key==='c'||e.key==='C'){
       e.preventDefault();
       lbCoverMode=!lbCoverMode;
@@ -792,7 +773,7 @@ document.addEventListener('keydown',e=>{
   if(k===' '){e.preventDefault();toggleScroll();}
   if(k.toLowerCase()==='s') toggleScroll();
   if(k.toLowerCase()==='l') toggleScroll();
-  if(k.toLowerCase()==='f') toggleFS();
+  if(k.toLowerCase()==='f'){ const fb=$('bFull'); if(fb) fb.click(); else toggleFS(); }
   if(k.toLowerCase()==='h') toggleUI();
   if(k.toLowerCase()==='m') toggleMute();
   if(k==='['){scrollSpeed=Math.max(1,scrollSpeed-1);statGrid();}
@@ -827,7 +808,7 @@ lbBtn('lcCover',   ()=>{ lbCoverMode=!lbCoverMode; const m=document.getElementBy
 lbBtn('lcCaption', ()=>{ showText=!showText; lbTxt.classList.toggle('show',showText); const b=$('lcCaption'); if(b) b.classList.toggle('on',showText); });
 lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; });
 lbBtn('lcClose',   ()=>closeLightbox());
-lbBtn('lcFull2',   ()=>toggleFS());
+lbBtn('lcFull2', ()=>toggleFS());
 lbBtn('lcZoomOut', ()=>{ cycleLbZoom('cycle'); });
 
 let _touchMode=false;
@@ -900,7 +881,7 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
-    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,4500); }
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,7500); }
     else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
@@ -975,15 +956,6 @@ waitForLib(builtList=>{
 });
 
 document.addEventListener('fullscreenchange',()=>{
-  if(!rowHManual){
-    rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
-    css('--row-h',rowH+'px');
-  }
-  statGrid();
-});
-
-// 相容 WebKit 的全螢幕狀態監聽
-document.addEventListener('webkitfullscreenchange',()=>{
   if(!rowHManual){
     rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
     css('--row-h',rowH+'px');
