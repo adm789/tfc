@@ -522,7 +522,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover, 4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
   }
   
   hookLbMedia();
@@ -609,7 +609,7 @@ document.addEventListener('mousemove',e=>{
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
   } else {
     resetUITimer();
   }
@@ -631,13 +631,30 @@ function toggleUI(){
 function toggleFS(){
   const hasFallback=document.documentElement.classList.contains('ios-fs-fallback');
   if(!document.fullscreenElement&&!hasFallback){
-    document.documentElement.requestFullscreen().catch(()=>{
+    let triggered=false;
+    try{
+      const p=document.documentElement.requestFullscreen();
+      if(p&&typeof p.catch==='function'){
+        p.catch(()=>{
+          document.documentElement.classList.add('ios-fs-fallback');
+          stat.textContent='⛶ 虛擬全螢幕';
+        });
+      }
+      // iOS 12: requestFullscreen returns undefined, check after tick
+      setTimeout(()=>{
+        if(!document.fullscreenElement&&!document.documentElement.classList.contains('ios-fs-fallback')){
+          document.documentElement.classList.add('ios-fs-fallback');
+          stat.textContent='⛶ 虛擬全螢幕';
+        }
+      },300);
+    }catch(e){
       document.documentElement.classList.add('ios-fs-fallback');
       stat.textContent='⛶ 虛擬全螢幕';
-    });
+    }
   } else {
-    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    if(document.fullscreenElement) try{document.exitFullscreen();}catch(e){}
     document.documentElement.classList.remove('ios-fs-fallback');
+    stat.textContent='';
   }
 }
 function toggleMute(){
@@ -667,7 +684,7 @@ function hideLbCursorAndHover(){
 function showLbTouch(){
   lb.classList.add('lb-touch');
   clearTimeout(lbHoverTimer);
-  lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
+  lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
 }
 
 /* 縮放狀態「循環重置（Recycling）」機制 */
@@ -864,7 +881,7 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
-    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,4500); }
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,7500); }
     else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
