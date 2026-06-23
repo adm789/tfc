@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 網格播放器 v7 (極致修復版)</title>
 <style>
+.item, #lightbox, .lbc {
+  -webkit-tap-highlight-color: transparent; /* 消除 iOS 點擊高亮延遲 */
+  touch-action: manipulation;               /* 停用 iOS 的雙擊縮放延遲（重要！） */
+}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;
           font-family:system-ui,sans-serif;cursor:none}
