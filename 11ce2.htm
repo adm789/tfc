@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 網格播放器 v7 (極致修復版)</title>
 <style>
-.item, #lightbox, .lbc {
-  -webkit-tap-highlight-color: transparent; /* 消除 iOS 點擊高亮延遲 */
-  touch-action: manipulation;               /* 停用 iOS 的雙擊縮放延遲（重要！） */
+/* 基礎相容性防禦 */
+.item, #lightbox, .lbc {  
+  -webkit-tap-highlight-color: transparent; 
+  touch-action: manipulation;               
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;
@@ -18,7 +19,8 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 /* 設定全域變數，--obj-pos-y 初始值 50% */
 :root{--cols:3;--row-h:200px;--obj-pos-y:50%}
 
-#grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px}
+/* 修正 iOS 12 滾動後點擊區域錯位 Bug */
+#grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px; -webkit-overflow-scrolling: touch;}
 .gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:var(--row-h);gap:6px}
 .item{background:#111;border-radius:5px;overflow:hidden;cursor:zoom-in;position:relative;
       display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:box-shadow .12s}
@@ -114,6 +116,15 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 .lbc.on{background:#3a8a5a;box-shadow:0 0 0 1px #5cf}
 .lbc.warn{background:rgba(180,60,40,.75)}
 .lbc.ph{background:transparent;pointer-events:none}
+
+/* iOS 12 專用虛擬全螢幕強制覆蓋樣式 */
+.ios-fs-fallback, .ios-fs-fallback body {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  inset: 0 !important;
+}
 </style>
 </head>
 <body>
@@ -128,7 +139,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
   <div><span class="k">Home / End</span> 捲到頂 / 底</div>
   <div><span class="k">PgUp / PgDn</span> 上一頁 / 下一頁</div>
   <div><span class="k">Space / S / L</span> 自動捲動 開/關</div>
-  <div><span class="k">[ / ]</span> 捲速 慢/快</div>
+  <div><span class="k">Net / ]</span> 捲速 慢/快</div>
   <div><span class="k">, / .</span> 網格焦點上/下移 5%（直圖有效，橫圖無效）</div>
   <div><span class="k">/</span> 焦點重置 (50%)</div>
   <div><span class="k">燈箱 Space</span> 自動翻頁 開/關</div>
@@ -232,8 +243,7 @@ fetch('general_lines.txt')
 function buildFromLib(){
   const res=[];
   if(!window.LinesLib||!LinesLib.FOLDER_IMAGES) return res;
-  const keys = LinesLib.FOLDER_ORDER ||
-    Object.keys(LinesLib.FOLDER_IMAGES);
+  const keys = LinesLib.FOLDER_ORDER || Object.keys(LinesLib.FOLDER_IMAGES);
   keys.forEach(f=>{
     const conf=LinesLib.FOLDER_IMAGES[f];
     let files=[];
@@ -248,7 +258,7 @@ function buildFromLib(){
           const sl=s.lastIndexOf('/');
           const pre=sl>=0?s.slice(0,sl+1):'';
           const ext=s.split('.').pop();
-          for(let i=0;i<conf[0];i++)
+          for(let i=0; i<conf[0]; i++)
             files.push(pre+String(n+i).padStart(pad,'0')+'.'+ext);
         }
       }
@@ -258,7 +268,7 @@ function buildFromLib(){
       const fnIsAbs=/^(https?:\/\/|\/|[a-zA-Z]:[/\\]|\\\\)/.test(fn);
       let url='';
       if(fnIsAbs){
-        url=fn; // 絕對路徑直接用，不經 imgSrc
+        url=fn;
       } else {
         try{if(LinesLib.imgSrc) url=LinesLib.imgSrc(f,fn);}catch(e){}
       }
@@ -309,7 +319,7 @@ function buildFromUrl(){
     const isAbs=/^(https?:\/\/|\/|[a-zA-Z]:[/\\]|\\\\)/.test(rawPath);
     const isRel=/^\.\.?\//.test(rawPath);
     const base=(isAbs||isRel) ? rawPath.replace(/[/\\]+$/,'') : `./${rawPath}`;
-    for(let i=1;i<=count;i++){
+    for(let i=1; i<=count; i++){
       const n=String(i).padStart(3,'0');
       const url=`${base}/${n}.${ext}`;
       res.push({name:`${n}.${ext}`,url,type:isVid?'video':'image'});
@@ -321,7 +331,7 @@ function buildFromUrl(){
 function hasUrlParam(){return location.search.slice(1).trim().length>0;}
 function buildDefaultPool(){
   const res=[];
-  for(let i=1;i<=60;i++){
+  for(let i=1; i<=60; i++){
     const n=String(i).padStart(3,'0');
     res.push({name:`${n}.jpg`,url:`./60/${n}.jpg`,type:'image'});
   }
@@ -357,19 +367,20 @@ function renderBatch(start,count){
   const end=Math.min(start+count,list.length);
   if(start>=end) return;
   const frag=document.createDocumentFragment();
-  for(let i=start;i<end;i++){
+  for(let i=start; i<end; i++){
     const item=list[i];
     const div=document.createElement('div');
     div.className='item';
     div.addEventListener('mouseenter',()=>{hoverUrl.textContent=item.url;hoverUrl.classList.add('show');});
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
+    
+    // 修正：徹底移除 touchend 內會阻斷 iOS 事件鏈的 preventDefault
     let _itemTouched=false;
     div.addEventListener('touchend',e=>{
-      e.preventDefault();
       _itemTouched=true;
       openLightbox(i);
       setTimeout(()=>_itemTouched=false,400);
-    },{passive:false});
+    },{passive:true});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
@@ -526,7 +537,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover, 4500);
   }
   
   hookLbMedia();
@@ -613,7 +624,7 @@ document.addEventListener('mousemove',e=>{
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
   } else {
     resetUITimer();
   }
@@ -632,35 +643,42 @@ function toggleUI(){
     resetUITimer();
   }
 }
+
+/* 核心修復：全面相容 iOS 12 全螢幕與虛擬 Fallback 機制 */
 function toggleFS(){
-  const hasFallback=document.documentElement.classList.contains('ios-fs-fallback');
-  if(!document.fullscreenElement&&!hasFallback){
-    let triggered=false;
-    try{
-      const p=document.documentElement.requestFullscreen();
-      if(p&&typeof p.catch==='function'){
-        p.catch(()=>{
-          document.documentElement.classList.add('ios-fs-fallback');
-          stat.textContent='⛶ 虛擬全螢幕';
-        });
-      }
-      // iOS 12: requestFullscreen returns undefined, check after tick
-      setTimeout(()=>{
-        if(!document.fullscreenElement&&!document.documentElement.classList.contains('ios-fs-fallback')){
-          document.documentElement.classList.add('ios-fs-fallback');
-          stat.textContent='⛶ 虛擬全螢幕';
-        }
-      },300);
-    }catch(e){
-      document.documentElement.classList.add('ios-fs-fallback');
-      stat.textContent='⛶ 虛擬全螢幕';
+  const el = document.documentElement;
+  const isCurrentlyFS = document.fullscreenElement || document.webkitFullscreenElement || el.classList.contains('ios-fs-fallback');
+  const lv = $('lbMedia');
+
+  if (!isCurrentlyFS) {
+    // 狀況 A: 如果在燈箱模式且正在播放影片，iOS 12 僅支援對 video 進行原生全螢幕
+    if (lbOpen() && lv && lv.tagName === 'VIDEO' && typeof lv.webkitEnterFullscreen === 'function') {
+      lv.webkitEnterFullscreen();
+      stat.textContent = '⛶ iOS 影片原生全螢幕';
+      return;
+    }
+
+    // 狀況 B: 處理圖片或網格的全螢幕請求 (相容舊版 WebKit)
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (typeof rfs === 'function') {
+      rfs.call(el).catch(()=>{
+        el.classList.add('ios-fs-fallback');
+        stat.textContent = '⛶ 虛擬全螢幕啟用';
+      });
+    } else {
+      el.classList.add('ios-fs-fallback');
+      stat.textContent = '⛶ 虛擬全螢幕啟用';
     }
   } else {
-    if(document.fullscreenElement) try{document.exitFullscreen();}catch(e){}
-    document.documentElement.classList.remove('ios-fs-fallback');
-    stat.textContent='';
+    const efs = document.exitFullscreen || document.webkitExitFullscreen;
+    if (typeof efs === 'function' && (document.fullscreenElement || document.webkitFullscreenElement)) {
+      efs.call(document).catch(()=>{});
+    }
+    el.classList.remove('ios-fs-fallback');
+    stat.textContent = '⛶ 已退出全螢幕';
   }
 }
+
 function toggleMute(){
   muted=!muted;
   const v=document.querySelector('video');if(v) v.muted=muted;
@@ -688,10 +706,10 @@ function hideLbCursorAndHover(){
 function showLbTouch(){
   lb.classList.add('lb-touch');
   clearTimeout(lbHoverTimer);
-  lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+  lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
 }
 
-/* 縮放狀態「循環重置（Recycling）」機制 */
+/* 縮放狀態「循環重置」機制 */
 function cycleLbZoom(direction) {
   if(!lbOpen()) return;
   if(direction === 'up') {
@@ -711,6 +729,17 @@ function cycleLbZoom(direction) {
 
 /* 鍵盤監聽 */
 document.addEventListener('keydown',e=>{
+  // 核心修正：若按的是 F 鍵，直接用 JS 觸發畫面上按鈕的真實 Click，繞過 iOS 12 鍵盤事件全螢幕攔截
+  if(e.key==='f' || e.key==='F'){
+    e.preventDefault();
+    if(lbOpen()){
+      const b2 = $('lcFull2'); if(b2) b2.click();
+    } else {
+      const b1 = $('bFull'); if(b1) b1.click();
+    }
+    return;
+  }
+
   if(lbOpen()){
     if(e.key==='Escape'){closeLightbox();return;}
     if(e.key==='ArrowLeft'){lbNav(-1);return;}
@@ -721,7 +750,6 @@ document.addEventListener('keydown',e=>{
     if(e.key==='End'){e.preventDefault(); saveCurrentLbStateToMap(); lbIdx=list.length-1; openLightbox(lbIdx); return;}
     if(e.key==='\\'){lbDir*=-1; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; return;}
     if(e.key===' '){e.preventDefault(); toggleLbAuto(); return;}
-    if(e.key==='f'||e.key==='F'){e.preventDefault(); toggleFS(); return;}
     if(e.key==='c'||e.key==='C'){
       e.preventDefault();
       lbCoverMode=!lbCoverMode;
@@ -747,7 +775,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowUp'){e.preventDefault();setRowH(+30);}
   if(e.key==='ArrowDown'){e.preventDefault();setRowH(-30);}
   
-  /* 徹底修正：網格下的 , 和 . 精確控制 root 變數百分比，不再產生黑底邊緣 */
   if(e.key===','||e.key==='<'){
     e.preventDefault();
     objPosY=Math.max(5,objPosY-5);
@@ -777,7 +804,6 @@ document.addEventListener('keydown',e=>{
   if(k===' '){e.preventDefault();toggleScroll();}
   if(k.toLowerCase()==='s') toggleScroll();
   if(k.toLowerCase()==='l') toggleScroll();
-  if(k.toLowerCase()==='f') toggleFS();
   if(k.toLowerCase()==='h') toggleUI();
   if(k.toLowerCase()==='m') toggleMute();
   if(k==='['){scrollSpeed=Math.max(1,scrollSpeed-1);statGrid();}
@@ -812,7 +838,7 @@ lbBtn('lcCover',   ()=>{ lbCoverMode=!lbCoverMode; const m=document.getElementBy
 lbBtn('lcCaption', ()=>{ showText=!showText; lbTxt.classList.toggle('show',showText); const b=$('lcCaption'); if(b) b.classList.toggle('on',showText); });
 lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; });
 lbBtn('lcClose',   ()=>closeLightbox());
-lbBtn('lcFull2', ()=>toggleFS());
+lbBtn('lcFull2',   ()=>toggleFS());
 lbBtn('lcZoomOut', ()=>{ cycleLbZoom('cycle'); });
 
 let _touchMode=false;
@@ -885,7 +911,7 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
-    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,7500); }
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,4500); }
     else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
@@ -960,6 +986,14 @@ waitForLib(builtList=>{
 });
 
 document.addEventListener('fullscreenchange',()=>{
+  if(!rowHManual){
+    rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
+    css('--row-h',rowH+'px');
+  }
+  statGrid();
+});
+
+document.addEventListener('webkitfullscreenchange',()=>{
   if(!rowHManual){
     rowH=Math.max(60,Math.min(768,Math.floor(window.innerHeight/4)));
     css('--row-h',rowH+'px');
