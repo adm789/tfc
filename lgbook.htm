@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Guestbook (Local Storage)</title>
+<style>
+  body{font-family:sans-serif;max-width:600px;margin:auto;padding:20px;line-height:1.8;}
+  .msg-box{border-bottom:2px solid #eee;padding:14px 0;white-space:pre-wrap;word-wrap:break-word;position:relative;}
+  .msg-box *{max-width:100%;box-sizing:border-box;}
+  .form-area{background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:30px;}
+  textarea{font-family:monospace;font-size:13px;width:100%;height:100px;}
+  b{color:#e44;}a{color:#07c;}img{max-width:100%;}
+  
+  .msg-actions{position:absolute;top:10px;right:0;display:flex;gap:4px;opacity:0;transition:opacity .2s;}
+  .msg-box:hover .msg-actions{opacity:1;}
+  .msg-actions button{border:none;background:none;cursor:pointer;font-size:15px;
+      padding:2px 5px;border-radius:4px;line-height:1;}
+  .msg-actions button:hover{background:#eee;}
+  .btn-copy{color:#07c;} .btn-del{color:#c44;}
+  
+  .btn-cc{display:inline-block;margin:8px 0 2px;padding:5px 16px;
+      background:#2d2d2d;color:#fff;border:none;border-radius:5px;
+      cursor:pointer;font-size:13px;transition:background .2s;}
+  .btn-cc:hover{background:#444;} .btn-cc.ok{background:#4CAF50;}
+  
+  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);
+      background:#222;color:#fff;padding:9px 24px;border-radius:20px;font-size:14px;
+      opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;}
+</style>
+</head>
+<body>
+
+<div class="form-area">
+  <h3>📝 留言板 (本地儲存)</h3>
+  <form id="guestForm">
+    Name: <input type="text" id="name" required style="width:80%"><br><br>
+    Msg：<br>
+    <textarea id="message" required></textarea><br><br>
+    <label style="font-size:12px;color:#555;">
+      <input type="checkbox" id="hasCopyBtn" value="1"> 附加「📋 複製內容」按鈕
+    </label><br><br>
+    <button type="submit" style="padding:5px 20px;">送出留言</button>
+    <button type="button" onclick="clearAll()" style="padding:5px 20px;margin-left:10px;">🗑 清空全部</button>
+  </form>
+</div>
+
+<h3>最新留言：</h3>
+<div id="msgList"></div>
+
+<div id="toast"></div>
+
+<script>
+// ========== Toast 提示 ==========
+var _toastTimer = null;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 2000);
+}
+
+// ========== 複製功能 ==========
+function copyPlainText(text, callback) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(callback).catch(function(){ 
+      fallbackCopy(text); 
+      if(callback) callback();
+    });
+  } else { 
+    fallbackCopy(text); 
+    if(callback) callback(); 
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+// 精準抓取留言文字（排除操作按鈕）
+function getCleanMessageFromBox(boxElement) {
+  var clone = boxElement.cloneNode(true);
+  // 移除操作列、內嵌複製按鈕
+  clone.querySelectorAll('.msg-actions, .btn-cc').forEach(function(el){ el.remove(); });
+
+  // 取 innerHTML，把常見 HTML 結構轉成純文字
+  var html = clone.innerHTML;
+  // <b>名字</b>: → 純文字
+  html = html.replace(/<b[^>]*>(.*?)<\/b>/gi, '$1');
+  // <br> / <br/> → 換行
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  // <img ...> → 保留 src 作提示
+  html = html.replace(/<a[^>]*href="([^"]*)"[^>]*>\s*<img[^>]*>\s*<\/a>/gi, '$1');
+  html = html.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '$1');
+  // <a ...>文字</a> → 文字
+  html = html.replace(/<a[^>]*>(.*?)<\/a>/gi, '$1');
+  // 其餘標籤全部移除
+  html = html.replace(/<[^>]+>/g, '');
+  // HTML entities decode
+  html = html.replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+             .replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+             .replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+  // 壓縮多餘空行
+  html = html.replace(/\n{3,}/g, '\n\n').trim();
+  return html;
+}
+
+// 右上角複製按鈕 (複製整則留言 HTML)
+function copyMsg(btn) {
+  var box = btn.closest('.msg-box');
+  var clone = box.cloneNode(true);
+  clone.querySelectorAll('.msg-actions, .btn-cc').forEach(function(el){ el.remove(); });
+  var html = clone.innerHTML.trim();
+  copyPlainText(html, function(){
+    btn.textContent = '✅';
+    showToast('已複製留言 HTML！');
+    setTimeout(function(){ btn.textContent = '📋'; }, 1500);
+  });
+}
+
+// 留言內嵌按鈕：只複製留言主體（不含時間/名字 header，不含按鈕本身）
+function copyContent(btn) {
+  var box = btn.closest('.msg-box');
+  var clone = box.cloneNode(true);
+  // 移除操作列和所有 btn-cc 按鈕
+  clone.querySelectorAll('.msg-actions, .btn-cc').forEach(function(el){ el.remove(); });
+
+  // 取 innerHTML，轉純文字
+  var html = clone.innerHTML;
+  html = html.replace(/<b[^>]*>(.*?)<\/b>/gi, '$1');
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<a[^>]*href="([^"]*)"[^>]*>\s*<img[^>]*>\s*<\/a>/gi, '$1');
+  html = html.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '$1');
+  html = html.replace(/<a[^>]*>(.*?)<\/a>/gi, '$1');
+  html = html.replace(/<[^>]+>/g, '');
+  html = html.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#39;/g,"'").replace(/&quot;/g,'"');
+
+  // 切掉第一行（時間+名字 header），只保留後面的留言內文
+  var lines = html.trim().split('\n');
+  // 第一行格式：[yyyy-mm-dd hh:mm:ss] 名字:
+  if (/^\[\d{4}-\d{2}-\d{2}/.test(lines[0].trim())) {
+    lines.shift();
+  }
+  var text = lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+
+  copyPlainText(text, function(){
+    btn.textContent = '✅ 已複製！';
+    btn.classList.add('ok');
+    showToast('已複製內容！');
+    setTimeout(function(){
+      btn.textContent = '📋 複製內容';
+      btn.classList.remove('ok');
+    }, 2000);
+  });
+}
+
+// ========== 留言管理 ==========
+function loadMessages() {
+  const data = localStorage.getItem('guestbook_messages');
+  if (data) {
+    document.getElementById('msgList').innerHTML = data;
+  }
+}
+
+function saveMessages() {
+  const html = document.getElementById('msgList').innerHTML;
+  localStorage.setItem('guestbook_messages', html);
+}
+
+// 新增留言
+document.getElementById('guestForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const name = document.getElementById('name').value || '訪客';
+  const msg = document.getElementById('message').value;
+  const hasCopyBtn = document.getElementById('hasCopyBtn').checked;
+  
+  if (!msg) {
+    showToast('請輸入留言內容！');
+    return;
+  }
+  
+  const time = new Date().toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // 處理留言內容（換行轉 br）
+  let msgHtml = msg.replace(/\n/g, '<br>');
+  
+  // 自動偵測網址並轉成連結
+  msgHtml = msgHtml.replace(/(https?:\/\/[^\s<>"']+)/g, function(url) {
+    return `<a href="${url}" target="_blank">${url}</a>`;
+  });
+  
+  // 附加複製按鈕
+  if (hasCopyBtn) {
+    msgHtml += '<br><button class="btn-cc" onclick="copyContent(this)">📋 複製內容</button>';
+  }
+  
+  // 建立留言 HTML（包含操作按鈕）
+  const entry = `
+    <div class="msg-box">
+      <div class="msg-actions">
+        <button class="btn-copy" onclick="copyMsg(this)" title="複製留言">📋</button>
+        <button class="btn-del" onclick="deleteMsg(this)" title="刪除留言">🗑</button>
+      </div>
+      [${time}] <b>${name}</b>:<br>
+      ${msgHtml}
+    </div>
+  `;
+  
+  const list = document.getElementById('msgList');
+  list.innerHTML = entry + list.innerHTML;
+  saveMessages();
+  document.getElementById('message').value = '';
+  document.getElementById('hasCopyBtn').checked = false;
+  showToast('✅ 留言已送出！');
+});
+
+// 刪除留言
+function deleteMsg(btn) {
+  if (confirm('確定要刪除這則留言嗎？\n（此操作無法復原）')) {
+    btn.closest('.msg-box').remove();
+    saveMessages();
+    showToast('🗑 已刪除留言');
+  }
+}
+
+// 清空全部
+function clearAll() {
+  if (confirm('確定清空所有留言？\n（此操作無法復原）')) {
+    document.getElementById('msgList').innerHTML = '';
+    saveMessages();
+    showToast('🗑 已清空所有留言');
+  }
+}
+
+// ========== URL 縮短顯示 ==========
+(function(){
+  setTimeout(function(){
+    document.querySelectorAll('.msg-box a').forEach(function(a){
+      var txt = a.textContent.trim();
+      if (/^https?:\/\//i.test(txt)) {
+        a.title = txt;
+        try {
+          var u = new URL(txt);
+          var base = u.pathname.split('/').filter(Boolean).pop() || u.hostname;
+          a.textContent = base + u.search;
+        } catch(e){}
+      }
+    });
+  }, 100);
+})();
+
+// 頁面載入時讀取
+loadMessages();
+</script>
+
+</body>
+</html>
