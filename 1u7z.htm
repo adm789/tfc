@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub 批次上傳工具</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--primary:#2563eb;--ok:#059669;--danger:#dc2626;}
+    @media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--text:#f9fafb;--muted:#9ca3af;--line:#374151;}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;line-height:1.5}
+    .wrap{max-width:1000px;margin:0 auto;padding:22px}
+    h1{font-size:1.55rem;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:16px;margin-bottom:14px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .full{grid-column:1/-1}
+    label{display:block;font-weight:650;font-size:.88rem;margin:0 0 5px}
+    input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text)}
+    button{border:0;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer;background:#e5e7eb;color:#111827}
+    button.primary{background:var(--primary);color:#fff}
+    button.ok{background:var(--ok);color:#fff}
+    button.danger{background:var(--danger);color:#fff}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+    .drop{border:2px dashed var(--line);border-radius:12px;padding:30px;text-align:center;color:var(--muted);cursor:pointer}
+    .drop.drag{border-color:var(--primary);background:rgba(37,99,235,.08)}
+    .drop.has-files{border-color:var(--ok);background:rgba(5,150,105,.08)}
+    .file-list{max-height:200px;overflow:auto;font-size:.85rem;margin-top:10px}
+    .file-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)}
+    .file-item .name{color:var(--text)}
+    .file-item .size{color:var(--muted)}
+    .progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0 2px}
+    .bar{height:100%;width:0%;background:var(--primary);transition:width .2s}
+    #log{max-height:200px;overflow:auto;font-size:.78rem;color:var(--muted);margin:8px 0 0;white-space:pre-wrap;background:rgba(0,0,0,.04);padding:8px;border-radius:6px}
+    .status{padding:10px 12px;border-radius:10px;font-size:.9rem;background:rgba(37,99,235,.09)}
+    .status.err{background:rgba(220,38,38,.11)}
+    .status.ok{background:rgba(5,150,105,.12)}
+    .badge{display:inline-block;background:var(--primary);color:#fff;border-radius:999px;padding:0 10px;font-size:.75rem;line-height:1.8}
+    @media(max-width:600px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📤 GitHub 批次上傳工具</h1>
+  <p class="sub">將本地檔案（含 .7z 壓縮檔）批次上傳到 GitHub 倉庫的指定子資料夾</p>
+
+  <section class="card">
+    <div class="grid">
+      <div><label>Owner</label><input id="owner" value="adm789"></div>
+      <div><label>Repo</label><input id="repo" value="tfc"></div>
+      <div><label>Branch</label><input id="branch" value="main"></div>
+      <div><label>目標子資料夾（例如: archives/）</label><input id="targetPath" placeholder="archives/ 或 7z/ 或留空"></div>
+      <div class="full"><label>GitHub Token（必填，需 Contents read/write 權限）</label><input id="token" type="password" placeholder="github_pat_... 或 ghp_..."></div>
+      <div class="full"><label>Commit 訊息</label><input id="message" value="Batch upload files via web tool"></div>
+    </div>
+  </section>
+
+  <section class="card drop" id="dropZone">
+    <div style="font-size:2rem;margin-bottom:10px">📁</div>
+    <div><strong>點擊選擇 或 拖曳檔案至此</strong></div>
+    <div style="font-size:.85rem;color:var(--muted)">支援多選，不限 .7z，所有檔案皆可上傳</div>
+    <div class="file-list" id="fileList"></div>
+    <input type="file" id="fileInput" multiple style="display:none">
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <span id="fileCount" class="badge">0 個檔案</span>
+      <button class="ok" id="uploadBtn" disabled>🚀 開始上傳</button>
+      <button id="clearFilesBtn">清空清單</button>
+      <button id="saveSettingsBtn">💾 儲存設定</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div id="status" class="status">就緒，請選擇要上傳的檔案。</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div id="rate" class="hint"></div>
+    <pre id="log"></pre>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let files = [];
+  let isUploading = false;
+
+  // 載入儲存設定
+  ['owner','repo','branch','targetPath','token','message'].forEach(id => {
+    const v = localStorage.getItem('gh_upload_' + id);
+    if (v) $(id).value = v;
+  });
+
+  function saveSettings() {
+    ['owner','repo','branch','targetPath','token','message'].forEach(id => {
+      localStorage.setItem('gh_upload_' + id, $(id).value);
+    });
+  }
+  $('saveSettingsBtn').onclick = saveSettings;
+
+  function getHeaders() {
+    const h = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    const t = $('token').value.trim();
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
+
+  function api(path) {
+    const owner = $('owner').value.trim();
+    const repo = $('repo').value.trim();
+    return 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + path;
+  }
+
+  function setStatus(msg, type) {
+    $('status').textContent = msg;
+    $('status').className = 'status ' + (type || '');
+  }
+
+  function log(msg) {
+    const el = $('log');
+    el.textContent += (el.textContent ? '\n' : '') + msg;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function progress(pct) {
+    $('bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+
+  function updateFileList() {
+    const container = $('fileList');
+    const count = $('fileCount');
+    count.textContent = files.length + ' 個檔案';
+    if (files.length === 0) {
+      container.innerHTML = '';
+      $('uploadBtn').disabled = true;
+      $('dropZone').classList.remove('has-files');
+      return;
+    }
+    $('uploadBtn').disabled = false;
+    $('dropZone').classList.add('has-files');
+    let html = '';
+    let totalSize = 0;
+    files.forEach((f, i) => {
+      totalSize += f.size;
+      html += `<div class="file-item">
+        <span class="name">📄 ${f.name}</span>
+        <span class="size">${(f.size/1024).toFixed(1)} KB</span>
+      </div>`;
+    });
+    container.innerHTML = html;
+    // 顯示總大小
+    const sizeStr = totalSize > 1048576 ? (totalSize/1048576).toFixed(1) + ' MB' : (totalSize/1024).toFixed(1) + ' KB';
+    count.textContent = files.length + ' 個檔案 (' + sizeStr + ')';
+  }
+
+  // 處理檔案選擇
+  function handleFiles(selectedFiles) {
+    for (const f of selectedFiles) {
+      // 檢查是否已存在同名檔案
+      if (!files.some(ex => ex.name === f.name && ex.size === f.size)) {
+        files.push(f);
+      }
+    }
+    updateFileList();
+  }
+
+  // 點擊 drop zone 觸發 file input
+  $('dropZone').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = (e) => {
+    handleFiles(e.target.files);
+    e.target.value = ''; // 重置以便重複選擇同檔
+  };
+
+  // 拖曳支援
+  $('dropZone').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    $('dropZone').classList.add('drag');
+  });
+  $('dropZone').addEventListener('dragleave', () => {
+    $('dropZone').classList.remove('drag');
+  });
+  $('dropZone').addEventListener('drop', (e) => {
+    e.preventDefault();
+    $('dropZone').classList.remove('drag');
+    if (e.dataTransfer.files.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+
+  $('clearFilesBtn').onclick = () => {
+    if (isUploading) return;
+    files = [];
+    updateFileList();
+    setStatus('已清空檔案清單');
+  };
+
+  // 上傳主函數
+  async function uploadFiles() {
+    if (isUploading) return;
+    if (files.length === 0) {
+      alert('請先選擇要上傳的檔案');
+      return;
+    }
+    const token = $('token').value.trim();
+    if (!token) {
+      alert('請輸入 GitHub Token（需 Contents read/write 權限）');
+      return;
+    }
+
+    const branch = $('branch').value.trim() || 'main';
+    const targetPath = $('targetPath').value.trim();
+    const commitMsg = $('message').value.trim() || 'Batch upload via web tool';
+    const owner = $('owner').value.trim();
+    const repo = $('repo').value.trim();
+
+    isUploading = true;
+    $('uploadBtn').disabled = true;
+    setStatus('⏳ 準備上傳 ' + files.length + ' 個檔案...');
+    progress(0);
+    log('=== 開始上傳 ===');
+    log('目標: ' + owner + '/' + repo + '/' + (targetPath || '(根目錄)'));
+
+    let success = 0, failed = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const path = targetPath ? targetPath + '/' + file.name : file.name;
+      const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+
+      try {
+        log('⬆ 上傳: ' + path + ' (' + (file.size/1024).toFixed(1) + ' KB)');
+
+        // 讀取檔案內容為 Base64
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            // FileReader 結果是 data:xxx;base64,xxxx 格式，取逗號後部分
+            const result = reader.result;
+            const comma = result.indexOf(',');
+            resolve(result.substring(comma + 1));
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // 檢查檔案是否存在（可選，但跳過以簡化）
+        // 直接 PUT 建立/覆蓋檔案
+        const url = api('/contents/' + encodedPath + '?ref=' + encodeURIComponent(branch));
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, getHeaders()),
+          body: JSON.stringify({
+            message: commitMsg + ' (' + (i+1) + '/' + files.length + ')',
+            content: base64,
+            branch: branch
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error('HTTP ' + response.status + ': ' + errText.substring(0, 200));
+        }
+
+        success++;
+        log('✅ ' + path + ' 上傳成功');
+      } catch (e) {
+        failed++;
+        log('❌ ' + path + ' 失敗: ' + e.message);
+      }
+
+      progress(Math.round(((i + 1) / files.length) * 100));
+    }
+
+    progress(100);
+    setStatus('✅ 上傳完成！成功: ' + success + '，失敗: ' + failed, failed > 0 ? 'err' : 'ok');
+    log('=== 上傳結束 ===');
+    log('成功: ' + success + ' 個，失敗: ' + failed + ' 個');
+
+    isUploading = false;
+    $('uploadBtn').disabled = false;
+  }
+
+  $('uploadBtn').onclick = uploadFiles;
+
+  // 快捷鍵：貼上 GitHub URL 自動填寫
+  document.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (text) {
+      const m = String(text).match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      if (m) {
+        $('owner').value = m[1];
+        $('repo').value = m[2].replace(/\.git$/, '');
+        setStatus('已自動填入 Owner/Repo');
+        log('已從貼上內容解析: ' + m[1] + '/' + m[2]);
+      }
+    }
+  });
+
+  setStatus('就緒，請選擇要上傳的檔案（支援 .7z 及任何格式）');
+})();
+</script>
+</body>
+</html>

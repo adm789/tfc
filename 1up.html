@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1up — 7z 解壓 → 推送 GitHub（修正版）</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--primary:#2563eb;--danger:#dc2626;--ok:#059669;--warn:#d97706;}
+    @media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--text:#f9fafb;--muted:#9ca3af;--line:#374151;}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;line-height:1.5}
+    .wrap{max-width:1160px;margin:0 auto;padding:22px}
+    h1{font-size:1.55rem;margin:0 0 6px;display:flex;align-items:center;gap:12px}
+    h1 small{font-size:.8rem;font-weight:400;color:var(--muted)}
+    .sub{color:var(--muted);margin:0 0 18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:16px;margin-bottom:14px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+    .field{grid-column:span 3}.field.wide{grid-column:span 4}.field.full{grid-column:1/-1}
+    label{display:block;font-weight:650;font-size:.88rem;margin:0 0 5px}
+    input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text);font-size:.95rem}
+    input:focus{outline:2px solid var(--primary);outline-offset:1px}
+    button{border:0;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer;background:#e5e7eb;color:#111827;font-size:.95rem;transition:opacity .2s}
+    button.primary{background:var(--primary);color:#fff}
+    button.danger{background:var(--danger);color:#fff}
+    button.ok{background:var(--ok);color:#fff}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .hint{font-size:.86rem;color:var(--muted)}
+    .status{white-space:pre-wrap;border-radius:10px;padding:10px 12px;background:rgba(37,99,235,.09);font-size:.9rem;min-height:44px}
+    .status.err{background:rgba(220,38,38,.11)}
+    .status.ok{background:rgba(5,150,105,.12)}
+    .status.wait{background:rgba(217,119,6,.12)}
+    .progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0 2px}
+    .bar{height:100%;width:0%;background:var(--primary);transition:width .3s}
+    #extractLog,#pushLog{max-height:160px;overflow:auto;font-size:.78rem;color:var(--muted);margin:8px 0 0;white-space:pre-wrap;background:rgba(0,0,0,.04);padding:8px;border-radius:6px;font-family:monospace}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:middle}
+    th{font-size:.82rem;color:var(--muted);font-weight:750}
+    tr:hover{background:rgba(127,127,127,.06)}
+    .name{word-break:break-all;font-family:monospace;font-size:.85rem}
+    .drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--muted);cursor:pointer;transition:all .2s}
+    .drop.drag{border-color:var(--primary);background:rgba(37,99,235,.08)}
+    .step{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:var(--primary);color:#fff;font-size:.75rem;font-weight:800;margin-right:6px;flex-shrink:0}
+    .section-title{display:flex;align-items:center;gap:6px;font-weight:700;font-size:1.05rem;margin-bottom:8px}
+    .badge{display:inline-block;background:var(--primary);color:#fff;border-radius:999px;padding:0 12px;font-size:.75rem;line-height:1.8}
+    @media(max-width:760px){.field,.field.wide{grid-column:1/-1}.wrap{padding:12px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📦 1up <small>7z 解壓 → 推送 GitHub（修正版）</small></h1>
+  <p class="sub">在瀏覽器內解壓 7z（WASM），選取檔案後用 GitHub API 一次推送</p>
+
+  <!-- ========== STEP 1: 載入 7z ========== -->
+  <section class="card">
+    <div class="section-title"><span class="step">1</span> 載入並解壓 .7z 檔案</div>
+    <div class="grid">
+      <div class="field wide">
+        <label>📁 方式 A：上傳本機 .7z</label>
+        <input type="file" id="localFile" accept=".7z">
+      </div>
+      <div class="field full hint" style="text-align:center;padding:4px 0">— 或 —</div>
+      <div class="field"><label>Owner</label><input id="srcOwner" placeholder="adm789"></div>
+      <div class="field"><label>Repo</label><input id="srcRepo" placeholder="tfc"></div>
+      <div class="field"><label>Branch</label><input id="srcBranch" placeholder="main"></div>
+      <div class="field wide"><label>GitHub 上的 .7z 路徑</label><input id="srcPath" placeholder="archives/60.7z"></div>
+      <div class="field"><label>&nbsp;</label><button class="primary" id="fetchExtractBtn">⬇ 從 GitHub 抓取並解壓</button></div>
+      <div class="field full hint">🔑 下方 Token 也會用於抓取私有 repo 的檔案</div>
+    </div>
+  </section>
+
+  <!-- 解壓縮狀態 -->
+  <section class="card">
+    <div id="extractStatus" class="status">⏳ 尚未載入任何 7z 檔案</div>
+    <div class="progress"><div class="bar" id="extractBar"></div></div>
+    <pre id="extractLog"></pre>
+  </section>
+
+  <!-- 檔案清單 -->
+  <section class="card">
+    <div class="toolbar" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center">
+      <span class="hint" id="fileSummary">📄 0 個檔案</span>
+      <div class="actions">
+        <button id="selAllBtn">✅ 全選</button>
+        <button id="selNoneBtn">⬜ 取消全選</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;margin-top:8px">
+      <table><thead><tr><th style="width:32px"><input type="checkbox" id="toggleAll" checked></th><th>📄 相對路徑</th><th style="width:100px">大小</th></tr></thead><tbody id="tbody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ========== STEP 2: 推送目的地 ========== -->
+  <section class="card">
+    <div class="section-title"><span class="step">2</span> 推送目的地</div>
+    <div class="grid">
+      <div class="field"><label>Owner</label><input id="dstOwner" placeholder="adm789"></div>
+      <div class="field"><label>Repo</label><input id="dstRepo" placeholder="tfc"></div>
+      <div class="field"><label>Branch</label><input id="dstBranch" placeholder="main"></div>
+      <div class="field wide"><label>📁 目標子資料夾</label><input id="dstFolder" placeholder="29" value="29"></div>
+      <div class="field wide"><label>🔑 GitHub Token（需 Contents read/write）</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_... 或 ghp_..."></div>
+      <div class="field wide"><label>📝 Commit 訊息</label><input id="message" value="Add extracted archive contents via 1up tool"></div>
+      <div class="field"><label>&nbsp;</label><button class="ok" id="pushBtn">🚀 推送選取的檔案（1 commit）</button></div>
+      <div class="field full hint">
+        ⚡ 流程：每個檔案建立 blob → 建立 1 個 tree → 建立 1 個 commit → 更新 ref<br>
+        ⚠️ 單一 blob 上限 ~100MB，大量檔案請耐心等候
+      </div>
+    </div>
+  </section>
+
+  <!-- 推送狀態 -->
+  <section class="card">
+    <div id="pushStatus" class="status">⏳ 尚未推送</div>
+    <div class="progress"><div class="bar" id="pushBar"></div></div>
+    <pre id="pushLog"></pre>
+  </section>
+</div>
+
+<script type="module">
+  // ============================================================
+  // 1up 修正版 — 完整重寫推送邏輯，加強除錯
+  // ============================================================
+
+  import SevenZip from "https://cdn.jsdelivr.net/npm/7z-wasm@1.2.0/7zz.es6.js";
+
+  // ---- DOM 參考 ----
+  const $ = id => document.getElementById(id);
+  const $$ = sel => document.querySelectorAll(sel);
+
+  // ---- 全域狀態 ----
+  let extracted = [];           // { path, size, data: Uint8Array }
+  let isPushing = false;
+
+  // ---- 工具函數 ----
+  function fmtSize(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+    return (n/1048576).toFixed(1) + ' MB';
+  }
+
+  function setStatus(id, msg, type) {
+    const el = $(id);
+    el.textContent = msg;
+    el.className = 'status ' + (type || '');
+  }
+
+  function log(id, msg) {
+    const el = $(id);
+    el.textContent += (el.textContent ? '\n' : '') + msg;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function progress(id, pct) {
+    $(id).style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+
+  // ---- GitHub API 輔助 ----
+  function api(owner, repo, path) {
+    return 'https://api.github.com/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + path;
+  }
+
+  function getHeaders() {
+    const h = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    const t = $('token').value.trim();
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
+
+  function getJsonHeaders() {
+    return Object.assign({ 'Content-Type': 'application/json' }, getHeaders());
+  }
+
+  function uint8ToBase64(bytes) {
+    const CHUNK = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary);
+  }
+
+  // ---- 取得欄位值（加強版，會去除前後空白） ----
+  function getVal(id) {
+    const el = $(id);
+    if (!el) return '';
+    return el.value.trim();
+  }
+
+  // ---- 渲染檔案表格 ----
+  function renderTable() {
+    const tbody = $('tbody');
+    tbody.innerHTML = '';
+    let totalSize = 0;
+
+    extracted.forEach((item, idx) => {
+      totalSize += item.size;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" class="pick" checked data-idx="${idx}"></td>
+        <td class="name">${item.path}</td>
+        <td>${fmtSize(item.size)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    $('fileSummary').textContent = `📄 ${extracted.length} 個檔案，總大小 ${fmtSize(totalSize)}`;
+    $('toggleAll').checked = true;
+  }
+
+  // ---- 取得選取的檔案 ----
+  function getSelected() {
+    const checks = document.querySelectorAll('.pick:checked');
+    const idxs = Array.from(checks).map(c => parseInt(c.dataset.idx, 10));
+    return idxs.map(i => extracted[i]).filter(Boolean);
+  }
+
+  // ---- 全選 / 取消全選 ----
+  $('toggleAll').addEventListener('change', function() {
+    $$('.pick').forEach(c => c.checked = this.checked);
+  });
+  $('selAllBtn').addEventListener('click', () => {
+    $$('.pick').forEach(c => c.checked = true);
+    $('toggleAll').checked = true;
+  });
+  $('selNoneBtn').addEventListener('click', () => {
+    $$('.pick').forEach(c => c.checked = false);
+    $('toggleAll').checked = false;
+  });
+
+  // ============================================================
+  // 解壓縮核心
+  // ============================================================
+  async function extract7z(arrayBuffer, sourceName) {
+    setStatus('extractStatus', '⏳ 載入 7-Zip WASM 引擎...', 'wait');
+    progress('extractBar', 5);
+
+    const sevenZip = await SevenZip({
+      locateFile: p => 'https://cdn.jsdelivr.net/npm/7z-wasm@1.2.0/' + p,
+      print: t => { if (t && t.trim()) log('extractLog', t); },
+      printErr: t => { if (t && t.trim()) log('extractLog', '⚠ ' + t); }
+    });
+
+    progress('extractBar', 30);
+    setStatus('extractStatus', '⏳ 解壓縮「' + sourceName + '」...', 'wait');
+
+    sevenZip.FS.writeFile('/in.7z', new Uint8Array(arrayBuffer));
+    try { sevenZip.FS.mkdir('/out'); } catch (_) {}
+
+    const ret = sevenZip.callMain(['x', '/in.7z', '-o/out', '-y']);
+    if (ret !== 0) {
+      throw new Error('7z 解壓失敗（exit code ' + ret + '），請確認檔案未加密/未損毀');
+    }
+
+    progress('extractBar', 70);
+    extracted = [];
+
+    function walk(dir, prefix) {
+      const entries = sevenZip.FS.readdir(dir).filter(e => e !== '.' && e !== '..');
+      entries.forEach(e => {
+        const full = dir + '/' + e;
+        const stat = sevenZip.FS.stat(full);
+        if (sevenZip.FS.isDir(stat.mode)) {
+          walk(full, prefix + e + '/');
+        } else {
+          const data = sevenZip.FS.readFile(full);
+          extracted.push({ path: prefix + e, size: data.length, data });
+        }
+      });
+    }
+
+    walk('/out', '');
+    extracted.sort((a, b) => a.path.localeCompare(b.path));
+
+    progress('extractBar', 100);
+    renderTable();
+    setStatus('extractStatus', '✅ 解壓完成！共 ' + extracted.length + ' 個檔案', 'ok');
+    log('extractLog', '✅ 解壓完成，共 ' + extracted.length + ' 個檔案');
+  }
+
+  // ---- 本機檔案上傳 ----
+  $('localFile').addEventListener('change', async function(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      $('extractLog').textContent = '';
+      const buf = await f.arrayBuffer();
+      await extract7z(buf, f.name);
+    } catch (err) {
+      setStatus('extractStatus', '❌ 解壓失敗: ' + err.message, 'err');
+      log('extractLog', '❌ ' + err.message);
+    }
+    this.value = '';
+  });
+
+  // ---- 從 GitHub 抓取 7z ----
+  $('fetchExtractBtn').addEventListener('click', async function() {
+    const owner = getVal('srcOwner');
+    const repo = getVal('srcRepo');
+    const branch = getVal('srcBranch') || 'main';
+    const path = getVal('srcPath');
+
+    if (!owner || !repo || !path) {
+      alert('請填寫來源 Owner / Repo / .7z 路徑');
+      return;
+    }
+
+    try {
+      $('extractLog').textContent = '';
+      setStatus('extractStatus', '⏳ 從 GitHub 下載 ' + path + ' ...', 'wait');
+      progress('extractBar', 0);
+
+      const rawUrl = 'https://raw.githubusercontent.com/' +
+        encodeURIComponent(owner) + '/' +
+        encodeURIComponent(repo) + '/' +
+        encodeURIComponent(branch) + '/' +
+        path.split('/').map(encodeURIComponent).join('/');
+
+      const res = await fetch(rawUrl, { headers: getHeaders() });
+      if (!res.ok) throw new Error('下載失敗: HTTP ' + res.status);
+
+      const buf = await res.arrayBuffer();
+      await extract7z(buf, path.split('/').pop());
+    } catch (err) {
+      setStatus('extractStatus', '❌ 失敗: ' + err.message, 'err');
+      log('extractLog', '❌ ' + err.message);
+    }
+  });
+
+  // ============================================================
+  // 推送核心（完全重寫，加強除錯）
+  // ============================================================
+  $('pushBtn').addEventListener('click', async function() {
+    if (isPushing) return;
+
+    // ---- 1. 讀取所有欄位（用 getVal 確保正確讀取） ----
+    const owner = getVal('dstOwner');
+    const repo = getVal('dstRepo');
+    const branch = getVal('dstBranch') || 'main';
+    const folder = getVal('dstFolder');
+    const token = getVal('token');
+    const msg = getVal('message') || 'Add extracted files via 1up tool';
+
+    // ---- 2. 除錯：在日誌顯示讀取到的值 ----
+    log('pushLog', '📋 讀取欄位:');
+    log('pushLog', '  Owner: "' + owner + '"');
+    log('pushLog', '  Repo: "' + repo + '"');
+    log('pushLog', '  Branch: "' + branch + '"');
+    log('pushLog', '  Folder: "' + folder + '"');
+    log('pushLog', '  Token: ' + (token ? '✅ 已填 (' + token.slice(0,8) + '...)' : '❌ 未填'));
+    log('pushLog', '  Message: "' + msg + '"');
+
+    // ---- 3. 驗證 ----
+    const errors = [];
+    if (!owner) errors.push('Owner');
+    if (!repo) errors.push('Repo');
+    if (!folder) errors.push('目標子資料夾');
+    if (!token) errors.push('GitHub Token');
+
+    if (errors.length > 0) {
+      const errMsg = '❌ 請填寫：' + errors.join('、');
+      setStatus('pushStatus', errMsg, 'err');
+      log('pushLog', errMsg);
+      alert(errMsg);
+      return;
+    }
+
+    // ---- 4. 檢查是否有選取檔案 ----
+    const list = getSelected();
+    if (list.length === 0) {
+      const errMsg = '❌ 請至少選取一個解壓出的檔案';
+      setStatus('pushStatus', errMsg, 'err');
+      log('pushLog', errMsg);
+      alert(errMsg);
+      return;
+    }
+
+    // ---- 5. 確認 ----
+    if (!confirm('確定要推送 ' + list.length + ' 個檔案到 ' + owner + '/' + repo + '@' + branch + ' 的「' + folder + '/」嗎？')) {
+      log('pushLog', '⏹ 已取消');
+      return;
+    }
+
+    // ---- 6. 開始推送 ----
+    isPushing = true;
+    this.disabled = true;
+    setStatus('pushStatus', '⏳ 開始推送 ' + list.length + ' 個檔案...', 'wait');
+    progress('pushBar', 0);
+    $('pushLog').textContent = '';
+
+    try {
+      // 6a. 取得最新 commit
+      log('pushLog', '🔍 取得分支 ' + branch + ' 的最新 commit...');
+      const refRes = await fetch(api(owner, repo, '/git/ref/heads/' + encodeURIComponent(branch)), { headers: getHeaders() });
+      if (!refRes.ok) throw new Error('取得 ref 失敗: HTTP ' + refRes.status + '\n' + await refRes.text());
+      const refData = await refRes.json();
+      const latestSha = refData.object.sha;
+      log('pushLog', '✅ 最新 commit: ' + latestSha.slice(0, 10));
+
+      // 6b. 取得 base tree
+      const commitRes = await fetch(api(owner, repo, '/git/commits/' + latestSha), { headers: getHeaders() });
+      if (!commitRes.ok) throw new Error('取得 commit 失敗: HTTP ' + commitRes.status);
+      const commitData = await commitRes.json();
+      const baseTreeSha = commitData.tree.sha;
+      log('pushLog', '✅ Base tree: ' + baseTreeSha.slice(0, 10));
+      progress('pushBar', 8);
+
+      // 6c. 上傳每個檔案的 blob
+      const treeEntries = [];
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        const path = folder + '/' + item.path;
+        log('pushLog', '⬆ 上傳 blob: ' + path + ' (' + fmtSize(item.size) + ')');
+
+        const base64 = uint8ToBase64(item.data);
+        const blobRes = await fetch(api(owner, repo, '/git/blobs'), {
+          method: 'POST',
+          headers: getJsonHeaders(),
+          body: JSON.stringify({ content: base64, encoding: 'base64' })
+        });
+
+        if (!blobRes.ok) {
+          const errText = await blobRes.text();
+          log('pushLog', '❌ 失敗: ' + path + ' (HTTP ' + blobRes.status + ')');
+          log('pushLog', '   ' + errText.slice(0, 200));
+          continue;
+        }
+
+        const blobData = await blobRes.json();
+        treeEntries.push({
+          path: path,
+          mode: '100644',
+          type: 'blob',
+          sha: blobData.sha
+        });
+        log('pushLog', '✅ ' + path + ' → ' + blobData.sha.slice(0, 10));
+
+        const pct = 8 + Math.round(((i + 1) / list.length) * 60);
+        progress('pushBar', pct);
+      }
+
+      if (treeEntries.length === 0) {
+        throw new Error('沒有成功上傳任何 blob，請檢查日誌');
+      }
+
+      // 6d. 建立 tree
+      log('pushLog', '🌳 建立 tree（' + treeEntries.length + ' 個項目）...');
+      const treeRes = await fetch(api(owner, repo, '/git/trees'), {
+        method: 'POST',
+        headers: getJsonHeaders(),
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+      });
+      if (!treeRes.ok) throw new Error('建立 tree 失敗: HTTP ' + treeRes.status + '\n' + await treeRes.text());
+      const treeData = await treeRes.json();
+      log('pushLog', '✅ Tree: ' + treeData.sha.slice(0, 10));
+      progress('pushBar', 80);
+
+      // 6e. 建立 commit
+      log('pushLog', '📝 建立 commit...');
+      const commitReq = await fetch(api(owner, repo, '/git/commits'), {
+        method: 'POST',
+        headers: getJsonHeaders(),
+        body: JSON.stringify({
+          message: msg + ' (' + treeEntries.length + ' files)',
+          tree: treeData.sha,
+          parents: [latestSha]
+        })
+      });
+      if (!commitReq.ok) throw new Error('建立 commit 失敗: HTTP ' + commitReq.status + '\n' + await commitReq.text());
+      const newCommit = await commitReq.json();
+      log('pushLog', '✅ Commit: ' + newCommit.sha.slice(0, 10));
+      progress('pushBar', 92);
+
+      // 6f. 更新 ref
+      log('pushLog', '🔄 更新分支 ' + branch + '...');
+      const refUpdate = await fetch(api(owner, repo, '/git/refs/heads/' + encodeURIComponent(branch)), {
+        method: 'PATCH',
+        headers: getJsonHeaders(),
+        body: JSON.stringify({ sha: newCommit.sha })
+      });
+      if (!refUpdate.ok) throw new Error('更新 ref 失敗: HTTP ' + refUpdate.status + '\n' + await refUpdate.text());
+
+      progress('pushBar', 100);
+      setStatus('pushStatus', '✅ 成功推送 ' + treeEntries.length + ' 個檔案到 ' + folder + '/ (commit: ' + newCommit.sha.slice(0, 10) + ')', 'ok');
+      log('pushLog', '🎉 完成！commit: ' + newCommit.sha);
+      log('pushLog', '🔗 https://github.com/' + owner + '/' + repo + '/tree/' + branch + '/' + folder);
+
+    } catch (err) {
+      setStatus('pushStatus', '❌ 推送失敗: ' + err.message, 'err');
+      log('pushLog', '❌ ' + err.message);
+    }
+
+    isPushing = false;
+    this.disabled = false;
+  });
+
+  // ---- 自動載入儲存設定 ----
+  ['srcOwner', 'srcRepo', 'srcBranch', 'srcPath', 'dstOwner', 'dstRepo', 'dstBranch', 'dstFolder', 'message'].forEach(id => {
+    const v = localStorage.getItem('1up_' + id);
+    if (v) $(id).value = v;
+  });
+  const savedToken = localStorage.getItem('1up_token');
+  if (savedToken) $('token').value = savedToken;
+
+  // 儲存設定（每次輸入時自動儲存）
+  document.querySelectorAll('input').forEach(el => {
+    el.addEventListener('change', function() {
+      if (this.id) localStorage.setItem('1up_' + this.id, this.value);
+    });
+  });
+
+  // ---- 初始狀態 ----
+  setStatus('extractStatus', '⏳ 請載入 .7z 檔案（本機或從 GitHub 抓取）');
+  setStatus('pushStatus', '⏳ 解壓縮後即可推送');
+  log('pushLog', '💡 提示：先在上方載入並解壓 .7z，然後選擇檔案，最後點「推送」');
+
+  console.log('✅ 1up 修正版已載入');
+  console.log('📌 如有問題，請查看 pushLog 日誌區');
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Multi File Download / Delete</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--primary:#2563eb;--danger:#dc2626;--ok:#059669;--warn:#d97706;}
+    @media (prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--text:#f9fafb;--muted:#9ca3af;--line:#374151;}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;line-height:1.5}.wrap{max-width:1160px;margin:0 auto;padding:22px}h1{font-size:1.55rem;margin:0 0 6px}.sub{color:var(--muted);margin:0 0 18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:16px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}.field{grid-column:span 3}.field.wide{grid-column:span 4}.field.full{grid-column:1/-1}label{display:block;font-weight:650;font-size:.88rem;margin:0 0 5px}input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text)}input[type=checkbox]{width:auto}button{border:0;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer;background:#e5e7eb;color:#111827}button.primary{background:var(--primary);color:#fff}button.danger{background:var(--danger);color:#fff}button.ok{background:var(--ok);color:#fff}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.hint{font-size:.86rem;color:var(--muted)}.pathbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.crumb{color:var(--primary);cursor:pointer;text-decoration:underline}.status{white-space:pre-wrap;border-radius:10px;padding:10px 12px;background:rgba(37,99,235,.09);font-size:.9rem}.status.err{background:rgba(220,38,38,.11)}.status.ok{background:rgba(5,150,105,.12)}.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0 2px}.bar{height:100%;width:0%;background:var(--primary);transition:width .2s}#log{max-height:150px;overflow:auto;font-size:.78rem;color:var(--muted);margin:8px 0 0;white-space:pre-wrap}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);padding:9px 7px;text-align:left;vertical-align:middle}th{font-size:.82rem;color:var(--muted);font-weight:750}tr:hover{background:rgba(127,127,127,.06)}.name{display:flex;align-items:center;gap:8px}.folder{font-weight:750;color:var(--primary);cursor:pointer}.file{word-break:break-all}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--muted);font-size:.78rem}.toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.drop{border:2px dashed var(--line);border-radius:12px;padding:12px;text-align:center;color:var(--muted)}.drop.drag{border-color:var(--primary);background:rgba(37,99,235,.08)}@media(max-width:760px){.field,.field.wide{grid-column:1/-1}.wrap{padding:12px}th:nth-child(4),td:nth-child(4){display:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GitHub 批次檔案工具</h1>
+  <p class="sub">在瀏覽器中列出 repository 目錄（可遞迴含子資料夾），multi-select 後一鍵批次下載成 ZIP，或用單一 commit 批次刪除。適合 GitHub Pages 靜態部署。</p>
+
+  <section class="card">
+    <div class="grid">
+      <div class="field"><label>Owner</label><input id="owner" placeholder="adm789"></div>
+      <div class="field"><label>Repo</label><input id="repo" placeholder="tfc"></div>
+      <div class="field"><label>Branch</label><input id="branch" placeholder="main"></div>
+      <div class="field"><label>Path</label><input id="path" placeholder="folder/subfolder"></div>
+      <div class="field wide"><label>GitHub token（刪除 / private repo 必填）</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_... / fine-grained token"></div>
+      <div class="field wide"><label>Commit message（批次刪除用）</label><input id="message" value="Batch delete selected files via web tool"></div>
+      <div class="field"><label>&nbsp;</label><button class="primary" id="loadBtn">Load files</button></div>
+      <div class="field full">
+        <label class="hint" style="display:inline-flex;align-items:center;gap:6px;margin:0">
+          <input type="checkbox" id="recursive"> 遞迴載入此路徑下所有子資料夾的檔案（適合跨資料夾批次選取）
+        </label>
+      </div>
+      <div class="field full hint">Token 只保存在此頁記憶體與可選 localStorage；建議用 fine-grained token，只授權此 repo 的 Contents read/write。批次刪除會用 Git Data API 產生「單一 commit」一次刪除所有選取檔案，不會像逐檔刪除那樣產生一堆 commit。</div>
+    </div>
+  </section>
+
+  <section class="card toolbar">
+    <div class="pathbar" id="crumbs"></div>
+    <div class="actions">
+      <label class="hint"><input type="checkbox" id="remember"> remember settings</label>
+      <span class="hint" id="selCount">0 selected</span>
+      <button id="selectAllBtn">Select all</button>
+      <button id="invertBtn">Invert</button>
+      <button id="clearBtn">Clear</button>
+      <button class="ok" id="zipBtn">Download ZIP</button>
+      <button id="downloadBtn">Download to folder</button>
+      <button class="danger" id="deleteBtn">Delete selected (1 commit)</button>
+    </div>
+  </section>
+
+  <section class="card drop" id="dropZone">Tip: 可把 GitHub directory URL 貼到本頁（或直接貼上/拖入），自動填 Owner/Repo/Branch/Path。</section>
+  <section class="card">
+    <div id="status" class="status">Ready.</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="hint" id="rate"></div>
+    <pre id="log"></pre>
+  </section>
+  <section class="card"><table><thead><tr><th><input type="checkbox" id="toggleAll"></th><th>Name / Path</th><th>Size</th><th>SHA</th><th>Raw</th></tr></thead><tbody id="tbody"></tbody></table></section>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var items=[], currentPath='', isRecursiveView=false;
+  ['owner','repo','branch','path','token','message'].forEach(function(id){var v=localStorage.getItem('ghfm_'+id);if(v)$(id).value=v;});
+  $('remember').checked=localStorage.getItem('ghfm_remember')==='1';
+
+  function api(path){var owner=$('owner').value.trim(), repo=$('repo').value.trim();return 'https://api.github.com/repos/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo)+path;}
+  function headers(){var h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};var t=$('token').value.trim();if(t)h.Authorization='Bearer '+t;return h;}
+  function jsonHeaders(){return Object.assign({'Content-Type':'application/json'},headers());}
+  function setStatus(msg,type){$('status').textContent=msg;$('status').className='status '+(type||'');}
+  function log(msg){var el=$('log');el.textContent+=(el.textContent?'\n':'')+msg;el.scrollTop=el.scrollHeight;}
+  function progress(pct){$('bar').style.width=Math.max(0,Math.min(100,pct))+'%';}
+  function updateRate(res){try{var rem=res.headers.get('x-ratelimit-remaining'),lim=res.headers.get('x-ratelimit-limit');if(rem)$('rate').textContent='GitHub API rate limit remaining: '+rem+'/'+lim;}catch(e){}}
+  function saveSettings(){localStorage.setItem('ghfm_remember',$('remember').checked?'1':'0');['owner','repo','branch','path','message'].forEach(function(id){localStorage.setItem('ghfm_'+id,$(id).value);});if($('remember').checked)localStorage.setItem('ghfm_token',$('token').value);else localStorage.removeItem('ghfm_token');}
+  function parseGitHubUrl(text){var m=String(text).match(/github\.com\/([^\/]+)\/([^\/]+)(?:\/tree\/([^\/]+)\/?(.*))?/i);if(!m)return false;$('owner').value=m[1];$('repo').value=m[2].replace(/\.git$/,'');if(m[3])$('branch').value=decodeURIComponent(m[3]);$('path').value=m[4]?decodeURIComponent(m[4]):'';return true;}
+  function formatSize(n){if(n==null)return '';if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB';}
+  function rawUrl(item){var owner=$('owner').value.trim(),repo=$('repo').value.trim(),branch=$('branch').value.trim()||'main';return 'https://raw.githubusercontent.com/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo)+'/'+encodeURIComponent(branch)+'/'+item.path.split('/').map(encodeURIComponent).join('/');}
+
+  function renderCrumbs(){var parts=currentPath?currentPath.split('/').filter(Boolean):[];var html='<span class="crumb" data-path="">root</span>';var acc='';parts.forEach(function(p){acc+=(acc?'/':'')+p;html+=' / <span class="crumb" data-path="'+acc.replace(/"/g,'&quot;')+'">'+p+'</span>';});$('crumbs').innerHTML=html;$('crumbs').querySelectorAll('.crumb').forEach(function(c){c.onclick=function(){$('path').value=c.dataset.path;load();};});}
+
+  function row(item, flat){
+    var tr=document.createElement('tr');
+    var isFile = flat ? item.type==='file' : true;
+    var displayName = flat ? item.name : item.path;
+    tr.innerHTML='<td>'+(isFile?'<input class="pick" type="checkbox">':'')+'</td><td><div class="name"><span>'+(isFile?'📄':'📁')+'</span><span class="'+(isFile?'file':'folder')+'"></span></div></td><td>'+(isFile?formatSize(item.size):'<span class="pill">dir</span>')+'</td><td><code>'+(item.sha||'').slice(0,10)+'</code></td><td>'+(isFile?'<a target="_blank" rel="noopener">raw</a>':'')+'</td>';
+    tr.querySelector('.name span:last-child').textContent=displayName;
+    if(!isFile){
+      tr.querySelector('.folder').onclick=function(){$('path').value=item.path;load();};
+    } else {
+      tr.querySelector('.pick').dataset.path=item.path;
+      tr.querySelector('a').href=item.download_url||rawUrl(item);
+    }
+    return tr;
+  }
+
+  function renderTable(list, flat){
+    $('tbody').innerHTML='';
+    list.forEach(function(it){$('tbody').appendChild(row(it,flat));});
+    updateSelCount();
+  }
+
+  function updateSelCount(){$('selCount').textContent=document.querySelectorAll('.pick:checked').length+' selected';}
+  $('tbody').addEventListener('change',function(e){if(e.target.classList.contains('pick'))updateSelCount();});
+
+  async function loadFlat(){
+    var branch=$('branch').value.trim()||'main';
+    setStatus('Loading '+(currentPath||'/')+' ...');
+    var res=await fetch(api('/contents/'+encodeURIComponent(currentPath).replace(/%2F/g,'/')+'?ref='+encodeURIComponent(branch)),{headers:headers()});
+    updateRate(res);
+    if(!res.ok){setStatus('Load failed: '+res.status,'err');log(await res.text());return;}
+    var data=await res.json();
+    items=Array.isArray(data)?data:[data];
+    items.sort(function(a,b){return (a.type===b.type?a.name.localeCompare(b.name):a.type==='dir'?-1:1);});
+    isRecursiveView=false;
+    renderTable(items,true);
+    setStatus('Loaded '+items.length+' item(s). Select files to download or delete.','ok');
+  }
+
+  async function loadRecursive(){
+    var branch=$('branch').value.trim()||'main';
+    setStatus('Loading recursive tree for "'+branch+'" ...');
+    var res=await fetch(api('/git/trees/'+encodeURIComponent(branch)+'?recursive=1'),{headers:headers()});
+    updateRate(res);
+    if(!res.ok){setStatus('Load failed: '+res.status,'err');log(await res.text());return;}
+    var data=await res.json();
+    if(data.truncated)log('⚠ GitHub 回傳的 tree 被截斷（repo 檔案數過多），清單可能不完整。');
+    var prefix=currentPath?currentPath+'/':'';
+    items=data.tree.filter(function(e){return e.type==='blob' && (currentPath ? (e.path===currentPath||e.path.indexOf(prefix)===0) : true);})
+      .map(function(e){return {path:e.path,name:e.path,sha:e.sha,size:e.size,type:'file'};});
+    items.sort(function(a,b){return a.path.localeCompare(b.path);});
+    isRecursiveView=true;
+    renderTable(items,false);
+    setStatus('Loaded '+items.length+' file(s) recursively under "'+(currentPath||'/')+'".','ok');
+  }
+
+  async function load(){
+    saveSettings();
+    currentPath=$('path').value.trim().replace(/^\/|\/$/g,'');
+    renderCrumbs();
+    try{
+      if($('recursive').checked) await loadRecursive(); else await loadFlat();
+    }catch(e){setStatus('Load error: '+e.message,'err');log('✗ '+e.message);}
+  }
+
+  function selected(){
+    var paths=[].slice.call(document.querySelectorAll('.pick:checked')).map(function(c){return c.dataset.path;});
+    return items.filter(function(i){return paths.indexOf(i.path)>=0;});
+  }
+
+  async function downloadZip(list){
+    if(typeof JSZip==='undefined'){setStatus('JSZip 載入失敗，請確認裝置有連上網路。','err');return;}
+    var zip=new JSZip();
+    progress(0);setStatus('Fetching '+list.length+' file(s)...');
+    for(var i=0;i<list.length;i++){
+      var item=list[i];
+      log('Fetching '+item.path);
+      try{
+        var res=await fetch(item.download_url||rawUrl(item));
+        if(!res.ok){log('✗ Failed: '+item.path+' ('+res.status+')');continue;}
+        var buf=await res.arrayBuffer();
+        zip.file(item.path,buf);
+      }catch(e){log('✗ Error: '+item.path+' — '+e.message);}
+      progress(Math.round((i+1)/list.length*80));
+    }
+    setStatus('Compressing ZIP...');
+    var blob=await zip.generateAsync({type:'blob'},function(meta){progress(80+Math.round(meta.percent*0.2));});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(($('repo').value.trim()||'files')+'-selected.zip');document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    progress(100);
+    setStatus('✔ ZIP downloaded with '+list.length+' file(s).','ok');
+  }
+
+  async function downloadToFolder(list){
+    var dirHandle;
+    try{ dirHandle=await window.showDirectoryPicker(); }
+    catch(e){ log('已取消資料夾選擇。'); return; }
+    progress(0);setStatus('Writing '+list.length+' file(s) to selected folder...');
+    var ok=0, fail=0;
+    for(var i=0;i<list.length;i++){
+      var item=list[i];
+      try{
+        var res=await fetch(item.download_url||rawUrl(item));
+        if(!res.ok)throw new Error('HTTP '+res.status);
+        var blob=await res.blob();
+        var parts=item.path.split('/');
+        var fileName=parts.pop();
+        var dir=dirHandle;
+        for(var p=0;p<parts.length;p++){ dir=await dir.getDirectoryHandle(parts[p],{create:true}); }
+        var fileHandle=await dir.getFileHandle(fileName,{create:true});
+        var writable=await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        ok++; log('✔ '+item.path);
+      }catch(e){ fail++; log('✗ '+item.path+' — '+e.message); }
+      progress(Math.round((i+1)/list.length*100));
+    }
+    setStatus('✔ 已寫入資料夾：成功 '+ok+' 個'+(fail?'，失敗 '+fail+' 個':'')+'。（此方式全程不會跳出瀏覽器下載對話框，不會重複）','ok');
+  }
+
+  async function downloadIndividually(list){
+    progress(0);setStatus('Downloading '+list.length+' file(s)...');
+    for(var i=0;i<list.length;i++){
+      var item=list[i];
+      try{
+        var res=await fetch(item.download_url||rawUrl(item));
+        if(!res.ok)throw new Error(res.status);
+        var blob=await res.blob();
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=item.name||item.path.split('/').pop();document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(href){URL.revokeObjectURL(href);},1000,a.href);
+        log('✔ '+item.path);
+      }catch(e){log('✗ '+item.path+' — '+e.message);}
+      progress(Math.round((i+1)/list.length*100));
+      await new Promise(function(r){setTimeout(r,180);});
+    }
+    setStatus('Download finished: '+list.length+' file(s).','ok');
+  }
+
+  async function batchDeleteSingleCommit(list){
+    var branch=$('branch').value.trim()||'main';
+    var msg=$('message').value.trim()||('Batch delete '+list.length+' file(s) via web tool');
+    setStatus('Preparing batch-delete commit for '+list.length+' file(s)...');
+    progress(5);
+    try{
+      var refRes=await fetch(api('/git/ref/heads/'+encodeURIComponent(branch)),{headers:headers()});
+      updateRate(refRes);
+      if(!refRes.ok)throw new Error('Get ref failed: '+refRes.status+' '+await refRes.text());
+      var refData=await refRes.json();
+      var latestCommitSha=refData.object.sha;
+      progress(20);log('Latest commit: '+latestCommitSha.slice(0,10));
+
+      var commitRes=await fetch(api('/git/commits/'+latestCommitSha),{headers:headers()});
+      updateRate(commitRes);
+      if(!commitRes.ok)throw new Error('Get commit failed: '+commitRes.status);
+      var commitData=await commitRes.json();
+      var baseTreeSha=commitData.tree.sha;
+      progress(35);
+
+      var treeEntries=list.map(function(it){return {path:it.path,mode:'100644',type:'blob',sha:null};});
+      var newTreeRes=await fetch(api('/git/trees'),{method:'POST',headers:jsonHeaders(),body:JSON.stringify({base_tree:baseTreeSha,tree:treeEntries})});
+      updateRate(newTreeRes);
+      if(!newTreeRes.ok)throw new Error('Create tree failed: '+newTreeRes.status+' '+await newTreeRes.text());
+      var newTreeData=await newTreeRes.json();
+      progress(60);log('New tree: '+newTreeData.sha.slice(0,10));
+
+      var newCommitRes=await fetch(api('/git/commits'),{method:'POST',headers:jsonHeaders(),body:JSON.stringify({message:msg,tree:newTreeData.sha,parents:[latestCommitSha]})});
+      updateRate(newCommitRes);
+      if(!newCommitRes.ok)throw new Error('Create commit failed: '+newCommitRes.status+' '+await newCommitRes.text());
+      var newCommitData=await newCommitRes.json();
+      progress(80);log('New commit: '+newCommitData.sha.slice(0,10));
+
+      var updateRefRes=await fetch(api('/git/refs/heads/'+encodeURIComponent(branch)),{method:'PATCH',headers:jsonHeaders(),body:JSON.stringify({sha:newCommitData.sha})});
+      updateRate(updateRefRes);
+      if(!updateRefRes.ok)throw new Error('Update ref failed: '+updateRefRes.status+' '+await updateRefRes.text());
+
+      progress(100);
+      setStatus('✔ Deleted '+list.length+' file(s) in ONE commit ('+newCommitData.sha.slice(0,10)+'). Reloading...','ok');
+      log('Done. Commit sha: '+newCommitData.sha);
+      await load();
+    }catch(e){
+      setStatus('Delete failed: '+e.message,'err');
+      log('✗ '+e.message);
+    }
+  }
+
+  $('loadBtn').onclick=load;
+  $('selectAllBtn').onclick=function(){document.querySelectorAll('.pick').forEach(function(c){c.checked=true;});updateSelCount();};
+  $('invertBtn').onclick=function(){document.querySelectorAll('.pick').forEach(function(c){c.checked=!c.checked;});updateSelCount();};
+  $('clearBtn').onclick=function(){document.querySelectorAll('.pick').forEach(function(c){c.checked=false;});$('toggleAll').checked=false;updateSelCount();};
+  $('toggleAll').onchange=function(){document.querySelectorAll('.pick').forEach(function(c){c.checked=$('toggleAll').checked;});updateSelCount();};
+
+  $('zipBtn').onclick=async function(){var list=selected();if(!list.length)return alert('請至少選取一個檔案。');await downloadZip(list);};
+  $('downloadBtn').onclick=async function(){
+    var list=selected();
+    if(!list.length)return alert('請至少選取一個檔案。');
+    if(window.showDirectoryPicker){
+      await downloadToFolder(list);
+      return;
+    }
+    if(list.length>8 && !confirm('此瀏覽器不支援「選資料夾一次寫入」，逐檔下載可能被瀏覽器攔截多重下載，導致重複或漏檔。\n建議改用上方「Download ZIP」按鈕（穩定、單一檔案）。\n仍要嘗試逐檔下載嗎？'))return;
+    await downloadIndividually(list);
+  };
+  $('deleteBtn').onclick=async function(){
+    var list=selected();
+    if(!list.length)return alert('請至少選取一個檔案。');
+    if(!$('token').value.trim())return alert('刪除需要具備 Contents 讀寫權限的 GitHub token。');
+    if(!confirm('確定要刪除選取的 '+list.length+' 個檔案嗎？\n這會建立「1 個」commit 直接推送到分支「'+($('branch').value.trim()||'main')+'」，無法在此頁復原。'))return;
+    await batchDeleteSingleCommit(list);
+  };
+
+  $('dropZone').addEventListener('dragover',function(e){e.preventDefault();$('dropZone').classList.add('drag');});
+  $('dropZone').addEventListener('dragleave',function(){$('dropZone').classList.remove('drag');});
+  $('dropZone').addEventListener('drop',function(e){e.preventDefault();$('dropZone').classList.remove('drag');var txt=e.dataTransfer.getData('text/plain');if(parseGitHubUrl(txt))load();});
+  window.addEventListener('paste',function(e){var txt=(e.clipboardData||window.clipboardData).getData('text');if(txt&&parseGitHubUrl(txt))load();});
+})();
+</script>
+</body>
+</html>
