@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Touch Web Search</title>
+<style>
+:root{color-scheme:light dark;--bg:#eef7ff;--card:#fff;--text:#122033;--muted:#5b6b80;--accent:#1463ff;--accent2:#0f9d58;--border:#c9d8ec;--shadow:0 10px 30px rgba(20,55,100,.16)}
+@media (prefers-color-scheme:dark){:root{--bg:#07111f;--card:#101d2d;--text:#eef6ff;--muted:#a8b8cc;--accent:#72a7ff;--accent2:#54d58a;--border:#28415f;--shadow:0 10px 30px rgba(0,0,0,.35)}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(160deg,var(--bg),#dff8ef);color:var(--text)}
+body{padding:max(16px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}.wrap{max-width:760px;margin:0 auto}.hero{padding:18px 4px 10px}.hero h1{margin:0 0 8px;font-size:clamp(28px,8vw,46px);line-height:1}.hero p{margin:0;color:var(--muted);font-size:17px}.card{background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow);padding:16px;margin:14px 0}.searchbox{display:grid;gap:12px}label{font-weight:750;font-size:15px}textarea,input,select,button{font:inherit}textarea,input,select{width:100%;border:2px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);padding:14px 15px;font-size:18px}textarea{min-height:112px;resize:vertical;line-height:1.45}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.engines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.engine{display:flex;gap:9px;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:rgba(255,255,255,.35);font-weight:700}.engine input{width:22px;height:22px;accent-color:var(--accent);padding:0}.actions{position:sticky;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:10px;z-index:2}.actions button,.mini button{min-height:54px;border:0;border-radius:16px;padding:12px 14px;font-weight:850;font-size:17px;color:white;background:var(--accent);box-shadow:0 8px 18px rgba(20,99,255,.24);touch-action:manipulation}.actions button.secondary,.mini button.secondary{background:#627089}.actions button.go{background:var(--accent2)}.hint{color:var(--muted);font-size:14px;line-height:1.45}.mini{display:grid;gap:10px}.results{display:grid;gap:10px;margin-top:12px}.result{display:block;text-decoration:none;color:var(--text);border:1px solid var(--border);border-radius:16px;padding:13px;background:rgba(255,255,255,.3);overflow-wrap:anywhere}.result b{color:var(--accent)}.badge{display:inline-block;border-radius:99px;background:rgba(20,99,255,.12);color:var(--accent);padding:3px 9px;font-size:12px;font-weight:800;margin-bottom:6px}.small{font-size:13px;color:var(--muted)}
+@media (min-width:680px){.engines{grid-template-columns:repeat(4,1fr)}.actions{position:static}.card{padding:22px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <h1>Touch Web Search</h1>
+    <p>Big buttons and simple forms for Android/iOS. Search one or several public web engines without tiny browser controls.</p>
+  </section>
+
+  <section class="card searchbox" aria-labelledby="web-title">
+    <h2 id="web-title">Search regular webpages</h2>
+    <label for="q">Words to search</label>
+    <textarea id="q" autocomplete="on" autocapitalize="none" placeholder="Type or paste keywords / URLs here"></textarea>
+    <div class="row">
+      <div><label for="site">Limit to site</label><input id="site" placeholder="example.com"></div>
+      <div><label for="phrase">Exact phrase</label><input id="phrase" placeholder="optional"></div>
+    </div>
+    <label>Open with</label>
+    <div class="engines" id="engines"></div>
+    <div class="actions">
+      <button class="go" id="searchBtn">Search</button>
+      <button class="secondary" id="clearBtn" type="button">Clear</button>
+    </div>
+    <p class="hint">Tip: choose multiple engines, then tap Search. Mobile browsers may ask before opening several tabs.</p>
+  </section>
+
+  <section class="card mini" aria-labelledby="page-title">
+    <h2 id="page-title">Find text inside one page</h2>
+    <p class="hint">Paste a page URL and a word. This works when that site allows browser fetching (CORS); otherwise use the regular web search above.</p>
+    <input id="pageUrl" inputmode="url" placeholder="https://example.com/page.html">
+    <input id="findWord" placeholder="word on that page">
+    <button id="findBtn" type="button">Fetch and find</button>
+    <div class="results" id="results" aria-live="polite"></div>
+  </section>
+</main>
+<script>
+(function(){
+'use strict';
+const engines=[
+  ['Google','https://www.google.com/search?q='],
+  ['Bing','https://www.bing.com/search?q='],
+  ['DuckDuckGo','https://duckduckgo.com/?q='],
+  ['Brave','https://search.brave.com/search?q=']
+];
+const $=id=>document.getElementById(id);
+const engineBox=$('engines');
+engineBox.innerHTML=engines.map((e,i)=>`<label class="engine"><input type="checkbox" value="${i}" ${i===0?'checked':''}> ${e[0]}</label>`).join('');
+function buildQuery(){
+  const parts=[$('q').value.trim()];
+  const phrase=$('phrase').value.trim();
+  const site=$('site').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  if(phrase)parts.push('"'+phrase.replace(/"/g,'')+'"');
+  if(site)parts.push('site:'+site);
+  return parts.filter(Boolean).join(' ');
+}
+$('searchBtn').addEventListener('click',()=>{
+  const query=buildQuery();
+  if(!query){alert('Please type search words first.');return;}
+  const chosen=[...engineBox.querySelectorAll('input:checked')].map(x=>engines[Number(x.value)]);
+  if(!chosen.length){alert('Choose at least one search engine.');return;}
+  chosen.forEach((engine,i)=>setTimeout(()=>window.open(engine[1]+encodeURIComponent(query),'_blank','noopener'),i*180));
+});
+$('clearBtn').addEventListener('click',()=>['q','site','phrase','pageUrl','findWord'].forEach(id=>$(id).value=''));
+$('findBtn').addEventListener('click',async()=>{
+  const out=$('results');
+  const url=$('pageUrl').value.trim();
+  const term=$('findWord').value.trim();
+  out.innerHTML='';
+  if(!url||!term){alert('Paste a URL and word to find.');return;}
+  try{
+    out.innerHTML='<p class="hint">Loading page text…</p>';
+    const res=await fetch(url,{mode:'cors'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const html=await res.text();
+    const text=new DOMParser().parseFromString(html,'text/html').body.textContent.replace(/\s+/g,' ');
+    const pos=text.toLowerCase().indexOf(term.toLowerCase());
+    if(pos<0){out.innerHTML='<p class="hint">No match found in fetched text.</p>';return;}
+    const start=Math.max(0,pos-90),end=Math.min(text.length,pos+term.length+120);
+    const snippet=text.slice(start,end).replace(new RegExp(term,'ig'),m=>'<b>'+m+'</b>');
+    out.innerHTML=`<a class="result" href="${url}" target="_blank" rel="noopener"><span class="badge">Match found</span><br>${snippet}</a>`;
+  }catch(err){
+    const q=encodeURIComponent(term+' site:'+url.replace(/^https?:\/\//,'').split('/')[0]);
+    out.innerHTML=`<p class="hint">This page blocked direct fetch (${err.message}). Try a web search instead:</p><a class="result" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">Search this site for <b>${term}</b></a>`;
+  }
+});
+})();
+</script>
+</body>
+</html>

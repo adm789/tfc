@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1got — 手機頁內搜尋工具</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--primary:#2563eb;--danger:#dc2626;--ok:#059669;}
+    @media (prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--text:#f9fafb;--muted:#9ca3af;--line:#374151;}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;line-height:1.55}
+    .wrap{max-width:840px;margin:0 auto;padding:20px}
+    h1{font-size:1.5rem;margin:0 0 6px}h2{font-size:1.1rem;margin:0 0 8px}
+    .sub{color:var(--muted);margin:0 0 18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:16px;margin-bottom:14px}
+    .step{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;margin-right:6px;flex-shrink:0}
+    .hint{font-size:.86rem;color:var(--muted)}
+    button{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:#e5e7eb;color:#111827;font-size:.9rem}
+    button.primary{background:var(--primary);color:#fff}
+    button.ok{background:var(--ok);color:#fff}
+    textarea{width:100%;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text);padding:9px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.76rem;resize:vertical}
+    .tabs{display:flex;gap:6px;margin-bottom:10px}
+    .tab{padding:8px 14px;border-radius:999px;background:#e5e7eb;color:#111827;cursor:pointer;font-weight:700;font-size:.86rem}
+    .tab.active{background:var(--primary);color:#fff}
+    .panel{display:none}
+    .panel.active{display:block}
+    ol{padding-left:20px;margin:6px 0}
+    li{margin:5px 0}
+    code{background:rgba(127,127,127,.15);padding:1px 5px;border-radius:5px;font-size:.85em}
+    .bmk-link{display:inline-block;margin:8px 0;padding:12px 18px;border-radius:10px;background:var(--primary);color:#fff !important;text-decoration:none;font-weight:800}
+    .status{white-space:pre-wrap;border-radius:10px;padding:10px 12px;background:rgba(37,99,235,.09);font-size:.85rem;margin-top:8px}
+    .status.ok{background:rgba(5,150,105,.12)}
+    #pasteArea{width:100%;min-height:140px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text);padding:10px;font-size:.92rem}
+    #pastePreview{border:1px solid var(--line);border-radius:9px;padding:12px;margin-top:10px;white-space:pre-wrap;word-break:break-word;max-height:50vh;overflow:auto;font-size:.92rem}
+    mark.gf-mark{background:#ffe066;color:#111;border-radius:2px}
+    mark.gf-mark.gf-current{background:#ff922b;outline:2px solid #d9480f}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+    .row input[type=search]{flex:1;min-width:150px;padding:10px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:16px}
+    .row label{display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--muted)}
+    #pasteCounter{font-size:.85rem;color:var(--muted);min-width:56px;text-align:center}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>1got — 手機頁內搜尋工具</h1>
+  <p class="sub">手機瀏覽器內建的「在頁面上尋找」很難用（找不到、不支援 regex、按鈕太小）。這裡提供兩種解法：<b>①書籤小工具</b>（可在任何網頁上直接用，效果最好）、<b>②貼文字搜尋</b>（給無法加書籤的 App 內建瀏覽器用）。</p>
+
+  <section class="card">
+    <h2>① 書籤小工具（推薦，可在任何網頁使用）</h2>
+    <p class="hint">原理：把一段小程式存成瀏覽器書籤；之後在任何網頁按下這個書籤，就會在<b>該網頁本身</b>跳出搜尋列，直接高亮、支援 regex／整字／大小寫、大按鈕換下一個。這段程式只在你主動點擊時才會執行，不會自動跑、不會回傳任何資料。</p>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="ios">iOS Safari</div>
+      <div class="tab" data-tab="android">Android Chrome</div>
+    </div>
+
+    <div class="panel active" id="panel-ios">
+      <ol>
+        <li>先把<b>這個頁面</b>加入書籤：分享圖示 → 「加入書籤」。</li>
+        <li>打開 書籤 (Bookmarks) 列表，點 <b>編輯 (Edit)</b>，選到剛加的書籤。</li>
+        <li>把書籤的「網址」欄整段清掉，貼上下面文字框裡的完整程式碼，儲存。</li>
+        <li>之後去任何想搜尋的網頁，打開書籤列表點它，畫面下方就會跳出搜尋列。</li>
+      </ol>
+    </div>
+    <div class="panel" id="panel-android">
+      <ol>
+        <li>先把<b>這個頁面</b>加入書籤（網址列旁的星號，或選單「加入書籤」）。</li>
+        <li>開啟 Chrome 選單 → 書籤 → 找到剛加的書籤，長按或點右上角三點選「編輯」。</li>
+        <li>把「網址」欄清空，貼上下面文字框裡的完整程式碼，儲存。</li>
+        <li>之後去任何想搜尋的網頁，開書籤列表點它即可。</li>
+      </ol>
+    </div>
+
+    <label class="hint">書籤程式碼（點一下框內會自動全選，方便複製）</label>
+    <textarea id="bmkCode" rows="4" readonly onclick="this.select()"></textarea>
+    <div class="row">
+      <button class="primary" id="copyBtn">複製程式碼</button>
+      <a class="bmk-link" id="bmkLink" href="#">或：桌面版直接拖曳此連結到書籤列</a>
+    </div>
+    <div class="hint">如果貼上後書籤沒反應：可能是該手機瀏覽器把過長網址截斷了，這時請改用下面「② 貼文字搜尋」。</div>
+    <div class="status" id="installStatus"></div>
+
+    <div class="row"><button class="ok" id="testHereBtn">先在這一頁測試看看</button></div>
+  </section>
+
+  <section class="card">
+    <h2>② 貼文字搜尋（備用，適合 App 內建瀏覽器）</h2>
+    <p class="hint">把想搜尋的文字（例如從網頁複製）貼到下面，一樣支援 regex／整字／大小寫、大按鈕換下一個。</p>
+    <textarea id="pasteArea" placeholder="把要搜尋的文字貼在這裡..."></textarea>
+    <div class="row">
+      <input type="search" id="pasteQuery" placeholder="搜尋關鍵字...">
+      <button id="pastePrev">▲</button>
+      <button class="primary" id="pasteNext">▼</button>
+      <span id="pasteCounter">0 / 0</span>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="pasteRegex"> Regex</label>
+      <label><input type="checkbox" id="pasteCase"> Case</label>
+      <label><input type="checkbox" id="pasteWord"> Whole word</label>
+    </div>
+    <div class="status err" id="pasteError" style="display:none"></div>
+    <div id="pastePreview"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var BOOKMARKLET_MIN = "!function(){var e=document.getElementById(\"gotfind-overlay\");if(e)return e.remove(),void(window.__gotfindClear&&window.__gotfindClear());var t=[],n=-1;function o(){for(var e=document.querySelectorAll(\"mark.gotfind-mark\"),o=0;o<e.length;o++){var d=e[o],i=d.parentNode;i&&(i.replaceChild(document.createTextNode(d.textContent),d),i.normalize())}t=[],n=-1}function d(e,d,r,l){if(o(),e){var f;try{f=function(e,t,n,o){var d=t?e:e.replace(/[.*+?^${}()|[\\]\\\\]/g,\"\\\\$&\");return o&&(d=\"\\\\b\"+d+\"\\\\b\"),new RegExp(d,\"g\"+(n?\"\":\"i\"))}(e,d,r,l)}catch(e){return void c(\"Regex \u932f\u8aa4: \"+e.message)}c(\"\"),function(){for(var e,t=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:function(e){var t=e.parentNode;if(!t)return NodeFilter.FILTER_REJECT;var n=t.nodeName;return\"SCRIPT\"===n||\"STYLE\"===n||\"NOSCRIPT\"===n||\"TEXTAREA\"===n||\"INPUT\"===n||\"SELECT\"===n||t.closest&&t.closest(\"#gotfind-overlay\")?NodeFilter.FILTER_REJECT:e.nodeValue&&e.nodeValue.trim()?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT}}),n=[];e=t.nextNode();)n.push(e);return n}().forEach(function(e){var n,o=e.nodeValue;f.lastIndex=0;for(var d=0,i=null;n=f.exec(o);)if(\"\"!==n[0]){i||(i=document.createDocumentFragment()),n.index>d&&i.appendChild(document.createTextNode(o.slice(d,n.index)));var r=document.createElement(\"mark\");r.className=\"gotfind-mark\",r.textContent=n[0],i.appendChild(r),t.push(r),d=n.index+n[0].length}else f.lastIndex++;i&&(d<o.length&&i.appendChild(document.createTextNode(o.slice(d))),e.parentNode.replaceChild(i,e))}),n=t.length?0:-1,i(),a()}else a()}function i(){t.forEach(function(e){e.classList.remove(\"gotfind-current\")}),n>=0&&t[n]&&(t[n].classList.add(\"gotfind-current\"),t[n].scrollIntoView({behavior:\"smooth\",block:\"center\"}))}function r(e){t.length&&(n=(n+e+t.length)%t.length,i(),a())}function a(){var e=document.getElementById(\"gotfind-counter\");e&&(e.textContent=t.length?n+1+\" / \"+t.length:\"0 / 0\")}function c(e){var t=document.getElementById(\"gotfind-error\");t&&(t.textContent=e||\"\")}window.__gotfindClear=o;var l=document.createElement(\"style\");l.textContent=\"mark.gotfind-mark{background:#ffe066;color:#111;padding:0;border-radius:2px}mark.gotfind-current{background:#ff922b;color:#111;outline:2px solid #d9480f}#gotfind-overlay{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#1f2937;color:#fff;padding:10px 10px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(0,0,0,.35);font-family:-apple-system,Roboto,sans-serif;display:flex;flex-direction:column;gap:6px}#gotfind-row1{display:flex;gap:6px;align-items:center}#gotfind-input{flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#fff;font-size:16px}#gotfind-overlay button{min-width:44px;min-height:44px;border:0;border-radius:8px;background:#374151;color:#fff;font-size:18px;font-weight:700}#gotfind-overlay button.gotfind-primary{background:#2563eb}#gotfind-row2{display:flex;gap:10px;align-items:center;font-size:13px;flex-wrap:wrap;color:#d1d5db}#gotfind-row2 label{display:flex;align-items:center;gap:4px}#gotfind-counter{min-width:56px;text-align:center;font-size:13px;color:#d1d5db}#gotfind-error{color:#fca5a5;font-size:12px;min-height:14px}\",document.head.appendChild(l);var f=document.createElement(\"div\");f.id=\"gotfind-overlay\",f.innerHTML='<div id=\"gotfind-row1\"><input id=\"gotfind-input\" type=\"search\" placeholder=\"Search this page...\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\"><button id=\"gotfind-prev\">\u25b2</button><button id=\"gotfind-next\" class=\"gotfind-primary\">\u25bc</button><span id=\"gotfind-counter\">0 / 0</span><button id=\"gotfind-close\">\u2715</button></div><div id=\"gotfind-row2\"><label><input type=\"checkbox\" id=\"gotfind-regex\"> Regex</label><label><input type=\"checkbox\" id=\"gotfind-case\"> Case</label><label><input type=\"checkbox\" id=\"gotfind-word\"> Whole word</label></div><div id=\"gotfind-error\"></div>',document.body.appendChild(f);var u=document.getElementById(\"gotfind-input\"),g=document.getElementById(\"gotfind-regex\"),p=document.getElementById(\"gotfind-case\"),m=document.getElementById(\"gotfind-word\"),s=null;function x(){d(u.value,g.checked,p.checked,m.checked)}u.addEventListener(\"input\",function(){clearTimeout(s),s=setTimeout(x,220)}),u.addEventListener(\"keydown\",function(e){\"Enter\"===e.key&&(e.preventDefault(),e.shiftKey?r(-1):r(1))}),[g,p,m].forEach(function(e){e.addEventListener(\"change\",x)}),document.getElementById(\"gotfind-prev\").addEventListener(\"click\",function(){r(-1)}),document.getElementById(\"gotfind-next\").addEventListener(\"click\",function(){r(1)}),document.getElementById(\"gotfind-close\").addEventListener(\"click\",function(){f.remove(),o()}),u.focus()}();";
+  var $=function(id){return document.getElementById(id);};
+
+  // ---- tabs ----
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.onclick=function(){
+      document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+      tab.classList.add('active');
+      $('panel-'+tab.dataset.tab).classList.add('active');
+    };
+  });
+
+  // ---- install code ----
+  var uri = 'javascript:' + BOOKMARKLET_MIN;
+  $('bmkCode').value = uri;
+  $('bmkLink').href = uri;
+
+  $('copyBtn').onclick = async function(){
+    try{
+      await navigator.clipboard.writeText(uri);
+      $('installStatus').className='status ok';
+      $('installStatus').textContent='✔ 已複製，去書籤編輯畫面貼上即可。';
+    }catch(e){
+      $('bmkCode').select();
+      document.execCommand('copy');
+      $('installStatus').className='status ok';
+      $('installStatus').textContent='✔ 已選取並複製（若失敗請長按框內手動複製）。';
+    }
+  };
+
+  $('testHereBtn').onclick = function(){
+    (0,eval)(BOOKMARKLET_MIN);
+  };
+
+  // ---- paste-and-search fallback (operates only inside #pastePreview) ----
+  var marks=[], current=-1;
+  function escapeHtml(s){ return s.replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function escapeRegex(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+  function renderPreview(text){
+    $('pastePreview').textContent = text;
+  }
+
+  function doPasteSearch(){
+    var text = $('pasteArea').value;
+    var query = $('pasteQuery').value;
+    $('pasteError').style.display='none';
+    marks=[]; current=-1;
+    if(!text){ $('pastePreview').innerHTML=''; updatePasteCounter(); return; }
+    if(!query){ renderPreview(text); updatePasteCounter(); return; }
+
+    var useRegex=$('pasteRegex').checked, caseSensitive=$('pasteCase').checked, wholeWord=$('pasteWord').checked;
+    var pattern = useRegex ? query : escapeRegex(query);
+    if(wholeWord) pattern = '\\b'+pattern+'\\b';
+    var re;
+    try{ re = new RegExp(pattern, 'g'+(caseSensitive?'':'i')); }
+    catch(e){ $('pasteError').style.display='block'; $('pasteError').textContent='Regex 錯誤: '+e.message; renderPreview(text); updatePasteCounter(); return; }
+
+    var html=''; var lastIndex=0; var match; var count=0;
+    while((match=re.exec(text))){
+      if(match[0]===''){ re.lastIndex++; continue; }
+      html += escapeHtml(text.slice(lastIndex, match.index));
+      html += '<mark class="gf-mark" data-i="'+count+'">'+escapeHtml(match[0])+'</mark>';
+      lastIndex = match.index + match[0].length;
+      count++;
+    }
+    html += escapeHtml(text.slice(lastIndex));
+    $('pastePreview').innerHTML = html;
+    marks = Array.prototype.slice.call($('pastePreview').querySelectorAll('mark.gf-mark'));
+    current = marks.length ? 0 : -1;
+    highlightPasteCurrent();
+    updatePasteCounter();
+  }
+
+  function highlightPasteCurrent(){
+    marks.forEach(function(m){ m.classList.remove('gf-current'); });
+    if(current>=0 && marks[current]){
+      marks[current].classList.add('gf-current');
+      marks[current].scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+  function gotoPaste(delta){
+    if(!marks.length) return;
+    current=(current+delta+marks.length)%marks.length;
+    highlightPasteCurrent();
+    updatePasteCounter();
+  }
+  function updatePasteCounter(){
+    $('pasteCounter').textContent = marks.length ? (current+1)+' / '+marks.length : '0 / 0';
+  }
+
+  var pasteTimer=null;
+  function schedulePasteSearch(){ clearTimeout(pasteTimer); pasteTimer=setTimeout(doPasteSearch,180); }
+  $('pasteArea').addEventListener('input', schedulePasteSearch);
+  $('pasteQuery').addEventListener('input', schedulePasteSearch);
+  $('pasteQuery').addEventListener('keydown', function(e){
+    if(e.key==='Enter'){ e.preventDefault(); if(e.shiftKey) gotoPaste(-1); else gotoPaste(1); }
+  });
+  [$('pasteRegex'), $('pasteCase'), $('pasteWord')].forEach(function(b){ b.addEventListener('change', doPasteSearch); });
+  $('pastePrev').onclick=function(){ gotoPaste(-1); };
+  $('pasteNext').onclick=function(){ gotoPaste(1); };
+})();
+</script>
+</body>
+</html>
