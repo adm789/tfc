@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3 Image Prompts with Copy Buttons</title>
+<style>
+  :root{color-scheme:light dark;--bg:#f6f7fb;--card:#fff;--text:#172033;--muted:#64748b;--line:#dbe3ef;--accent:#2563eb;--ok:#059669}
+  @media (prefers-color-scheme:dark){:root{--bg:#0b1020;--card:#121a2f;--text:#e5eefc;--muted:#a4b2c7;--line:#26344f;--accent:#60a5fa;--ok:#34d399}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;line-height:1.55}.wrap{max-width:1120px;margin:0 auto;padding:24px}h1{margin:0 0 8px;font-size:clamp(1.6rem,3vw,2.4rem)}.intro{margin:0 0 24px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.08)}.card img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#111}.body{padding:16px}.meta{font-size:.86rem;color:var(--muted);word-break:break-all;margin-bottom:10px}.prompt{width:100%;min-height:220px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--text);padding:12px;font:inherit}button{margin-top:10px;width:100%;border:0;border-radius:12px;background:var(--accent);color:white;font-weight:750;padding:11px 14px;cursor:pointer}button.copied{background:var(--ok)}.note{margin-top:18px;color:var(--muted);font-size:.92rem}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Prompts for 3 reference images</h1>
+  <p class="intro">Each card includes the source image, an editable image-generation prompt, and a copy button.</p>
+  <section class="grid" id="promptGrid"></section>
+  <p class="note">Tip: edit model-specific settings such as aspect ratio, seed, stylize, CFG, or negative prompts as needed.</p>
+</main>
+<script>
+const items = [
+  {
+    title: 'Prompt 1',
+    url: 'https://raw.githubusercontent.com/adm789/tfc/main/1gpt.jpg',
+    prompt: `Photorealistic full-body street-fashion photo of two stylish young adult women walking together through a narrow old European stone alley, laughing and looking at each other, each holding a takeaway coffee cup. One has long straight black hair, a white cropped tank top, dark denim shorts, black ankle-strap platform heels, a slim choker, and a small beige shoulder bag; the other has blonde hair in a loose side braid, a sleeveless pale-blue button-up shirt tied at the waist, light denim shorts, white ankle-strap heels, and a delicate necklace. Warm golden-hour sunlight filters through green leaves overhead, cozy outdoor café tables and chairs line the cobblestone street, stone walls and striped awnings frame the scene, shallow depth of field, low-angle full-body composition, natural smiles, cinematic travel photography, ultra-detailed, realistic skin texture, 35mm lens, high resolution.`
+  },
+  {
+    title: 'Prompt 2',
+    url: 'https://raw.githubusercontent.com/adm789/tfc/main/1gpt2.jpg',
+    prompt: `Photorealistic fashion editorial of two stylish young adult women strolling side by side on a sunlit cobblestone street in a historic Mediterranean/European old town. They are smiling at each other while carrying paper coffee cups. Left woman: long black hair with bangs, white cropped tank top, black suspenders, frayed blue denim shorts, black strappy platform heels. Right woman: blonde side braid, sleeveless light-blue tied shirt, pale denim shorts with side drawstrings, white strappy heels. Framed by stone buildings, arched café doorway, outdoor bistro chairs, striped awning, potted plants, bright midday sunlight, soft background blur, low camera angle emphasizing full-body walking pose, realistic anatomy, crisp details, airy summer mood, 50mm lens, natural colors, high-end lifestyle photography.`
+  },
+  {
+    title: 'Prompt 3',
+    url: 'https://raw.githubusercontent.com/adm789/tfc/main/1gpt2e.jpg',
+    prompt: `Ultra-realistic low-angle full-body photo of two fashionable young adult friends walking toward the camera down a bright European cobblestone lane between tall stone buildings. Both hold takeaway coffee cups and smile softly at the viewer. Left: long black hair with bangs, white cropped tank top, black suspenders, high-waisted frayed denim shorts, black ankle-strap platform sandals. Right: blonde hair in a side braid, sleeveless pale-blue denim shirt tied in a knot, light denim shorts with side ties, white ankle-strap heels. Blue sky above, warm stone architecture, café terraces, potted greenery, strong daylight with clean shadows, wide-angle perspective, symmetrical street depth, polished fashion-shoot lighting, sharp foreground details, natural skin, realistic proportions, vibrant summer travel aesthetic, high resolution.`
+  }
+];
+
+function copyText(text, button) {
+  const done = () => {
+    const old = button.textContent;
+    button.textContent = '✅ Copied';
+    button.classList.add('copied');
+    setTimeout(() => { button.textContent = old; button.classList.remove('copied'); }, 1600);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (err) {}
+  document.body.removeChild(ta);
+  done();
+}
+
+const grid = document.getElementById('promptGrid');
+items.forEach((item, index) => {
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.innerHTML = `
+    <img src="${item.url}" alt="${item.title} reference image" loading="lazy">
+    <div class="body">
+      <h2>${item.title}</h2>
+      <div class="meta"><a href="${item.url}" target="_blank" rel="noopener">${item.url}</a></div>
+      <textarea class="prompt" id="prompt-${index}">${item.prompt}</textarea>
+      <button type="button" data-target="prompt-${index}">📋 Copy prompt</button>
+    </div>`;
+  grid.appendChild(card);
+});
+grid.addEventListener('click', event => {
+  const button = event.target.closest('button[data-target]');
+  if (!button) return;
+  const field = document.getElementById(button.dataset.target);
+  copyText(field.value, button);
+});
+</script>
+</body>
+</html>
