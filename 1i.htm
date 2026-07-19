@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>11ce · 網格播放器 v7 (極致修復版)</title>
 <style>
-.item,#lightbox,.lbc{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;
           font-family:system-ui,sans-serif;cursor:none}
@@ -15,7 +14,7 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
 /* 設定全域變數，--obj-pos-y 初始值 50% */
 :root{--cols:3;--row-h:200px;--obj-pos-y:50%}
 
-#grid{position:fixed;top:0;right:0;bottom:0;left:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px;-webkit-overflow-scrolling:touch;}
+#grid{position:fixed;inset:0;overflow-y:scroll;overflow-x:hidden;z-index:1;padding:6px 6px 56px}
 .gal{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:var(--row-h);gap:6px}
 .item{background:#111;border-radius:5px;overflow:hidden;cursor:zoom-in;position:relative;
       display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:box-shadow .12s}
@@ -61,9 +60,9 @@ body:not(.show-cursor) #lightbox,body:not(.show-cursor) #lightbox *{cursor:none!
           opacity:0;transition:opacity .18s;pointer-events:none}
 #hoverUrl.show{opacity:1}
 
-#lightbox{position:fixed;top:0;right:0;bottom:0;left:0;background:#000;z-index:1000;display:none;touch-action:none}
+#lightbox{position:fixed;inset:0;background:#000;z-index:1000;display:none;touch-action:none}
 #lightbox.show{display:block}
-#lbMedia{display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;
+#lbMedia{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
          object-position:center var(--lb-pos-y,85%);
          transition:object-position .15s ease;cursor:grab}
 #lbMedia.dragging{cursor:grabbing;transition:none}
@@ -184,6 +183,7 @@ const root=document.documentElement;
 const css=(k,v)=>root.style.setProperty(k,v);
 
 const gal=$('gal');
+const grid=$('grid');
 const stat=$('stat'),ui=$('ui');
 const hoverUrl=$('hoverUrl');
 const lb=$('lightbox'),lbUrl=$('lbUrl'),lbCoord=$('lbCoord');
@@ -204,6 +204,7 @@ let lbScale=1;
 let lbPanX=0, lbPanY=0, lbPosY=85, lbCoverMode=true; 
 let lbDir=1;
 let lbAutoPlay=true,lbAutoTimer=null,lbSpeed=3000;
+const LB_SPEED_MIN=60,LB_SPEED_MAX=9000,LB_SPEED_FACTOR=1.18;
 
 let lbStatePerIndex = new Map();
 let lbStateRestoredForCurrent = false;
@@ -218,14 +219,14 @@ const _fallbackPool=[
   "白蕾絲輕覆身體，感受細膩的溫熱。"
 ];
 let textPool=_fallbackPool.slice();
-fetch('general_lines.txt')
+ fetch('general_lines.txt')
   .then(r=>{ if(!r.ok) throw 0; return r.text(); })
   .then(t=>{
     const lines=t.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
     if(lines.length) textPool=lines;
   })
   .catch(()=>{});
-
+ 
 function buildFromLib(){
   const res=[];
   if(!window.LinesLib||!LinesLib.FOLDER_IMAGES) return res;
@@ -275,7 +276,7 @@ function buildFromUrl(){
   if(!raw.trim()) return res;
   const gp=new URLSearchParams(raw);
   const gExt=gp.get('ext')||gp.get('e')||null;
-  const pairs=raw.split('&').filter(p=>!/^(ext|e|cols|rowH|c|r)=/i.test(p));
+  const pairs=raw.split('&').filter(p=>!/^(ext|e|cols|rowH|c|r|v|auto)=/i.test(p));
   pairs.forEach(seg=>{
     seg=seg.trim();
     if(!seg) return;
@@ -315,7 +316,13 @@ function buildFromUrl(){
   return res;
 }
 
-function hasUrlParam(){return location.search.slice(1).trim().length>0;}
+function hasUrlParam(){
+  const sp=new URLSearchParams(location.search);
+  for(const k of sp.keys()){
+    if(!/^(ext|e|cols|rowH|c|r|v|auto)$/i.test(k)) return true;
+  }
+  return false;
+}
 function buildDefaultPool(){
   const res=[];
   for(let i=1;i<=60;i++){
@@ -329,11 +336,18 @@ function waitForLib(cb){
   if(hasUrlParam()){cb(buildFromUrl());return;}
   if(window._noLib){cb(buildDefaultPool());return;}
   if(window.LinesLib&&LinesLib.FOLDER_IMAGES){cb(buildFromLib());return;}
-  let waited=0;
+
+/*  let waited=0;
   const tid=setInterval(()=>{
     if(window.LinesLib&&LinesLib.FOLDER_IMAGES){clearInterval(tid);cb(buildFromLib());return;}
     waited+=80;
     if(waited>=1500){clearInterval(tid);cb(buildDefaultPool());}
+  },80); gemi.. adviced below*/
+let waited=0;
+  const tid=setInterval(()=>{
+    if(window.LinesLib&&LinesLib.FOLDER_IMAGES){clearInterval(tid);cb(buildFromLib());return;}
+    if(window._noLib || waited>=1500){clearInterval(tid);cb(buildDefaultPool());return;} // 雙重保險
+    waited+=80;
   },80);
 }
 
@@ -362,10 +376,11 @@ function renderBatch(start,count){
     div.addEventListener('mouseleave',()=>hoverUrl.classList.remove('show'));
     let _itemTouched=false;
     div.addEventListener('touchend',e=>{
+      e.preventDefault();
       _itemTouched=true;
       openLightbox(i);
       setTimeout(()=>_itemTouched=false,400);
-    },{passive:true});
+    },{passive:false});
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_itemTouched) return;
@@ -464,7 +479,7 @@ function openLightbox(i){
     if(!cur || cur.tagName!=='VIDEO'){
       const v=document.createElement('video');
       v.id='lbMedia';v.autoplay=true;v.loop=false;v.muted=muted;v.playsInline=true;
-      v.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:contain';
+      v.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain';
       if(cur && cur.parentNode) cur.replaceWith(v);
       else lb.appendChild(v);
       cur=v;
@@ -475,13 +490,13 @@ function openLightbox(i){
     if(cur && cur.tagName==='VIDEO'){
       cur.pause();
       const img=document.createElement('img');
-      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
+      img.id='lbMedia';img.alt='';img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
       cur.replaceWith(img);
       cur=img;
     } else if(!cur || cur.tagName !== 'IMG'){
       const img=document.createElement('img');
       img.id='lbMedia';img.alt='';
-      img.style.cssText='display:block;position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover';
+      img.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
       if(cur && cur.parentNode) cur.replaceWith(img);
       else lb.appendChild(img);
       cur=img;
@@ -522,7 +537,7 @@ function openLightbox(i){
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover, 4500);
   }
   
   hookLbMedia();
@@ -580,12 +595,14 @@ function toggleLbAuto(){
   } else {
     stopLbAuto();
   }
-  const btn = $('lcAuto');
-  if(btn){btn.textContent=lbAutoPlay?'⏸自':'▶自動';btn.classList.toggle('on',lbAutoPlay);}
+  updateLbAutoBtn();
 }
 function updateLbAutoBtn(){
   const btn=$('lcAuto');
-  if(btn && lbAutoPlay) btn.textContent = `⏸${+(3000/lbSpeed).toFixed(1)}x`;
+  if(!btn) return;
+  const mult = (+(3000/lbSpeed).toFixed(1));
+  btn.textContent = (lbAutoPlay?'⏸':'▶') + mult + 'x';
+  btn.classList.toggle('on', lbAutoPlay);
 }
 
 function lbOpen(){return lb.classList.contains('show');}
@@ -609,7 +626,7 @@ document.addEventListener('mousemove',e=>{
     lb.classList.add('lb-hover');
     document.body.classList.add('show-cursor');
     clearTimeout(lbHoverTimer);
-    lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+    lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
   } else {
     resetUITimer();
   }
@@ -631,30 +648,13 @@ function toggleUI(){
 function toggleFS(){
   const hasFallback=document.documentElement.classList.contains('ios-fs-fallback');
   if(!document.fullscreenElement&&!hasFallback){
-    let triggered=false;
-    try{
-      const p=document.documentElement.requestFullscreen();
-      if(p&&typeof p.catch==='function'){
-        p.catch(()=>{
-          document.documentElement.classList.add('ios-fs-fallback');
-          stat.textContent='⛶ 虛擬全螢幕';
-        });
-      }
-      // iOS 12: requestFullscreen returns undefined, check after tick
-      setTimeout(()=>{
-        if(!document.fullscreenElement&&!document.documentElement.classList.contains('ios-fs-fallback')){
-          document.documentElement.classList.add('ios-fs-fallback');
-          stat.textContent='⛶ 虛擬全螢幕';
-        }
-      },300);
-    }catch(e){
+    document.documentElement.requestFullscreen().catch(()=>{
       document.documentElement.classList.add('ios-fs-fallback');
       stat.textContent='⛶ 虛擬全螢幕';
-    }
+    });
   } else {
-    if(document.fullscreenElement) try{document.exitFullscreen();}catch(e){}
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     document.documentElement.classList.remove('ios-fs-fallback');
-    stat.textContent='';
   }
 }
 function toggleMute(){
@@ -684,7 +684,7 @@ function hideLbCursorAndHover(){
 function showLbTouch(){
   lb.classList.add('lb-touch');
   clearTimeout(lbHoverTimer);
-  lbHoverTimer=setTimeout(hideLbCursorAndHover,7500);
+  lbHoverTimer=setTimeout(hideLbCursorAndHover,4500);
 }
 
 /* 縮放狀態「循環重置（Recycling）」機制 */
@@ -730,8 +730,8 @@ document.addEventListener('keydown',e=>{
       return;
     }
     if(e.key.toLowerCase()==='t'){ showText=!showText; lbTxt.classList.toggle('show',showText); return; }
-    if(e.key==='['){lbSpeed=Math.min(9000,lbSpeed+300); updateLbAutoBtn(); return;}
-    if(e.key===']'){lbSpeed=Math.max(400,lbSpeed-300); updateLbAutoBtn(); return;}
+    if(e.key==='['){lbSpeed=Math.min(LB_SPEED_MAX,Math.round(lbSpeed*LB_SPEED_FACTOR)); updateLbAutoBtn(); return;}
+    if(e.key===']'){lbSpeed=Math.max(LB_SPEED_MIN,Math.round(lbSpeed/LB_SPEED_FACTOR)); updateLbAutoBtn(); return;}
     if(e.key===','||e.key==='<'){ e.preventDefault(); lbPosY=Math.max(5,lbPosY-5); document.documentElement.style.setProperty('--lb-pos-y',lbPosY+'%'); const m=document.getElementById('lbMedia');if(m&&lbCoverMode)m.style.objectPosition=`center ${lbPosY}%`; stat.textContent=`📌 燈箱焦點 Y:${lbPosY}%`; return; }
     if(e.key==='.'||e.key==='>'){ e.preventDefault(); lbPosY=Math.min(95,lbPosY+5); document.documentElement.style.setProperty('--lb-pos-y',lbPosY+'%'); const m=document.getElementById('lbMedia');if(m&&lbCoverMode)m.style.objectPosition=`center ${lbPosY}%`; stat.textContent=`📌 燈箱焦點 Y:${lbPosY}%`; return; }
     return;
@@ -801,9 +801,19 @@ function lbBtn(id,fn){
   el.addEventListener('touchend',e=>{ e.preventDefault(); _touched=true; fn(); setTimeout(()=>_touched=false,400);},{passive:false});
   el.addEventListener('click',e=>{ if(_touched){e.stopPropagation();return;} fn();});
 }
+function lbBtnHold(id,fn){
+  const el=$(id); if(!el) return;
+  let timer=null;
+  const trigger=()=>fn();
+  const start=e=>{ e.preventDefault(); trigger(); timer=setTimeout(function rep(){ trigger(); timer=setTimeout(rep,90); },400); };
+  const stop=()=>{ clearTimeout(timer); timer=null; };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, {passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>el.addEventListener(ev, stop));
+}
 lbBtn('lcAuto',    ()=>toggleLbAuto());
-lbBtn('lcSlower',  ()=>{ lbSpeed=Math.min(9000,lbSpeed+300); updateLbAutoBtn(); });
-lbBtn('lcFaster',  ()=>{ lbSpeed=Math.max(400,lbSpeed-300);  updateLbAutoBtn(); });
+lbBtnHold('lcSlower',  ()=>{ lbSpeed=Math.min(LB_SPEED_MAX,Math.round(lbSpeed*LB_SPEED_FACTOR)); updateLbAutoBtn(); });
+lbBtnHold('lcFaster',  ()=>{ lbSpeed=Math.max(LB_SPEED_MIN,Math.round(lbSpeed/LB_SPEED_FACTOR));  updateLbAutoBtn(); });
 lbBtn('lcCover',   ()=>{ lbCoverMode=!lbCoverMode; const m=document.getElementById('lbMedia'); if(m){ m.style.objectFit=lbCoverMode?'cover':'contain'; m.style.objectPosition=lbCoverMode?`center ${lbPosY}%`:'center center'; } stat.textContent=lbCoverMode?'Cover模式':'Contain模式'; });
 lbBtn('lcCaption', ()=>{ showText=!showText; lbTxt.classList.toggle('show',showText); const b=$('lcCaption'); if(b) b.classList.toggle('on',showText); });
 lbBtn('lcDir',     ()=>{ lbDir*=-1; $('lcDir').textContent=lbDir>0?'↔':'↩'; stat.textContent=`燈箱方向：${lbDir>0?'→':'←'}`; });
@@ -881,7 +891,7 @@ makeDraggable($('lbCtrlPanel'));
     _tapFromBtn=e.target.tagName==='BUTTON'||e.target.closest('button')!==null;
     if(e.touches.length===1){t0x=e.touches[0].clientX;t0y=e.touches[0].clientY;}
     else if(e.touches.length===2){pinch0=dist(e.touches);lastScale=lbScale;}
-    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,7500); }
+    if(_tapFromBtn){ lb.classList.add('lb-touch'); clearTimeout(lbHoverTimer); lbHoverTimer=setTimeout(hideLbCursorAndHover,4500); }
     else showLbTouch();
   },{passive:true});
   lb.addEventListener('touchmove',e=>{
