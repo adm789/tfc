@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上傳到 InfinityFree</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            line-height: 1.8;
+            background: #f5f6fa;
+            color: #222;
+        }
+        h1 { font-size: 22px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+        .sub { color: #888; font-size: 13px; font-weight: normal; }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            border: 1px solid #e8e8e8;
+        }
+        .card h3 { margin: 0 0 10px; font-size: 15px; color: #555; }
+        .flex { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        input[type="text"], input[type="password"], select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+        }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+        }
+        .btn {
+            padding: 7px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,126,234,0.35); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; }
+        .btn-secondary:hover { background: #e6e6e6; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-success:hover { background: #229954; }
+        
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafbfc;
+            color: #888;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+        .drop-zone .icon { font-size: 32px; display: block; margin-bottom: 6px; }
+        .drop-zone .hint { font-size: 13px; }
+        .drop-zone .hint small { color: #aaa; }
+        
+        .file-list { margin: 10px 0 0; max-height: 320px; overflow-y: auto; }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            gap: 8px;
+        }
+        .file-item .name { flex: 1; word-break: break-all; font-family: Consolas, monospace; font-size: 12px; }
+        .file-item .size { color: #888; font-size: 12px; white-space: nowrap; }
+        .file-item .status { font-size: 12px; font-weight: 500; }
+        .file-item .status.ok { color: #27ae60; }
+        .file-item .status.fail { color: #e74c3c; }
+        .file-item .status.pending { color: #f39c12; }
+        
+        .progress-wrap {
+            height: 6px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 6px 0 2px;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        
+        .log-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 8px;
+        }
+        .log-box .ok { color: #4ec9b0; }
+        .log-box .err { color: #f48771; }
+        .log-box .info { color: #569cd6; }
+        
+        .badge { 
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .badge-ok { background: #d5f5e3; color: #1a7a42; }
+        .badge-fail { background: #fadbd8; color: #922b21; }
+        .badge-pending { background: #fdebd0; color: #a04000; }
+        
+        .hidden { display: none !important; }
+        .mt-8 { margin-top: 8px; }
+        .mb-8 { margin-bottom: 8px; }
+        .gap-8 { gap: 8px; }
+        
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .card { padding: 12px 14px; }
+            .flex { flex-direction: column; align-items: stretch; }
+            .flex-between { flex-direction: column; align-items: stretch; }
+            .btn { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>📤 上傳到 InfinityFree <span class="sub">adm.gamer.gd</span></h1>
+
+<!-- 設定區域 -->
+<div class="card">
+    <div class="flex-between">
+        <div class="flex">
+            <label style="font-size:13px;color:#555;">密碼</label>
+            <input type="password" id="secretInput" value="lkk.." style="width:120px;">
+            <button class="btn btn-secondary" id="testBtn" style="font-size:12px;">🔌 測試連線</button>
+        </div>
+        <div class="flex">
+            <label style="font-size:13px;color:#555;">目標目錄</label>
+            <input type="text" id="targetDir" value="tfc" style="width:100px;">
+        </div>
+    </div>
+</div>
+
+<!-- 上傳區域 -->
+<div class="card">
+    <div class="flex-between">
+        <div>
+            <span style="font-weight:600;font-size:15px;">📁 選擇檔案</span>
+            <span style="color:#888;font-size:12px;margin-left:8px;">(拖曳或點擊)</span>
+        </div>
+        <div class="flex">
+            <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="extractCheck" checked> 自動解壓 (.7z / .zip)
+            </label>
+            <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="overwriteCheck"> 覆蓋已存在檔案
+            </label>
+        </div>
+    </div>
+    
+    <div class="drop-zone" id="dropZone">
+        <span class="icon">📂</span>
+        <div class="hint">
+            拖曳檔案到這裡，或 <strong>點擊選擇</strong><br>
+            <small>支援 .7z, .zip, 及任何檔案類型</small>
+        </div>
+        <input type="file" id="fileInput" multiple style="display:none;">
+    </div>
+    
+    <div id="fileListContainer" class="hidden">
+        <div class="flex-between mb-8">
+            <span style="font-size:13px;font-weight:500;">待上傳檔案 <span id="fileCount">0</span></span>
+            <span style="font-size:12px;color:#888;" id="totalSize">0 B</span>
+        </div>
+        <div class="file-list" id="fileList"></div>
+        <div class="flex mt-8" style="gap:8px;">
+            <button class="btn btn-primary" id="uploadBtn">🚀 上傳全部</button>
+            <button class="btn btn-secondary" id="clearBtn">清空清單</button>
+        </div>
+        <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    </div>
+</div>
+
+<!-- 已上傳檔案瀏覽 -->
+<div class="card">
+    <div class="flex-between">
+        <span style="font-weight:600;font-size:15px;">📋 已上傳檔案</span>
+        <button class="btn btn-secondary" id="refreshBtn" style="font-size:12px;">🔄 重新整理</button>
+    </div>
+    <div id="remoteFileList" style="font-size:13px;color:#888;padding:4px 0;">點擊「重新整理」查看</div>
+</div>
+
+<!-- 日誌 -->
+<div class="card">
+    <div class="flex-between">
+        <span style="font-weight:600;font-size:15px;">📋 日誌</span>
+        <button class="btn btn-secondary" id="clearLogBtn" style="font-size:12px;">清空</button>
+    </div>
+    <div class="log-box" id="logBox">就緒，等待操作...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/7z-wasm@0.1.1/dist/7z-wasm.min.js">
+</script>
+<script>
+(function() {
+    'use strict';
+    
+    // === DOM 參考 ===
+    const secretInput = document.getElementById('secretInput');
+    const targetDir = document.getElementById('targetDir');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const fileCount = document.getElementById('fileCount');
+    const totalSize = document.getElementById('totalSize');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressWrap = document.getElementById('progressWrap');
+    const logBox = document.getElementById('logBox');
+    const testBtn = document.getElementById('testBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const remoteFileList = document.getElementById('remoteFileList');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const extractCheck = document.getElementById('extractCheck');
+    const overwriteCheck = document.getElementById('overwriteCheck');
+
+    let pendingFiles = [];
+    let isUploading = false;
+    let sevenZip = null;
+
+    // === 工具函數 ===
+    function log(msg, type = 'info') {
+        const time = new Date().toLocaleTimeString();
+        const colorMap = { ok: 'ok', err: 'err', info: 'info' };
+        const cls = colorMap[type] || 'info';
+        logBox.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function clearLog() {
+        logBox.innerHTML = '';
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function getBaseUrl() {
+        return 'https://adm.gamer.gd/1receiver.php';
+    }
+
+    function getSecret() {
+        return secretInput.value.trim() || 'lkk..';
+    }
+
+    function getTargetDir() {
+        return targetDir.value.trim() || 'tfc';
+    }
+
+    // === API 呼叫 ===
+    async function apiCall(action, data = null, files = null) {
+        const secret = getSecret();
+        const url = getBaseUrl() + '?secret=' + encodeURIComponent(secret) + '&action=' + encodeURIComponent(action);
+        
+        let body;
+        let headers = {};
+        
+        if (files) {
+            body = new FormData();
+            for (const [key, val] of Object.entries(data || {})) {
+                body.append(key, val);
+            }
+            if (Array.isArray(files)) {
+                for (const f of files) {
+                    body.append('files[]', f.file, f.name);
+                }
+                if (data && data.filenames) {
+                    for (const fn of data.filenames) {
+                        body.append('filenames[]', fn);
+                    }
+                }
+            } else {
+                body.append('file', files, data && data.filename ? data.filename : files.name);
+                for (const [key, val] of Object.entries(data || {})) {
+                    if (key !== 'filename') body.append(key, val);
+                }
+            }
+        } else {
+            body = new URLSearchParams(data || {});
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+        
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            return { error: 'Invalid response: ' + text.slice(0, 100) };
+        }
+    }
+
+    // === 測試連線 ===
+    async function testConnection() {
+        log('🔄 測試連線...', 'info');
+        try {
+            const result = await apiCall('ping');
+            if (result.status === 'ok') {
+                log('✅ 連線成功！可寫入: ' + (result.writable ? '是' : '否'), 'ok');
+                log('📁 基礎目錄: ' + result.base_dir, 'info');
+                return true;
+            } else {
+                log('❌ 連線失敗: ' + (result.error || '未知錯誤'), 'err');
+                return false;
+            }
+        } catch (e) {
+            log('❌ 連線錯誤: ' + e.message, 'err');
+            return false;
+        }
+    }
+
+    // === 上傳單一檔案 ===
+    async function uploadSingleFile(file, dir, overwrite) {
+        const result = await apiCall('upload', {
+            dir: dir,
+            overwrite: overwrite ? '1' : '',
+            filename: file.name
+        }, file);
+        return result;
+    }
+
+    // === 解壓 7z (使用 WASM) ===
+    async function extract7z(file) {
+        log('📦 開始解壓 .7z: ' + file.name, 'info');
+        
+        try {
+            // 載入 7z-wasm
+            if (!sevenZip) {
+                log('⏳ 載入 7z WASM...', 'info');
+                sevenZip = await SevenZip({
+                    locateFile: (path, prefix) => {
+                        return 'https://cdn.jsdelivr.net/npm/7z-wasm@0.1.1/dist/' + path;
+                    }
+                });
+                log('✅ 7z WASM 載入完成', 'ok');
+            }
+            
+            // 讀取檔案到 ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            // 解壓
+            const result = await sevenZip.extract(uint8Array);
+            
+            if (!result || !result.files || result.files.length === 0) {
+                log('⚠️ 壓縮檔內沒有檔案', 'err');
+                return [];
+            }
+            
+            const extractedFiles = [];
+            for (const entry of result.files) {
+                if (!entry.data || entry.isDir) continue;
+                const name = entry.name.split('/').pop() || entry.name;
+                const blob = new Blob([entry.data]);
+                const fileObj = new File([blob], name, { type: 'application/octet-stream' });
+                extractedFiles.push(fileObj);
+                log(`   📄 ${name} (${formatSize(entry.data.length)})`, 'ok');
+            }
+            
+            log(`✅ 解壓完成，共 ${extractedFiles.length} 個檔案`, 'ok');
+            return extractedFiles;
+            
+        } catch (e) {
+            log('❌ 解壓失敗: ' + e.message, 'err');
+            return null;
+        }
+    }
+
+    // === 解壓 ZIP (使用 WASM 或瀏覽器原生) ===
+    async function extractZip(file) {
+        log('📦 開始解壓 .zip: ' + file.name, 'info');
+        
+        try {
+            // 使用瀏覽器原生 zip 解壓 (如果支援)
+            if ('createDecompressionStream' in window) {
+                const stream = file.stream().pipeThrough(new DecompressionStream('deflate-raw'));
+                const response = new Response(stream);
+                const blob = await response.blob();
+                // 如果只有一個檔案，直接返回
+                log('✅ ZIP 解壓完成 (使用原生 API)', 'ok');
+                return [new File([blob], file.name.replace(/\.zip$/i, ''), { type: 'application/octet-stream' })];
+            }
+            
+            // 降級：直接上傳 zip 檔案
+            log('⚠️ 瀏覽器不支援 ZIP 解壓，將上傳原始檔案', 'err');
+            return [file];
+            
+        } catch (e) {
+            log('❌ ZIP 解壓失敗: ' + e.message + '，將上傳原始檔案', 'err');
+            return [file];
+        }
+    }
+
+    // === 處理檔案清單 ===
+    function addFiles(files) {
+        for (const file of files) {
+            pendingFiles.push(file);
+        }
+        renderFileList();
+    }
+
+    function renderFileList() {
+        if (pendingFiles.length === 0) {
+            fileListContainer.classList.add('hidden');
+            return;
+        }
+        fileListContainer.classList.remove('hidden');
+        fileCount.textContent = pendingFiles.length;
+        
+        let totalBytes = 0;
+        let html = '';
+        for (const f of pendingFiles) {
+            totalBytes += f.size;
+            html += `<div class="file-item">
+                <span class="name">${escapeHtml(f.name)}</span>
+                <span class="size">${formatSize(f.size)}</span>
+                <span class="status pending">待上傳</span>
+            </div>`;
+        }
+        fileList.innerHTML = html;
+        totalSize.textContent = formatSize(totalBytes);
+        progressBar.style.width = '0%';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // === 上傳全部 ===
+    async function uploadAll() {
+        if (isUploading) return;
+        if (pendingFiles.length === 0) {
+            log('⚠️ 沒有檔案要上傳', 'err');
+            return;
+        }
+        
+        isUploading = true;
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '⏳ 上傳中...';
+        
+        const dir = getTargetDir();
+        const overwrite = overwriteCheck.checked;
+        const autoExtract = extractCheck.checked;
+        
+        let allFiles = [];
+        for (const file of pendingFiles) {
+            if (autoExtract && (file.name.endsWith('.7z') || file.name.endsWith('.zip'))) {
+                let extracted;
+                if (file.name.endsWith('.7z')) {
+                    extracted = await extract7z(file);
+                } else {
+                    extracted = await extractZip(file);
+                }
+                if (extracted && extracted.length > 0) {
+                    allFiles = allFiles.concat(extracted);
+                } else {
+                    allFiles.push(file);
+                }
+            } else {
+                allFiles.push(file);
+            }
+        }
+        
+        const total = allFiles.length;
+        let uploaded = 0;
+        let failed = 0;
+        
+        progressBar.style.width = '0%';
+        progressWrap.style.display = 'block';
+        
+        for (let i = 0; i < allFiles.length; i++) {
+            const file = allFiles[i];
+            log(`⬆️ 上傳: ${file.name} (${formatSize(file.size)})`, 'info');
+            
+            try {
+                const result = await uploadSingleFile(file, dir, overwrite);
+                if (result.success) {
+                    log(`✅ ${file.name} 上傳成功 (${formatSize(result.size)})`, 'ok');
+                    uploaded++;
+                } else if (result.error === 'File exists') {
+                    log(`⚠️ ${file.name} 已存在，跳過`, 'err');
+                    failed++;
+                } else {
+                    log(`❌ ${file.name} 上傳失敗: ${result.error}`, 'err');
+                    failed++;
+                }
+            } catch (e) {
+                log(`❌ ${file.name} 上傳錯誤: ${e.message}`, 'err');
+                failed++;
+            }
+            
+            const progress = ((i + 1) / total) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        
+        progressBar.style.width = '100%';
+        log(`📊 上傳完成: ${uploaded} 成功, ${failed} 失敗`, 'ok');
+        
+        pendingFiles = [];
+        renderFileList();
+        isUploading = false;
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '🚀 上傳全部';
+        setTimeout(() => { progressWrap.style.display = 'none'; }, 1000);
+        
+        // 重新整理遠端檔案列表
+        refreshRemoteFiles();
+    }
+
+    // === 重新整理遠端檔案 ===
+    async function refreshRemoteFiles() {
+        const dir = getTargetDir();
+        log('🔄 重新整理遠端檔案...', 'info');
+        try {
+            const result = await apiCall('ls', { dir: dir });
+            if (Array.isArray(result)) {
+                if (result.length === 0) {
+                    remoteFileList.innerHTML = '📭 目錄為空';
+                    log('📭 目錄為空', 'info');
+                } else {
+                    let html = '';
+                    for (const item of result) {
+                        const icon = item.is_dir ? '📁' : '📄';
+                        const size = item.is_dir ? '' : formatSize(item.size);
+                        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f5f5f5;font-size:13px;">
+                            <span>${icon} ${escapeHtml(item.name)}</span>
+                            <span style="color:#888;font-size:12px;">${size}</span>
+                        </div>`;
+                    }
+                    remoteFileList.innerHTML = html;
+                    log(`✅ 找到 ${result.length} 個項目`, 'ok');
+                }
+            } else {
+                remoteFileList.innerHTML = '⚠️ ' + (result.error || '無法讀取');
+                log('❌ 讀取失敗: ' + (result.error || '未知錯誤'), 'err');
+            }
+        } catch (e) {
+            remoteFileList.innerHTML = '⚠️ 連線錯誤';
+            log('❌ 連線錯誤: ' + e.message, 'err');
+        }
+    }
+
+    // === 事件綁定 ===
+    // 拖曳上傳
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            addFiles(files);
+        }
+    });
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            addFiles(fileInput.files);
+            fileInput.value = '';
+        }
+    });
+
+    // 上傳按鈕
+    uploadBtn.addEventListener('click', uploadAll);
+
+    // 清空按鈕
+    clearBtn.addEventListener('click', () => {
+        pendingFiles = [];
+        renderFileList();
+        log('🗑️ 已清空檔案清單', 'info');
+    });
+
+    // 測試連線
+    testBtn.addEventListener('click', testConnection);
+
+    // 重新整理
+    refreshBtn.addEventListener('click', refreshRemoteFiles);
+
+    // 清空日誌
+    clearLogBtn.addEventListener('click', clearLog);
+
+    // 自動測試連線（首次載入）
+    setTimeout(testConnection, 500);
+    setTimeout(refreshRemoteFiles, 800);
+
+    // 儲存密碼到 localStorage
+    const savedSecret = localStorage.getItem('uploader_secret');
+    if (savedSecret) secretInput.value = savedSecret;
+    secretInput.addEventListener('change', () => {
+        localStorage.setItem('uploader_secret', secretInput.value);
+    });
+
+    // 儲存目標目錄
+    const savedDir = localStorage.getItem('uploader_dir');
+    if (savedDir) targetDir.value = savedDir;
+    targetDir.addEventListener('change', () => {
+        localStorage.setItem('uploader_dir', targetDir.value);
+    });
+
+    log('💡 就緒，拖曳檔案或點擊上傳區域開始', 'info');
+
+})();
+</script>
+</body>
+</html>
