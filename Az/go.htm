@@ -1,0 +1,59 @@
+<html><head><title>sc6</title>
+<meta http-equiv="refresh" content="295; url=a.htm"></head><body> <a name="tp"><div id=op></div>
+<!div id="staticbuttons" style="position: absolute; z-index: 1030; left: 987px; top: 5817px;">
+<div id="staticbuttons" style="position: absolute; z-index: 10; left: 2px; top: 5px;">
+<a style="color:red;font-size: 11pt; font-weight:bold;text-decoration: none;" href="#tp">T</a><br>
+<a style="text-decoration: none;" onmouseover="myspeed=thespei"
+onmouseout="myspeed=thespeed" href="javascript:">v</a><a
+onmouseover="myspeed+=3+thespei">+</a><br>
+<a style="text-decoration: none;" onmouseover="myspeed=thespei"
+onmouseout="myspeed=0" href="javascript:">-</a><br>
+<a style="text-decoration: none;" onmouseover="myspeed=-thespei"
+onmouseout="myspeed=-thespeed" href="javascript:">^</a><a
+onmouseover="myspeed-=3+thespei">+</a><br>
+<a style="color:red;font-size: 9pt; font-weight: bold;
+text-decoration: none;" href="#t2">b</a><br></div><!IMG src=x/1.jpg> <a name=t2>
+<script>
+var lo=001 ; var hi=42 ; var OutPut='';
+  for (i=lo; i < hi; i++) { //'height="306"<a href="javascript:pp(\'x/'+X[i]+'.jpg\')"> '+
+OutPut=OutPut+ '<IMG src="x/'+i+'.jpg">';}
+//  for (i=lo; i < hi+10; i++) {
+//OutPut=OutPut+ '<IMG src="a/'+i+'.jpg">';}
+document.getElementById("op").innerHTML=OutPut; 
+
+//Page Scroller (aka custom scrollbar)- By www.dynamicdrive.com
+var Hoffset=37 //Enter buttons' offset from right edge of window (adjust depending on images width)
+var Voffset=119 //80 buttons' offset from bottom edge of window (adjust depending on images height)
+var thespeed=1 //Enter scroll speed in integer (Advised: 1-3)
+var thespei=1 //msOvr
+var ieNOTopera=document.all&&navigator.userAgent.indexOf ("Opera")==-1
+var myspeed=4 //6
+var ieHoffset_extra=document.all? 15 : 0
+var cross_obj=document.all? document.all.staticbuttons : document.getElementById? document.getElementById("staticbuttons") : document.staticbuttons
+
+function iecompattest(){return (document.compatMode && document.compatMode!="BackCompat")? document.documentElement : document.body}
+
+function positionit(){
+var dsocleft=document.all? iecompattest().scrollLeft : pageXOffset
+var dsoctop=document.all? iecompattest().scrollTop : pageYOffset
+var window_width=ieNOTopera? iecompattest().clientWidth+ieHoffset_extra : window.innerWidth+ieHoffset_extra
+var window_height=ieNOTopera? iecompattest().clientHeight : window.innerHeight
+if (document.all||document.getElementById){
+cross_obj.style.left=parseInt(dsocleft)+parseInt(window_width)-Hoffset+"px"
+cross_obj.style.top=dsoctop+parseInt(window_height)-Voffset+"px"
+}
+else if (document.layers){
+cross_obj.left=dsocleft+window_width-Hoffset
+cross_obj.top=dsoctop+window_height-Voffset
+}
+}
+
+function scrollwindow(){ window.scrollBy(0,myspeed) }
+
+function initializeIT(){ positionit()
+if (myspeed!=0){ scrollwindow() }
+}
+
+if (document.all||document.getElementById||document.layers) setInterval("initializeIT()",20)
+</script>
+</body></html>
