@@ -83,6 +83,13 @@
   function headers(){var h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};var t=$('token').value.trim();if(t)h.Authorization='Bearer '+t;return h;}
   function jsonHeaders(){return Object.assign({'Content-Type':'application/json'},headers());}
 
+  function normalizeTreePath(p){
+    var segs = p.split('/').filter(function(seg){ return seg!=='' && seg!=='.'; });
+    if (segs.indexOf('..')!==-1) throw new Error('路徑包含不允許的 ".." 區段: '+p);
+    if (!segs.length) throw new Error('路徑正規化後為空: '+p);
+    return segs.join('/');
+  }
+
   function uint8ToBase64(bytes){
     var CHUNK=0x8000,binary='';
     for(var i=0;i<bytes.length;i+=CHUNK){
@@ -209,7 +216,7 @@
         var blobRes=await fetch(api(owner,repo,'/git/blobs'),{method:'POST',headers:jsonHeaders(),body:JSON.stringify({content:base64,encoding:'base64'})});
         if(!blobRes.ok){ log('pushLog','✗ 失敗: '+item.path+' HTTP '+blobRes.status); continue; }
         var blobData=await blobRes.json();
-        treeEntries.push({path:(folder+'/'+item.path), mode:'100644', type:'blob', sha:blobData.sha});
+        treeEntries.push({path: normalizeTreePath(folder+'/'+item.path), mode:'100644', type:'blob', sha:blobData.sha});
         progress('pushBar', 8+Math.round((i+1)/list.length*60));
       }
       if(!treeEntries.length) throw new Error('沒有任何 blob 上傳成功，中止推送。');
