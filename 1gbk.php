@@ -9,14 +9,39 @@ $oldFile  = 'guest_data.txt';
 // 顯示出來會撐爆版面。這裡只縮短「顯示文字」，href 仍是完整原始網址，
 // 點擊行為不變，只是畫面上看起來是 domain/...xyz 這種簡短樣式。
 function shortUrlLabel($url) {
-    $threshold = 60;
-    if (mb_strlen($url) <= $threshold) {
-        return htmlspecialchars($url, ENT_QUOTES);
+    $threshold = 15;
+    // 避免網址本身剛好含連續句點，跟我們自己加的 "/.." 混在一起分不清楚
+    $cleanUrl = preg_replace('/\.{2,}/', '', $url);
+    if (mb_strlen($cleanUrl) <= $threshold) {
+        return htmlspecialchars($cleanUrl, ENT_QUOTES);
     }
-    $host = parse_url($url, PHP_URL_HOST);
-    $tail = mb_substr($url, -3);
-    $label = ($host ?: '連結') . '/...' . $tail;
+    $host = parse_url($cleanUrl, PHP_URL_HOST);
+    // 不用網址「結尾 3 個字」，因為結構相似的網址（例如同一批產生的檔名／resource id）
+    // 結尾常常剛好一樣，好幾個連結會顯示成一模一樣的縮寫，分不出誰是誰。
+    // 改用整個網址的雜湊當「指紋」，不同網址幾乎一定會給出不同的 3 碼。
+    $fingerprint = substr(md5($cleanUrl), 0, 3);
+    if (!$host) {
+        return htmlspecialchars('link..' . $fingerprint, ENT_QUOTES);
+    }
+    $host = preg_replace('/^www\./', '', $host);
+    $label = $host . '/..' . $fingerprint;
     return htmlspecialchars($label, ENT_QUOTES);
+}
+
+// 偵測「一堆用空白隔開的長字串」，例如好幾個長網址擠在同一行/沒幾行，
+// 這種訊息可能行數不多、字數也還沒到門檻，但看起來一樣很長，也需要收合。
+function isSpaceSeparatedLongTokens($text) {
+    // 有換行的話交給行數那條規則處理就好，不用這條
+    if (strpos($text, "\n") !== false) return false;
+    $parts = explode(' ', $text);
+    if (count($parts) < 2) return false;
+    $longCount = 0;
+    foreach ($parts as $part) {
+        if (mb_strlen($part, 'UTF-8') > 50) {
+            $longCount++;
+        }
+    }
+    return $longCount >= 2 && mb_strlen($text, 'UTF-8') > 200;
 }
 
 function linkify($text) {
@@ -147,59 +172,120 @@ function processMsg($msg, $packLongText = true) {
     );
     
     // ===== 長文本打包（新增） =====
+    // 邏輯跟獨立的 1gbk.htm（純前端版）的 formatMessage() 對齊：
+    // 觸發看行數／字數／是否為一堆空白分隔的長字串（例如好幾個長網址擠在一起）；
+    // 預覽優先用「前 2 行」，行數不夠時改用字數切割——若第一個換行剛好落在
+    // 預覽範圍內就保留完整第一行，否則往前找最近的標點/空白斷開。
     if ($packLongText) {
-        $msg = preg_replace_callback(
-            '/((?:[^\n]+\n?){8,})/s',  // 8 行以上觸發打包
-            function($m) use ($btnBlocks) {
-                $longText = trim($m[1]);
-
-                // 若這段長文裡剛好卡著按鈕佔位符（%%BTN..%%），代表使用者貼的內容
-                // 本來就含有 <button> 標籤（不論是自己打的，還是貼上舊留言殘留的）。
-                // 這裡先把佔位符換回「原始按鈕原始碼」再一起跳脫成純文字顯示，
-                // 這樣後面統一還原按鈕的迴圈就找不到這個佔位符了，
-                // 不會把真正可執行的 <button> 標籤注入到已跳脫的文字裡，
-                // 同時這段文字仍然會正常收合成 2 行預覽（不會整段跳過不處理）。
-                if (!empty($btnBlocks) && strpos($longText, '%%BTN') !== false) {
-                    foreach ($btnBlocks as $key => $btnHtml) {
-                        $longText = str_replace($key, $btnHtml, $longText);
-                    }
+        $trimmedMsg = trim($msg);
+        if ($trimmedMsg !== '') {
+            // 若這段文字裡剛好卡著按鈕佔位符（%%BTN..%%），代表使用者貼的內容
+            // 本來就含有 <button> 標籤（不論是自己打的，還是貼上舊留言殘留的）。
+            // 先把佔位符換回「原始按鈕原始碼」再一起跳脫成純文字顯示，
+            // 這樣後面統一還原按鈕的迴圈就找不到這個佔位符了，
+            // 不會把真正可執行的 <button> 標籤注入到已跳脫的文字裡。
+            if (!empty($btnBlocks) && strpos($trimmedMsg, '%%BTN') !== false) {
+                foreach ($btnBlocks as $key => $btnHtml) {
+                    $trimmedMsg = str_replace($key, $btnHtml, $trimmedMsg);
                 }
+            }
 
+            // 清理換行和空白（跟 1gbk.htm 一致）：
+            // 1. 每行開頭多餘空白拿掉
+            $cleanedLines = array_map(function ($line) {
+                return preg_replace('/^[ \t]+/', '', $line);
+            }, explode("\n", $trimmedMsg));
+            $cleanedMsg = implode("\n", $cleanedLines);
+            // 2. 連續空白/tab 壓成一個（保留換行）
+            $cleanedMsg = preg_replace('/[ \t]+/', ' ', $cleanedMsg);
+            // 3. 3 個以上連續換行壓成 2 個
+            $cleanedMsg = preg_replace('/\n{3,}/', "\n\n", $cleanedMsg);
+
+            $allLines = explode("\n", $cleanedMsg);
+            $lineCount = count($allLines);
+            $previewCharCount = 156;
+            $charThreshold = 300;
+            $totalLen = mb_strlen($cleanedMsg, 'UTF-8');
+            $isSpaceSeparated = isSpaceSeparatedLongTokens($cleanedMsg);
+            $shouldPack = ($lineCount >= 3) || ($totalLen > $charThreshold) || $isSpaceSeparated;
+
+            if ($shouldPack) {
                 // id 不能只用內容的 md5：若兩則留言貼了一模一樣的長文，
                 // md5 會相同，document.getElementById 只會抓到第一個，
                 // 導致點到第二則的按鈕卻展開/收合到第一則的內容，版面跟著跑掉。
                 // 改成每次都附加唯一序號，確保同頁面不會有重複 id。
-                $id = 'lt_' . md5($longText) . '_' . substr(str_replace('.', '', uniqid('', true)), -10);
+                $id = 'lt_' . md5($cleanedMsg) . '_' . substr(str_replace('.', '', uniqid('', true)), -10);
 
-                $allLines = explode("\n", $longText);
-                $lineCount = count($allLines);
+                if ($lineCount >= 3) {
+                    // 行數夠多：用「前 2 行」當預覽
+                    $previewLines = array_slice($allLines, 0, 2);
+                    $restLines = array_slice($allLines, 2);
+                    $previewText = implode("\n", $previewLines);
+                    $restText = implode("\n", $restLines);
+                    $labelCollapsed = '📄 展開剩餘 ' . count($restLines) . ' 行（共 ' . $lineCount . ' 行）';
+                } else {
+                    // 行數不多但字數很長（或空白分隔的長字串）：按字數切割
+                    $cutAt = min($previewCharCount, $totalLen);
 
-                // 預設可見前 2 行當預覽，其餘收在展開區塊裡
-                $previewLineCount = min(2, $lineCount);
-                $previewLines = array_slice($allLines, 0, $previewLineCount);
-                $restLines = array_slice($allLines, $previewLineCount);
+                    // 若第一個換行剛好在預覽範圍內，優先保留完整第一行
+                    $firstNlPos = mb_strpos($cleanedMsg, "\n");
+                    if ($firstNlPos !== false && $firstNlPos < $previewCharCount && $firstNlPos > 0) {
+                        $cutAt = $firstNlPos;
+                    } else {
+                        $chars = preg_split('//u', $cleanedMsg, -1, PREG_SPLIT_NO_EMPTY);
+                        $totalChars = count($chars);
 
-                $escapedPreview = htmlspecialchars(implode("\n", $previewLines), ENT_QUOTES, 'UTF-8');
-                $escapedRest = htmlspecialchars(implode("\n", $restLines), ENT_QUOTES, 'UTF-8');
-                $restCount = count($restLines);
+                        // 優先找「空格」切斷：網址裡不會有空格，這樣切一定不會切到網址中間。
+                        // 搜尋範圍要比標點寬很多，因為單一個網址常常超過 20 字，
+                        // 太窄的話根本搜不到前一個空格。
+                        $spaceIdx = -1;
+                        for ($s = min($previewCharCount, $totalChars - 1); $s >= 0; $s--) {
+                            if ($chars[$s] === ' ') {
+                                $spaceIdx = $s;
+                                break;
+                            }
+                        }
 
-                $labelCollapsed = '📄 展開剩餘 ' . $restCount . ' 行（共 ' . $lineCount . ' 行）';
-                $labelExpanded  = '📄 收起長文';
+                        if ($spaceIdx !== -1) {
+                            $cutAt = $spaceIdx + 1;
+                        } else {
+                            // 找不到空格（例如整段就是連續文字沒有分隔）才退而求其次找標點，
+                            // 但這裡的標點不能用「.」，網址裡的網域句點（如 qwen.ai）
+                            // 也會被誤判成句子的句點，切在網址中間。
+                            $searchFloor = max(0, $previewCharCount - 20);
+                            for ($i = min($previewCharCount, $totalChars - 1); $i > $searchFloor; $i--) {
+                                if (preg_match('/[，。、；：！？\n]/u', $chars[$i])) {
+                                    $cutAt = $i + 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-                return '<div class="long-text-wrapper">'
+                    $previewText = mb_substr($cleanedMsg, 0, $cutAt, 'UTF-8');
+                    $restText = mb_substr($cleanedMsg, $cutAt, null, 'UTF-8');
+                    $labelCollapsed = '📄 展開剩餘內容（共 ' . $totalLen . ' 字）';
+                }
+
+                $escapedPreview = htmlspecialchars($previewText, ENT_QUOTES, 'UTF-8');
+                $escapedRest = htmlspecialchars($restText, ENT_QUOTES, 'UTF-8');
+                $labelExpanded = '📄 收起長文';
+
+                $joinMode = ($lineCount >= 3) ? 'line' : 'char';
+
+                $msg = '<div class="long-text-wrapper" data-join="' . $joinMode . '">'
                      . '<div class="long-text-preview">' . $escapedPreview . '</div>'
                      . '<button class="btn-expand" onclick="toggleLongText(this)" data-target="' . $id . '"'
                      . ' data-label-collapsed="' . htmlspecialchars($labelCollapsed, ENT_QUOTES, 'UTF-8') . '"'
                      . ' data-label-expanded="' . htmlspecialchars($labelExpanded, ENT_QUOTES, 'UTF-8') . '">'
                      . $labelCollapsed
                      . '</button>'
-                     . '<div id="' . $id . '" class="long-text-content" style="display:none;margin-top:6px;padding:8px 12px;background:#f8f8f8;border-radius:4px;white-space:pre-wrap;border-left:3px solid #667eea;font-size:13px;line-height:1.6;">'
+                     . '<div id="' . $id . '" class="long-text-content" style="display:none;margin-top:6px;padding:6px 0;background:#f8f8f8;border-radius:4px;white-space:pre-wrap;line-height:1.6;">'
                      . $escapedRest
                      . '</div>'
                      . '</div>';
-            },
-            $msg
-        );
+            }
+        }
     }
     
     $allowed = '<a><b><i><u><s><em><strong><br><p><img><ul><ol><li>'
@@ -342,7 +428,8 @@ function writeHtm($path, array $entries) {
           . 'var content=wrapper.querySelector(".long-text-content");'
           . 'var previewText=preview?preview.textContent:"";'
           . 'var restText=content?content.textContent:"";'
-          . 'var full=restText?(previewText+"\\n"+restText):previewText;'
+          . 'var sep=wrapper.getAttribute("data-join")==="char"?"":"\\n";'
+          . 'var full=restText?(previewText+sep+restText):previewText;'
           . 'var textNode=document.createTextNode(full);'
           . 'wrapper.replaceWith(textNode);'
           . '});'
@@ -895,7 +982,11 @@ function getCleanMessageFromBox(boxElement) {
         var content = wrapper.querySelector('.long-text-content');
         var previewText = preview ? preview.textContent : '';
         var restText = content ? content.textContent : '';
-        var full = restText ? (previewText + '\n' + restText) : previewText;
+        // 行數夠多時是用「\n」切開的，接回去要補回這個換行；
+        // 字數切割（data-join="char"）是直接從連續文字切開的，接回去不能多補換行，
+        // 不然複製出來的內容會多一個原文沒有的斷行。
+        var sep = wrapper.getAttribute('data-join') === 'char' ? '' : '\n';
+        var full = restText ? (previewText + sep + restText) : previewText;
         var textNode = document.createTextNode(full);
         wrapper.replaceWith(textNode);
     });
@@ -966,7 +1057,8 @@ function copyContent(btn) {
         var content = wrapper.querySelector('.long-text-content');
         var previewText = preview ? preview.textContent : '';
         var restText = content ? content.textContent : '';
-        var full = restText ? (previewText + '\n' + restText) : previewText;
+        var sep = wrapper.getAttribute('data-join') === 'char' ? '' : '\n';
+        var full = restText ? (previewText + sep + restText) : previewText;
         var textNode = document.createTextNode(full);
         wrapper.replaceWith(textNode);
     });

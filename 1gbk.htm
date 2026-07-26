@@ -32,8 +32,13 @@
         .bottom-del{margin-top:4px;padding-top:4px;border-top:1px dashed #eee;}
         .bottom-del button{font-size:12px;color:#c44;background:none;border:none;cursor:pointer;padding:2px 0;}
         .bottom-del button:hover{text-decoration:underline;}
-        .long-text-wrapper{margin:4px 0;}.long-text-preview{white-space:pre-wrap;overflow-wrap:break-word;word-wrap:break-word;color:#333;margin-bottom:4px;}.btn-expand{font-size:12px;padding:3px 12px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:4px;cursor:pointer;transition:all .2s;display:inline-block;}.btn-expand:hover{background:#e8e8e8;border-color:#667eea}.btn-expand.active{background:#667eea;color:#fff;border-color:#667eea}
-        .long-text-content{max-height:400px;overflow-y:auto;margin-top:6px;padding:8px 12px;background:#f8f8f8;border-radius:4px;white-space:pre-wrap;overflow-wrap:break-word;word-wrap:break-word;border-left:3px solid #667eea;line-height:1.6;box-sizing:border-box;}
+        .long-text-wrapper{margin:4px 0;}
+        /* 修改：不用 pre-wrap，改用 normal + br 處理換行 */
+        .long-text-preview{white-space:normal;word-wrap:break-word;overflow-wrap:break-word;color:#333;margin-bottom:4px;line-height:1.55;}
+        .long-text-preview br{display:block;content:"";margin:0;}
+        .btn-expand{font-size:12px;padding:3px 12px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:4px;cursor:pointer;transition:all .2s;display:inline-block;}.btn-expand:hover{background:#e8e8e8;border-color:#667eea}.btn-expand.active{background:#667eea;color:#fff;border-color:#667eea}
+        .long-text-content{max-height:400px;overflow-y:auto;margin-top:6px;padding:6px 0;background:#f8f8f8;border-radius:4px;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;line-height:1.6;box-sizing:border-box;}
+        .long-text-content br{display:block;content:"";margin:0;}
         #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(34,34,34,.92);color:#fff;padding:8px 24px;border-radius:24px;font-size:14px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;backdrop-filter:blur(4px)}
         .empty-state{color:#999;font-size:13px;padding:4px 0;}
     </style>
@@ -68,7 +73,6 @@
     var nameInput=document.getElementById('fName');
     var msgInput=document.getElementById('fMsg');
     var toastTimer=null;
-    var SCREEN_RATIO = 0.8; // 螢幕 80% 作為判斷門檻
 
     function escapeHtml(text){return String(text).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
     function uid(){return 'lt_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
@@ -92,6 +96,7 @@
         return escapeHtml(host + '/..' + fp);
     }
     
+    // === linkify 最後將 \n 轉為 <br> ===
     function linkify(text){
         var imgExt=/\.(jpe?g|png|gif|webp|svg|bmp)(\?.*)?$/i;
         var urlRe=/(https?:\/\/[^\s<>"']+)/gi;
@@ -114,22 +119,26 @@
             last=m.index+m[0].length;
         }
         out+=escapeHtml(text.slice(last));
+        // === 關鍵：將 \n 轉為 <br> ===
+        out = out.replace(/\n/g, '<br>');
         return out;
     }
     
-    // === 判斷是否為「空格分隔的多個長字串」===
+    // === 改進：只以真正空格切，且若有換行則返回 false ===
     function isSpaceSeparatedLongTokens(text) {
-        var parts = text.split(/\s+/).filter(function(p){ return p.length > 0; });
-        // 如果只有一個部分，不算
+        // 若有換行，不走此邏輯（讓 lines>=3 處理）
+        if (text.indexOf('\n') !== -1) return false;
+        
+        // 只以真正空格切
+        var parts = text.split(' ');
         if (parts.length < 2) return false;
-        // 檢查每個部分是否都是長字串（> 50 字，且沒有空格）
+        
         var longCount = 0;
         for (var i = 0; i < parts.length; i++) {
             if (parts[i].length > 50 && !/\s/.test(parts[i])) {
                 longCount++;
             }
         }
-        // 如果有 2 個以上長字串，且總字數 > 200
         return longCount >= 2 && text.length > 200;
     }
     
@@ -142,7 +151,7 @@
             return line.replace(/^[ \t]+/, '');
         }).join('\n');
         
-        // 將連續多個空格壓縮為一個
+        // 將連續多個空格壓縮為一個（但保留換行）
         text = text.replace(/[ \t]+/g, ' ');
         text = text.replace(/\n{3,}/g, '\n\n');
         
@@ -151,9 +160,6 @@
         var charThreshold = 300;
         
         // === 打包條件 ===
-        // 1. 行數 ≥ 3
-        // 2. 字數 > 300
-        // 3. 空格分隔的多個長字串（例如：token1 token2 token3）
         var isSpaceSeparated = isSpaceSeparatedLongTokens(text);
         var shouldPack = packOn && (lines.length >= 3 || text.trim().length > charThreshold || isSpaceSeparated);
         
@@ -171,11 +177,32 @@
             } else {
                 // 字數超過 300 或空格分隔的長字串：按字數切割
                 var cutAt = previewCharCount;
-                var punctuation = /[，。、；：！？\s,.;:!?\n]/;
-                for(var i = previewCharCount; i > Math.max(0, previewCharCount - 20); i--){
-                    if(i < text.length && punctuation.test(text[i])){
-                        cutAt = i + 1;
-                        break;
+                
+                // === 改進：若第一行換行在預覽範圍內，優先保留完整行 ===
+                var firstNL = text.indexOf('\n');
+                if (firstNL !== -1 && firstNL < previewCharCount && firstNL > 0) {
+                    cutAt = firstNL;
+                } else {
+                    // 優先找「空格」切斷：網址裡不會有空格，這樣切一定不會切到網址中間。
+                    // 搜尋範圍要比標點寬很多，因為單一個網址常常超過 20 字，
+                    // 太窄的話根本搜不到前一個空格。
+                    var spaceIdx = -1;
+                    for (var s = Math.min(previewCharCount, text.length - 1); s >= 0; s--) {
+                        if (text[s] === ' ') { spaceIdx = s; break; }
+                    }
+                    if (spaceIdx !== -1) {
+                        cutAt = spaceIdx + 1;
+                    } else {
+                        // 找不到空格（例如整段就是連續文字沒有分隔）才退而求其次找標點，
+                        // 但這裡的標點不能用「.」，網址裡的網域句點（如 qwen.ai）
+                        // 也會被誤判成句子的句點，切在網址中間。
+                        var punctuation = /[，。、；：！？\n]/;
+                        for(var i = previewCharCount; i > Math.max(0, previewCharCount - 20); i--){
+                            if(i < text.length && punctuation.test(text[i])){
+                                cutAt = i + 1;
+                                break;
+                            }
+                        }
                     }
                 }
                 previewText = text.slice(0, cutAt);
@@ -185,25 +212,34 @@
             
             var labelExpanded='📄 收起長文';
             
-            return '<div class="long-text-wrapper"><div class="long-text-preview">'+linkify(previewText)+'</div><button class="btn-expand" data-target="'+id+'" data-label-collapsed="'+escapeHtml(labelCollapsed)+'" data-label-expanded="'+escapeHtml(labelExpanded)+'">'+escapeHtml(labelCollapsed)+'</button><div id="'+id+'" class="long-text-content" style="display:none">'+linkify(restText)+'</div></div>';
+            // === preview 使用 linkify 並保留換行 ===
+            var previewHtml = linkify(previewText);
+            
+            return '<div class="long-text-wrapper"><div class="long-text-preview">'+previewHtml+'</div><button class="btn-expand" data-target="'+id+'" data-label-collapsed="'+escapeHtml(labelCollapsed)+'" data-label-expanded="'+escapeHtml(labelExpanded)+'">'+escapeHtml(labelCollapsed)+'</button><div id="'+id+'" class="long-text-content" style="display:none">'+linkify(restText)+'</div></div>';
         }
-        return linkify(text).replace(/\n/g,'<br>');
+        return linkify(text);
     }
     
     function copyPlainText(text,callback){if(navigator.clipboard){navigator.clipboard.writeText(text).then(callback).catch(function(){fallbackCopy(text);callback&&callback();});}else{fallbackCopy(text);callback&&callback();}}
     function fallbackCopy(text){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);}
     function confirmDel(){return confirm('確定要刪除這則留言嗎？\n（此操作無法復原）');}
     
-    // === 判斷內容是否真的需要底部刪除按鈕（超過螢幕 80%）===
-    function needsBottomDelete(text) {
-        // 快速估算：行數 >= 10 或 字數 > 600
-        var lines = String(text||'').split('\n').filter(function(l){return l.trim()!=='';});
-        var charCount = text.length;
-        // 如果是空格分隔的長字串，每個長字串算 3 行
-        var parts = text.split(/\s+/).filter(function(p){return p.length > 50;});
-        var extraLines = parts.length * 2;
-        var effectiveLines = lines.length + extraLines;
-        return effectiveLines >= 10 || charCount > 600;
+    // === 動態測量展開後內容高度 ===
+    function measureContentHeight(contentEl) {
+        // 暫時顯示以測量
+        var wasHidden = contentEl.style.display === 'none';
+        if (wasHidden) {
+            contentEl.style.display = 'block';
+            contentEl.style.visibility = 'hidden';
+            contentEl.style.position = 'absolute';
+        }
+        var h = contentEl.scrollHeight;
+        if (wasHidden) {
+            contentEl.style.display = 'none';
+            contentEl.style.visibility = '';
+            contentEl.style.position = '';
+        }
+        return h;
     }
     
     function render(){
@@ -215,27 +251,27 @@
             box.className='msg-box';
             box.dataset.raw=entry.message;
             
-            var rawLines=String(entry.message||'').replace(/\r\n?/g,'\n').split('\n').filter(function(l){return l.trim()!=='';});
-            var rawTrimmed=rawLines.join('\n');
+            var contentHtml = formatMessage(entry.message, entry.packLongText);
             
-            // === 判斷是否為長內容 ===
-            var isSpaceSeparated = isSpaceSeparatedLongTokens(entry.message);
-            var isLongContent = rawLines.length >= 3 || rawTrimmed.length > 300 || isSpaceSeparated;
-            var wasPacked = (entry.packLongText !== false) && isLongContent;
+            box.innerHTML='<div class="msg-actions"><button class="btn-copy" title="複製留言">📋</button><button class="btn-del" title="刪除留言">🗑</button></div>['+escapeHtml(entry.time)+'] <b>'+escapeHtml(entry.name||'訪客')+'</b>:\n'+contentHtml+(entry.hasCopyBtn?'\n<button class="btn-cc">📋 複製內容</button>':'')+'<div class="bottom-del" style="display:none"><button class="btn-del-bottom">🗑 刪除此則留言</button></div>';
             
-            // === 底部刪除按鈕：只有真的需要時才顯示 ===
-            var showBottomDel = needsBottomDelete(entry.message);
-            var bottomDelHidden = wasPacked;  // 打包時隱藏，展開後顯示
+            // 一定要先掛進文件才能量到正確高度（scrollHeight 對還沒 append 的節點永遠是 0）
+            entryRoot.appendChild(box);
             
-            box.innerHTML='<div class="msg-actions"><button class="btn-copy" title="複製留言">📋</button><button class="btn-del" title="刪除留言">🗑</button></div>['+escapeHtml(entry.time)+'] <b>'+escapeHtml(entry.name||'訪客')+'</b>:\n'+formatMessage(entry.message,entry.packLongText)+(entry.hasCopyBtn?'\n<button class="btn-cc">📋 複製內容</button>':'')+(showBottomDel?'<div class="bottom-del"'+(bottomDelHidden?' style="display:none"':'')+'><button class="btn-del-bottom">🗑 刪除此則留言</button></div>':'');
-            
+            // === 事件綁定 ===
             box.querySelector('.btn-copy').addEventListener('click',function(){copyPlainText(entry.message,function(){showToast('已複製原始內容！');});});
             box.querySelector('.btn-del').addEventListener('click',function(){if(confirmDel()){entries.splice(index,1);save();render();}});
             
-            var bd=box.querySelector('.btn-del-bottom');if(bd){bd.addEventListener('click',function(){if(confirmDel()){entries.splice(index,1);save();render();}});}
+            var bd=box.querySelector('.btn-del-bottom');
+            var bottomDel = box.querySelector('.bottom-del');
+            
+            if(bd){
+                bd.addEventListener('click',function(){if(confirmDel()){entries.splice(index,1);save();render();}});
+            }
             
             var cc=box.querySelector('.btn-cc');if(cc){cc.addEventListener('click',function(){copyPlainText(entry.message,function(){cc.textContent='✅ 已複製原始內容！';cc.classList.add('ok');showToast('已複製原始內容！');setTimeout(function(){cc.textContent='📋 複製內容';cc.classList.remove('ok');},2000);});});}
             
+            // === 展開/收合 + 動態測量底部刪除按鈕 ===
             box.querySelectorAll('.btn-expand').forEach(function(btn){
                 btn.addEventListener('click',function(){
                     var content=document.getElementById(btn.getAttribute('data-target'));
@@ -244,11 +280,37 @@
                     content.style.display=opening?'block':'none';
                     btn.textContent=opening?btn.getAttribute('data-label-expanded'):btn.getAttribute('data-label-collapsed');
                     btn.classList.toggle('active',opening);
-                    var bottomDel=box.querySelector('.bottom-del');
-                    if(bottomDel)bottomDel.style.display=opening?'block':'none';
+                    
+                    // === 動態決定是否顯示底部刪除按鈕 ===
+                    if (bottomDel) {
+                        if (opening) {
+                            // 展開後測量高度
+                            var h = measureContentHeight(content);
+                            // 加上 header 和按鈕本身的高度（約 80px）
+                            var totalH = h + 80;
+                            if (totalH > window.innerHeight * 0.8) {
+                                bottomDel.style.display = 'block';
+                            } else {
+                                bottomDel.style.display = 'none';
+                            }
+                        } else {
+                            // 收合時隱藏
+                            bottomDel.style.display = 'none';
+                        }
+                    }
                 });
             });
-            entryRoot.appendChild(box);
+            
+            // === 初始狀態：若已展開（沒打包），測量是否要顯示底部刪除 ===
+            // 檢查是否有展開的內容（沒打包 = 沒 .btn-expand）
+            var expandBtn = box.querySelector('.btn-expand');
+            if (!expandBtn) {
+                // 沒打包，box 這時已經在文件裡了，量到的高度才是真的
+                var boxH = box.scrollHeight;
+                if (bottomDel && boxH > window.innerHeight * 0.8) {
+                    bottomDel.style.display = 'block';
+                }
+            }
         });
     }
 
