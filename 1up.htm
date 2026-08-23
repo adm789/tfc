@@ -72,7 +72,7 @@
   </section>
   <section class="card"><table><thead><tr><th><input type="checkbox" id="toggleAll"></th><th>相對路徑</th><th>大小</th></tr></thead><tbody id="tbody"></tbody></table></section>
 
-  <!-- ===== 推送目的地 ===== -->
+  <!--placeholder推送目的地-->
   <section class="card">
     <div class="grid">
       <div class="field full"><span class="step">2</span><b>推送目的地</b></div>
@@ -80,7 +80,8 @@
       <div class="field"><label>Repo</label><input id="dstRepo" value="tfc" placeholder="tfc"></div>
       <div class="field"><label>Branch</label><input id="dstBranch" placeholder="main" value="main"></div>
       <div class="field wide"><label>目標子資料夾路徑（留空 = repo 根目錄）</label><input id="dstFolder" placeholder="extracted/60（留空推到根目錄）"></div>
-      <div class="field wide"><label>GitHub token（私有存取 / 推送必填）</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_..."></div>
+      <div class="field wide"><label>GitHub token（私有存取 / 推送必填）</label><input id="token" type="password" autocomplete="off" 
+value="ithub_pat_11CBHDNSI0S6AI5Uh7np6m_WRIbhG4ADeN13YMtrIgAZsxBuaFHa9xLoGN7Oef4bp3UQUU6AGGJvMBjhqQ"></div>
       <div class="field wide"><label>Commit message</label><input id="message" value="Add extracted archive contents via 1up tool"></div>
       <div class="field"><label>&nbsp;</label><button class="ok" id="pushBtn">🚀 推送選取的檔案（1 commit）</button></div>
     </div>
