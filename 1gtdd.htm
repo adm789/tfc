@@ -18,11 +18,13 @@
 
   <section class="card">
     <div class="grid">
-      <div class="field"><label>Owner</label><input id="owner" placeholder="adm789"></div>
-      <div class="field"><label>Repo</label><input id="repo" placeholder="tfc"></div>
-      <div class="field"><label>Branch</label><input id="branch" placeholder="main"></div>
-      <div class="field"><label>Path</label><input id="path" placeholder="folder/subfolder"></div>
-      <div class="field wide"><label>GitHub token（刪除 / private repo 必填）</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_... / fine-grained token"></div>
+      <div class="field"><label>Owner</label><input id="owner" value="adm789"></div>
+      <div class="field"><label>Repo</label><input id="repo" value="tfc"></div>
+      <div class="field"><label>Branch</label><input id="branch" value="main"></div>
+      <div class="field"><label>Path</label><input id="path" value="folder/subfolder"></div>
+      <div class="field wide"><label>GitHub token（刪除 / private repo 必填）</label><input id="token" type="password" autocomplete="off" value="ithub_pat_11CBHDNSI0S6AI5Uh7np6m_WRIbhG4ADeN13YMtrIgAZsxBuaFHa9xLoGN7Oef4bp3UQUU6AGGJvMBjhqQ">
+ <!placeholder="github_pat_... / fine-grained token"
+></div>
       <div class="field wide"><label>Commit message（批次刪除用）</label><input id="message" value="Batch delete selected files via web tool"></div>
       <div class="field"><label>&nbsp;</label><button class="primary" id="loadBtn">Load files</button></div>
       <div class="field full">
